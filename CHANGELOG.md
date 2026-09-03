@@ -6,7 +6,7 @@ Historique des évolutions de PKMonitor.
 
 ## TODO — Roadmap
 
-Statut : `2026.09.09` (prototype fonctionnel)
+Statut : `2026.09.10` (prototype fonctionnel)
 
 ### Prochaines étapes
 - [x] Mesures CPU, RAM et réseau locales
@@ -18,6 +18,12 @@ Statut : `2026.09.09` (prototype fonctionnel)
 ---
 
 ## Releases
+
+### [2026.09.10] - 2026-09-03
+#### Added
+- Bouton force kill (SIGKILL) pour les processus qui ne quittent pas
+- Jauge réseau splitée download/upload
+- Option de bordure sur les icônes d'applications
 
 ### [2026.09.09] - 2026-09-03
 #### Added

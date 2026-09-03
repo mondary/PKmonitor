@@ -52,6 +52,7 @@ final class AppSettings: ObservableObject {
     @Published var showGaugeLabels: Bool { didSet { defaults.set(showGaugeLabels, forKey: "showGaugeLabels") } }
     @Published var labelPosition: ValuePosition { didSet { defaults.set(labelPosition.rawValue, forKey: "labelPosition") } }
     @Published var showLabel: Bool { didSet { defaults.set(showLabel, forKey: "showLabel") } }
+    @Published var showIconBorder: Bool { didSet { defaults.set(showIconBorder, forKey: "showIconBorder") } }
     @Published var warningThreshold: Double { didSet { defaults.set(warningThreshold, forKey: "warningThreshold") } }
     @Published var criticalThreshold: Double { didSet { defaults.set(criticalThreshold, forKey: "criticalThreshold") } }
     @Published private(set) var launchAtLogin = SMAppService.mainApp.status == .enabled
@@ -73,6 +74,7 @@ final class AppSettings: ObservableObject {
         showGaugeLabels = defaults.object(forKey: "showGaugeLabels") as? Bool ?? true
         labelPosition = ValuePosition(rawValue: defaults.string(forKey: "labelPosition") ?? "") ?? .right
         showLabel = defaults.object(forKey: "showLabel") as? Bool ?? true
+        showIconBorder = defaults.object(forKey: "showIconBorder") as? Bool ?? true
         warningThreshold = defaults.object(forKey: "warningThreshold") as? Double ?? 80
         criticalThreshold = defaults.object(forKey: "criticalThreshold") as? Double ?? 95
     }
@@ -98,6 +100,7 @@ final class AppSettings: ObservableObject {
         showGaugeLabels = true
         labelPosition = .right
         showLabel = true
+        showIconBorder = true
         warningThreshold = 80
         criticalThreshold = 95
     }
@@ -123,6 +126,8 @@ struct Reading {
     var ram = 0.0
     var gpu = 0.0
     var network = 0.0
+    var download = 0.0
+    var upload = 0.0
     var apps: [AppUsage] = []
 
     func value(for metric: Metric) -> Double {
@@ -138,10 +143,13 @@ struct Reading {
 final class SystemSampler {
     private var previousCPU: (idle: UInt64, total: UInt64)?
     private var previousBytes: UInt64?
+    private var previousInBytes: UInt64?
+    private var previousOutBytes: UInt64?
     private var previousNetworkDate = Date()
 
     func sample(previousApps: [AppUsage]) -> Reading {
-        Reading(cpu: cpuUsage(), ram: memoryUsage(), gpu: gpuUsage(), network: networkRate(), apps: previousApps)
+        let net = networkRate()
+        return Reading(cpu: cpuUsage(), ram: memoryUsage(), gpu: gpuUsage(), network: net.total, download: net.download, upload: net.upload, apps: previousApps)
     }
 
     private func cpuUsage() -> Double {
@@ -177,12 +185,13 @@ final class SystemSampler {
         return min(100, 100 * Double(usedBytes) / Double(ProcessInfo.processInfo.physicalMemory))
     }
 
-    private func networkRate() -> Double {
+    private func networkRate() -> (total: Double, download: Double, upload: Double) {
         var first: UnsafeMutablePointer<ifaddrs>?
-        guard getifaddrs(&first) == 0, let first else { return 0 }
+        guard getifaddrs(&first) == 0, let first else { return (0, 0, 0) }
         defer { freeifaddrs(first) }
 
-        var total: UInt64 = 0
+        var inBytes: UInt64 = 0
+        var outBytes: UInt64 = 0
         var cursor: UnsafeMutablePointer<ifaddrs>? = first
         while let address = cursor {
             let item = address.pointee
@@ -191,7 +200,8 @@ final class SystemSampler {
                flags & IFF_LOOPBACK == 0,
                item.ifa_addr?.pointee.sa_family == UInt8(AF_LINK),
                let data = item.ifa_data?.assumingMemoryBound(to: if_data.self).pointee {
-                total += UInt64(data.ifi_ibytes) + UInt64(data.ifi_obytes)
+                inBytes += UInt64(data.ifi_ibytes)
+                outBytes += UInt64(data.ifi_obytes)
             }
             cursor = item.ifa_next
         }
@@ -199,11 +209,14 @@ final class SystemSampler {
         let now = Date()
         let elapsed = now.timeIntervalSince(previousNetworkDate)
         defer {
-            previousBytes = total
+            previousInBytes = inBytes
+            previousOutBytes = outBytes
             previousNetworkDate = now
         }
-        guard let previousBytes, total >= previousBytes, elapsed > 0 else { return 0 }
-        return Double(total - previousBytes) / elapsed
+        guard let prevIn = previousInBytes, let prevOut = previousOutBytes, elapsed > 0 else { return (0, 0, 0) }
+        let dl = inBytes >= prevIn ? Double(inBytes - prevIn) / elapsed : 0
+        let ul = outBytes >= prevOut ? Double(outBytes - prevOut) / elapsed : 0
+        return (dl + ul, dl, ul)
     }
 
     private func gpuUsage() -> Double {
@@ -408,6 +421,7 @@ struct DetailView: View {
     @ObservedObject var settings: AppSettings
     let openActivityMonitor: (AppUsage) -> Void
     let terminateProcess: (AppUsage) -> Void
+    let forceKillProcess: (AppUsage) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -440,6 +454,12 @@ struct DetailView: View {
                             .buttonStyle(.plain)
                             .foregroundStyle(.red)
                             .help("Quit \(app.name)")
+                            Button { forceKillProcess(app) } label: {
+                                Image(systemName: "skull")
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.red)
+                            .help("Force kill \(app.name) (SIGKILL)")
                         }
                     }
                 }
@@ -601,6 +621,7 @@ struct AppearanceSettingsView: View {
                         Text("\(Int(settings.iconSize)) pt").monospacedDigit().frame(width: 48)
                     }
                 }
+                Toggle("Icon border", isOn: $settings.showIconBorder)
                 Picker("Value position", selection: $settings.valuePosition) {
                     ForEach(ValuePosition.allCases) { pos in Text(pos.rawValue).tag(pos) }
                 }
@@ -732,7 +753,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             model: model,
             settings: settings,
             openActivityMonitor: { [weak self] in self?.openActivityMonitor(for: $0) },
-            terminateProcess: { [weak self] in self?.confirmTermination(of: $0) }
+            terminateProcess: { [weak self] in self?.confirmTermination(of: $0) },
+            forceKillProcess: { [weak self] in self?.confirmForceKill(of: $0) }
         ))
         hosting.view.wantsLayer = true
         hosting.view.layer?.cornerRadius = 16
@@ -886,6 +908,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         hideDetailPanel()
     }
 
+    private func confirmForceKill(of app: AppUsage) {
+        let alert = NSAlert()
+        alert.alertStyle = .critical
+        alert.messageText = "Force kill \(app.name)?"
+        alert.informativeText = "PKMonitor will send SIGKILL to process \(app.pid). This cannot be undone and will not save any work."
+        alert.addButton(withTitle: "Force Kill")
+        alert.addButton(withTitle: "Cancel")
+        NSApp.activate(ignoringOtherApps: true)
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        guard Darwin.kill(app.pid, SIGKILL) == 0 else {
+            showError(title: "Could not force kill \(app.name)", message: String(cString: strerror(errno)))
+            return
+        }
+        panelPinned = false
+        hideDetailPanel()
+    }
+
     private func showError(title: String, message: String) {
         let alert = NSAlert()
         alert.alertStyle = .warning
@@ -1029,8 +1068,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             )
             NSColor.windowBackgroundColor.setFill()
             NSBezierPath(roundedRect: iconRect, xRadius: 4, yRadius: 4).fill()
-            NSColor.separatorColor.setStroke()
-            NSBezierPath(roundedRect: iconRect, xRadius: 4, yRadius: 4).stroke()
+            if settings.showIconBorder {
+                NSColor.separatorColor.setStroke()
+                NSBezierPath(roundedRect: iconRect, xRadius: 4, yRadius: 4).stroke()
+            }
             NSWorkspace.shared.icon(forFile: marker).draw(in: iconRect.insetBy(dx: 1, dy: 1))
         }
 
@@ -1049,21 +1090,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 newGaugeRects[m] = gRect
 
                 let isActive = m == metric
-                let fill = CGFloat(max(0, min(1, model.reading.value(for: m) / 100)))
                 let bg = gRect.insetBy(dx: 1, dy: 1)
 
                 NSColor.separatorColor.setFill()
                 NSBezierPath(roundedRect: bg, xRadius: 2, yRadius: 2).fill()
 
-                let fillH = bg.height * fill
-                let fillR = NSRect(x: bg.minX, y: bg.minY, width: bg.width, height: fillH)
-                let gColor = settings.colorForValue(model.reading.value(for: m))
-                (isActive ? gColor : NSColor.tertiaryLabelColor).setFill()
-                NSBezierPath(roundedRect: fillR, xRadius: 2, yRadius: 2).fill()
+                if m == .network {
+                    let maxNet: CGFloat = 10_000_000
+                    let dlFill = CGFloat(max(0, min(1, model.reading.download / maxNet)))
+                    let ulFill = CGFloat(max(0, min(1, model.reading.upload / maxNet)))
+                    let halfH = bg.height / 2
+                    let midY = bg.minY + halfH
 
-                if isActive {
-                    gColor.setStroke()
-                    NSBezierPath(roundedRect: bg, xRadius: 2, yRadius: 2).stroke()
+                    let dlH = halfH * dlFill
+                    let dlR = NSRect(x: bg.minX, y: midY, width: bg.width, height: dlH)
+                    let ulH = halfH * ulFill
+                    let ulR = NSRect(x: bg.minX, y: bg.minY, width: bg.width, height: ulH)
+
+                    let netColor = settings.colorForValue(model.reading.network / 100_000)
+                    (isActive ? netColor : NSColor.tertiaryLabelColor).setFill()
+                    NSBezierPath(roundedRect: dlR, xRadius: 2, yRadius: 2).fill()
+                    (isActive ? NSColor.systemTeal : NSColor.tertiaryLabelColor).setFill()
+                    NSBezierPath(roundedRect: ulR, xRadius: 2, yRadius: 2).fill()
+
+                    if isActive {
+                        netColor.setStroke()
+                        NSBezierPath(roundedRect: bg, xRadius: 2, yRadius: 2).stroke()
+                    }
+                } else {
+                    let fill = CGFloat(max(0, min(1, model.reading.value(for: m) / 100)))
+                    let fillH = bg.height * fill
+                    let fillR = NSRect(x: bg.minX, y: bg.minY, width: bg.width, height: fillH)
+                    let gColor = settings.colorForValue(model.reading.value(for: m))
+                    (isActive ? gColor : NSColor.tertiaryLabelColor).setFill()
+                    NSBezierPath(roundedRect: fillR, xRadius: 2, yRadius: 2).fill()
+
+                    if isActive {
+                        gColor.setStroke()
+                        NSBezierPath(roundedRect: bg, xRadius: 2, yRadius: 2).stroke()
+                    }
                 }
 
                 if settings.showGaugeLabels {

@@ -6,7 +6,7 @@ Historique des évolutions de PKMonitor.
 
 ## TODO — Roadmap
 
-Statut : `2026.09.02` (prototype fonctionnel)
+Statut : `2026.09.04` (prototype fonctionnel)
 
 ### Prochaines étapes
 - [x] Mesures CPU, RAM et réseau locales
@@ -18,6 +18,18 @@ Statut : `2026.09.02` (prototype fonctionnel)
 ---
 
 ## Releases
+
+### [2026.09.04] - 2026-09-03
+#### Added
+- Fenêtre Réglages avec sections Général, Apparence et À propos
+- Options persistantes de fréquence, historique, top d'applications et survol
+- Options de largeur de courbe, épaisseur, taille d'icône et thème
+- Contrôle du lancement à la connexion depuis les réglages
+
+### [2026.09.03] - 2026-09-03
+#### Changed
+- Détection fiable du survol de la barre des menus
+- Défilement des cinq applications les plus consommatrices sur la sparkline
 
 ### [2026.09.02] - 2026-09-03
 #### Added

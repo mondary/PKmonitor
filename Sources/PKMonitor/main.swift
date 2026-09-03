@@ -13,6 +13,64 @@ enum Metric: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+enum AppearanceMode: String, CaseIterable, Identifiable {
+    case system = "System"
+    case light = "Light"
+    case dark = "Dark"
+
+    var id: String { rawValue }
+    var colorScheme: ColorScheme? {
+        switch self {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
+        }
+    }
+}
+
+@MainActor
+final class AppSettings: ObservableObject {
+    @Published var updateInterval: Double { didSet { defaults.set(updateInterval, forKey: "updateInterval") } }
+    @Published var historySeconds: Double { didSet { defaults.set(historySeconds, forKey: "historySeconds") } }
+    @Published var iconCount: Int { didSet { defaults.set(iconCount, forKey: "iconCount") } }
+    @Published var showOnHover: Bool { didSet { defaults.set(showOnHover, forKey: "showOnHover") } }
+    @Published var sparklineWidth: Double { didSet { defaults.set(sparklineWidth, forKey: "sparklineWidth") } }
+    @Published var iconSize: Double { didSet { defaults.set(iconSize, forKey: "iconSize") } }
+    @Published var lineWidth: Double { didSet { defaults.set(lineWidth, forKey: "lineWidth") } }
+    @Published var appearance: AppearanceMode { didSet { defaults.set(appearance.rawValue, forKey: "appearance") } }
+    @Published private(set) var launchAtLogin = SMAppService.mainApp.status == .enabled
+
+    private let defaults = UserDefaults.standard
+
+    init() {
+        updateInterval = defaults.object(forKey: "updateInterval") as? Double ?? 0.2
+        historySeconds = defaults.object(forKey: "historySeconds") as? Double ?? 8
+        iconCount = defaults.object(forKey: "iconCount") as? Int ?? 5
+        showOnHover = defaults.object(forKey: "showOnHover") as? Bool ?? true
+        sparklineWidth = defaults.object(forKey: "sparklineWidth") as? Double ?? 80
+        iconSize = defaults.object(forKey: "iconSize") as? Double ?? 15
+        lineWidth = defaults.object(forKey: "lineWidth") as? Double ?? 1.6
+        appearance = AppearanceMode(rawValue: defaults.string(forKey: "appearance") ?? "") ?? .system
+    }
+
+    func setLaunchAtLogin(_ enabled: Bool) throws {
+        if enabled { try SMAppService.mainApp.register() }
+        else { try SMAppService.mainApp.unregister() }
+        launchAtLogin = SMAppService.mainApp.status == .enabled
+    }
+
+    func restoreDefaults() {
+        updateInterval = 0.2
+        historySeconds = 8
+        iconCount = 5
+        showOnHover = true
+        sparklineWidth = 80
+        iconSize = 15
+        lineWidth = 1.6
+        appearance = .system
+    }
+}
+
 struct AppUsage: Identifiable, Equatable {
     let name: String
     let path: String
@@ -120,19 +178,24 @@ final class MonitorModel: ObservableObject {
         didSet { UserDefaults.standard.set(selectedMetric.rawValue, forKey: "metric") }
     }
 
+    let settings: AppSettings
     private let sampler = SystemSampler()
     private var timer: Timer?
-    private var tick = 0
-    private var lastMarkerTick = -40
+    private var lastSampleDate = Date.distantPast
+    private var lastAppsDate = Date.distantPast
 
-    init() {
+    init(settings: AppSettings) {
+        self.settings = settings
         selectedMetric = Metric(rawValue: UserDefaults.standard.string(forKey: "metric") ?? "") ?? .auto
     }
 
     func start(onUpdate: @escaping () -> Void) {
         update(onUpdate: onUpdate)
-        timer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.update(onUpdate: onUpdate) }
+        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, Date().timeIntervalSince(self.lastSampleDate) >= self.settings.updateInterval else { return }
+                self.update(onUpdate: onUpdate)
+            }
         }
     }
 
@@ -141,7 +204,6 @@ final class MonitorModel: ObservableObject {
         displayedMetric = metric == .auto ? automaticMetric() : metric
         samples.removeAll(keepingCapacity: true)
         markers.removeAll(keepingCapacity: true)
-        lastMarkerTick = tick - 40
     }
 
     func format(_ metric: Metric? = nil) -> String {
@@ -167,18 +229,23 @@ final class MonitorModel: ObservableObject {
     }
 
     private func update(onUpdate: @escaping () -> Void) {
-        tick += 1
+        let now = Date()
+        lastSampleDate = now
         reading = sampler.sample(previousApps: reading.apps)
         displayedMetric = selectedMetric == .auto ? automaticMetric() : selectedMetric
+        let allowedMarkers = Set(displayedApps.prefix(settings.iconCount).map(\.path))
+        markers = markers.map { marker in marker.flatMap { allowedMarkers.contains($0) ? $0 : nil } }
         samples.append(normalizedValue())
         markers.append(markerForCurrentSample())
-        if samples.count > 42 {
-            samples.removeFirst(samples.count - 42)
-            markers.removeFirst(markers.count - 42)
+        let historyLimit = max(2, Int(settings.historySeconds / settings.updateInterval))
+        if samples.count > historyLimit {
+            samples.removeFirst(samples.count - historyLimit)
+            markers.removeFirst(markers.count - historyLimit)
         }
         onUpdate()
 
-        if tick % 20 == 1 {
+        if now.timeIntervalSince(lastAppsDate) >= 4 {
+            lastAppsDate = now
             Task.detached {
                 let apps = Self.topApps()
                 await MainActor.run {
@@ -203,10 +270,9 @@ final class MonitorModel: ObservableObject {
     }
 
     private func markerForCurrentSample() -> String? {
-        guard tick - lastMarkerTick >= 40,
-              let app = displayedApps.first else { return nil }
-        lastMarkerTick = tick
-        return app.path
+        let apps = Array(displayedApps.prefix(settings.iconCount))
+        let activePaths = Set(markers.compactMap { $0 })
+        return apps.first(where: { !activePaths.contains($0.path) })?.path
     }
 
     nonisolated static func topApps() -> [AppUsage] {
@@ -276,6 +342,7 @@ final class MonitorModel: ObservableObject {
 
 struct DetailView: View {
     @ObservedObject var model: MonitorModel
+    @ObservedObject var settings: AppSettings
     let openActivityMonitor: (AppUsage) -> Void
     let terminateProcess: (AppUsage) -> Void
 
@@ -322,6 +389,7 @@ struct DetailView: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(.separator.opacity(0.5), lineWidth: 0.5)
         }
+        .preferredColorScheme(settings.appearance.colorScheme)
     }
 
 }
@@ -343,12 +411,168 @@ struct SparklineShape: Shape {
     }
 }
 
+enum SettingsSection: String, CaseIterable, Identifiable {
+    case general = "General"
+    case appearance = "Appearance"
+    case about = "About"
+
+    var id: String { rawValue }
+    var icon: String {
+        switch self {
+        case .general: "gearshape"
+        case .appearance: "paintbrush"
+        case .about: "info.circle"
+        }
+    }
+}
+
+struct SettingsView: View {
+    @ObservedObject var settings: AppSettings
+    @State private var selection: SettingsSection? = .general
+
+    var body: some View {
+        NavigationSplitView {
+            List(SettingsSection.allCases, selection: $selection) { section in
+                Label(section.rawValue, systemImage: section.icon).tag(section)
+            }
+            .navigationSplitViewColumnWidth(min: 170, ideal: 190)
+        } detail: {
+            switch selection ?? .general {
+            case .general: GeneralSettingsView(settings: settings)
+            case .appearance: AppearanceSettingsView(settings: settings)
+            case .about: AboutSettingsView()
+            }
+        }
+        .frame(minWidth: 680, minHeight: 440)
+    }
+}
+
+struct GeneralSettingsView: View {
+    @ObservedObject var settings: AppSettings
+    @State private var errorMessage: String?
+
+    var body: some View {
+        Form {
+            Section("Monitoring") {
+                Picker("Refresh rate", selection: $settings.updateInterval) {
+                    Text("100 ms").tag(0.1)
+                    Text("200 ms").tag(0.2)
+                    Text("500 ms").tag(0.5)
+                    Text("1 second").tag(1.0)
+                }
+                Picker("History", selection: $settings.historySeconds) {
+                    Text("5 seconds").tag(5.0)
+                    Text("8 seconds").tag(8.0)
+                    Text("15 seconds").tag(15.0)
+                    Text("30 seconds").tag(30.0)
+                }
+                Stepper("Application icons: \(settings.iconCount)", value: $settings.iconCount, in: 1...5)
+                Toggle("Show details on hover", isOn: $settings.showOnHover)
+            }
+
+            Section("System") {
+                Toggle("Launch at login", isOn: Binding(
+                    get: { settings.launchAtLogin },
+                    set: { enabled in
+                        do { try settings.setLaunchAtLogin(enabled) }
+                        catch { errorMessage = error.localizedDescription }
+                    }
+                ))
+            }
+
+            Section {
+                Button("Restore Defaults") { settings.restoreDefaults() }
+            }
+        }
+        .formStyle(.grouped)
+        .navigationTitle("General")
+        .alert("Setting could not be changed", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("OK") { errorMessage = nil }
+        } message: {
+            Text(errorMessage ?? "Unknown error")
+        }
+    }
+}
+
+struct AppearanceSettingsView: View {
+    @ObservedObject var settings: AppSettings
+
+    var body: some View {
+        Form {
+            Section("Menu Bar") {
+                LabeledContent("Sparkline width") {
+                    HStack {
+                        Slider(value: $settings.sparklineWidth, in: 56...120, step: 4).frame(width: 180)
+                        Text("\(Int(settings.sparklineWidth)) pt").monospacedDigit().frame(width: 48)
+                    }
+                }
+                LabeledContent("Line width") {
+                    HStack {
+                        Slider(value: $settings.lineWidth, in: 1...3, step: 0.2).frame(width: 180)
+                        Text("\(settings.lineWidth, specifier: "%.1f") pt").monospacedDigit().frame(width: 48)
+                    }
+                }
+                LabeledContent("Icon size") {
+                    HStack {
+                        Slider(value: $settings.iconSize, in: 10...18, step: 1).frame(width: 180)
+                        Text("\(Int(settings.iconSize)) pt").monospacedDigit().frame(width: 48)
+                    }
+                }
+            }
+
+            Section("Details Panel") {
+                Picker("Appearance", selection: $settings.appearance) {
+                    ForEach(AppearanceMode.allCases) { mode in Text(mode.rawValue).tag(mode) }
+                }
+                .pickerStyle(.segmented)
+            }
+        }
+        .formStyle(.grouped)
+        .navigationTitle("Appearance")
+    }
+}
+
+struct AboutSettingsView: View {
+    private var version: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development"
+    }
+
+    var body: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "waveform.path.ecg")
+                .font(.system(size: 54, weight: .medium))
+            Text("PKMonitor").font(.title.bold())
+            Text("Version \(version)").foregroundStyle(.secondary)
+            Text("Local CPU, memory and network activity in one line.")
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+            Text("Requires macOS 13 or later").font(.caption).foregroundStyle(.tertiary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .navigationTitle("About")
+    }
+}
+
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
-    private let model = MonitorModel()
+    private let settings: AppSettings
+    private let model: MonitorModel
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private var detailPanel: NSPanel?
-    private var trackingArea: NSTrackingArea?
+    private var settingsWindow: NSWindow?
+    private var hoverTimer: Timer?
+    private var lastPointerInside = Date.distantPast
+    private var panelPinned = false
+
+    override init() {
+        let settings = AppSettings()
+        self.settings = settings
+        model = MonitorModel(settings: settings)
+        super.init()
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -358,42 +582,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         button.imagePosition = .imageLeading
         button.font = .monospacedDigitSystemFont(ofSize: 11, weight: .medium)
-        button.toolTip = "PKMonitor — left-click for details, right-click for menu"
+        button.toolTip = "PKMonitor — hover for details, right-click for menu"
         button.setAccessibilityLabel("PKMonitor system activity")
 
-        let tracking = NSTrackingArea(
-            rect: button.bounds,
-            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
-            owner: self
-        )
-        button.addTrackingArea(tracking)
-        trackingArea = tracking
         setupDetailPanel()
+        let hoverTimer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.updateHoverState() }
+        }
+        RunLoop.main.add(hoverTimer, forMode: .common)
+        self.hoverTimer = hoverTimer
         model.start { [weak self] in self?.refreshStatusItem() }
     }
 
     @objc private func statusClicked() {
         if NSApp.currentEvent?.type == .rightMouseUp {
+            panelPinned = false
             hideDetailPanel()
             let menu = makeMenu()
             menu.delegate = self
             statusItem.menu = menu
             statusItem.button?.performClick(nil)
         } else {
-            detailPanel?.isVisible == true ? hideDetailPanel() : showDetailPanel()
-        }
-    }
-
-    @objc func mouseEntered(with event: NSEvent) {
-        showDetailPanel()
-    }
-
-    @objc func mouseExited(with event: NSEvent) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
-            guard let self,
-                  self.statusButtonFrame?.contains(NSEvent.mouseLocation) != true,
-                  self.detailPanel?.frame.contains(NSEvent.mouseLocation) != true else { return }
-            self.hideDetailPanel()
+            panelPinned.toggle()
+            panelPinned ? showDetailPanel() : hideDetailPanel()
         }
     }
 
@@ -416,19 +627,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         panel.hidesOnDeactivate = false
         let hosting = NSHostingController(rootView: DetailView(
             model: model,
+            settings: settings,
             openActivityMonitor: { [weak self] in self?.openActivityMonitor(for: $0) },
             terminateProcess: { [weak self] in self?.confirmTermination(of: $0) }
         ))
         hosting.view.wantsLayer = true
         hosting.view.layer?.cornerRadius = 16
         hosting.view.layer?.masksToBounds = true
-        hosting.view.addTrackingArea(NSTrackingArea(
-            rect: hosting.view.bounds,
-            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
-            owner: self
-        ))
         panel.contentViewController = hosting
         detailPanel = panel
+    }
+
+    private func updateHoverState() {
+        guard settings.showOnHover else {
+            if !panelPinned, detailPanel?.isVisible == true { hideDetailPanel() }
+            return
+        }
+        let location = NSEvent.mouseLocation
+        let overButton = statusButtonFrame?.contains(location) == true
+        let overPanel = detailPanel?.isVisible == true && detailPanel?.frame.contains(location) == true
+        if overButton || overPanel {
+            lastPointerInside = Date()
+            if overButton, detailPanel?.isVisible != true { showDetailPanel() }
+        } else if !panelPinned, detailPanel?.isVisible == true, Date().timeIntervalSince(lastPointerInside) > 0.3 {
+            hideDetailPanel()
+        }
     }
 
     private var statusButtonFrame: NSRect? {
@@ -451,6 +674,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func refreshStatusItem() {
         guard let button = statusItem.button else { return }
+        switch settings.appearance {
+        case .system: detailPanel?.appearance = nil
+        case .light: detailPanel?.appearance = NSAppearance(named: .aqua)
+        case .dark: detailPanel?.appearance = NSAppearance(named: .darkAqua)
+        }
         button.effectiveAppearance.performAsCurrentDrawingAppearance {
             button.image = sparklineImage(model.samples, markers: model.markers, metric: model.displayedMetric)
         }
@@ -461,6 +689,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func makeMenu() -> NSMenu {
         let menu = NSMenu(title: "PKMonitor")
+        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        settingsItem.target = self
+        menu.addItem(settingsItem)
+        menu.addItem(.separator())
         for metric in Metric.allCases {
             let item = NSMenuItem(title: metric.rawValue, action: #selector(selectMetric(_:)), keyEquivalent: "")
             item.target = self
@@ -481,7 +713,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
         let login = NSMenuItem(title: "Launch at Login", action: #selector(toggleLogin(_:)), keyEquivalent: "")
         login.target = self
-        login.state = SMAppService.mainApp.status == .enabled ? .on : .off
+        login.state = settings.launchAtLogin ? .on : .off
         menu.addItem(login)
         menu.addItem(NSMenuItem(title: "About PKMonitor", action: #selector(showAbout), keyEquivalent: ""))
         menu.items.last?.target = self
@@ -508,6 +740,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func openActivityMonitor(pid: Int32) {
+        panelPinned = false
         hideDetailPanel()
         NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Activity Monitor.app"))
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
@@ -544,6 +777,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             showError(title: "Could not quit \(app.name)", message: String(cString: strerror(errno)))
             return
         }
+        panelPinned = false
         hideDetailPanel()
     }
 
@@ -558,14 +792,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func toggleLogin(_ sender: NSMenuItem) {
         do {
-            if SMAppService.mainApp.status == .enabled { try SMAppService.mainApp.unregister() }
-            else { try SMAppService.mainApp.register() }
+            try settings.setLaunchAtLogin(!settings.launchAtLogin)
         } catch {
             let alert = NSAlert(error: error)
             alert.messageText = "Launch at Login is unavailable"
             alert.informativeText = "Install PKMonitor as an application before enabling this option."
             alert.runModal()
         }
+    }
+
+    @objc private func openSettings() {
+        if settingsWindow == nil {
+            let controller = NSHostingController(rootView: SettingsView(settings: settings))
+            let window = NSWindow(contentViewController: controller)
+            window.title = "PKMonitor Settings"
+            window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+            window.setContentSize(NSSize(width: 680, height: 440))
+            window.center()
+            window.isReleasedWhenClosed = false
+            settingsWindow = window
+        }
+        settingsWindow?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     @objc private func showAbout() {
@@ -581,34 +829,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func quit() { NSApp.terminate(nil) }
 
     private func sparklineImage(_ values: [Double], markers: [String?], metric: Metric) -> NSImage {
-        let size = NSSize(width: 80, height: 18)
+        let size = NSSize(width: settings.sparklineWidth, height: 18)
         let image = NSImage(size: size)
         image.lockFocus()
         defer { image.unlockFocus() }
         guard values.count > 1 else { return image }
 
         let rect = NSRect(origin: .zero, size: size)
-        let graphWidth: CGFloat = 68
+        let graphWidth = size.width - 12
+        let capacity = max(2, Int(settings.historySeconds / settings.updateInterval))
         let scaledValues = MonitorModel.scaledHistory(values)
         let path = NSBezierPath()
         for (index, value) in scaledValues.enumerated() {
             let point = NSPoint(
-                x: graphWidth * CGFloat(42 - values.count + index) / 41,
+                x: graphWidth * CGFloat(capacity - values.count + index) / CGFloat(capacity - 1),
                 y: 2 + (rect.height - 4) * CGFloat(max(0, min(1, value)))
             )
             index == 0 ? path.move(to: point) : path.line(to: point)
         }
         NSColor.labelColor.setStroke()
-        path.lineWidth = 1.6
+        path.lineWidth = settings.lineWidth
         path.lineCapStyle = .round
         path.lineJoinStyle = .round
         path.stroke()
 
         for (index, marker) in markers.enumerated() {
             guard let marker else { continue }
-            let x = graphWidth * CGFloat(42 - markers.count + index) / 41
+            let x = graphWidth * CGFloat(capacity - markers.count + index) / CGFloat(capacity - 1)
             let y = 2 + (rect.height - 4) * CGFloat(max(0, min(1, scaledValues[index])))
-            let iconRect = NSRect(x: x - 7.5, y: max(0, min(rect.height - 15, y - 7.5)), width: 15, height: 15)
+            let iconSize = settings.iconSize
+            let iconRect = NSRect(
+                x: x - iconSize / 2,
+                y: max(0, min(rect.height - iconSize, y - iconSize / 2)),
+                width: iconSize,
+                height: iconSize
+            )
             NSColor.windowBackgroundColor.setFill()
             NSBezierPath(roundedRect: iconRect, xRadius: 4, yRadius: 4).fill()
             NSColor.separatorColor.setStroke()
@@ -620,7 +875,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let font = NSFont.systemFont(ofSize: 5.5, weight: .bold)
         let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.labelColor]
         for (index, character) in label.enumerated() {
-            String(character).draw(at: NSPoint(x: 72, y: 12 - CGFloat(index) * 5.5), withAttributes: attributes)
+            String(character).draw(at: NSPoint(x: graphWidth + 4, y: 12 - CGFloat(index) * 5.5), withAttributes: attributes)
         }
         image.isTemplate = false
         return image

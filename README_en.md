@@ -4,7 +4,8 @@
 
 Native macOS prototype inspired by ActivityLine. It displays a sparkline and a
 live system metric in the menu bar. Dominant application icons appear on spikes
-and move with the history without sending measurements off the Mac.
+for the top five consumers and move with the history without sending measurements
+off the Mac.
 
 ## Run
 
@@ -22,6 +23,11 @@ newer and the Xcode command-line tools.
 - Right-click: select a metric, enable launch at login, or quit.
 - The metric name is stacked vertically in the menu bar.
 - Each application can be located in Activity Monitor or terminated after confirmation.
+
+## Settings
+
+The Settings window provides refresh rate, history duration, icon count, hover
+behavior, launch at login, sparkline width and thickness, icon size, and panel theme.
 
 CPU, RAM, and network use local system APIs. macOS has no stable public GPU
 usage API, so GPU mode displays `N/A` in this prototype.

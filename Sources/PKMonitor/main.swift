@@ -308,6 +308,13 @@ final class MonitorModel: ObservableObject {
         }
     }
 
+    func formatMenuBar() -> String {
+        switch displayedMetric {
+        case .network: return "↓\(Self.formatBytes(reading.download))/s"
+        default: return "\(Int(reading.value(for: displayedMetric).rounded()))%"
+        }
+    }
+
     var displayedApps: [AppUsage] {
         let sorted: [AppUsage]
         switch displayedMetric {
@@ -982,7 +989,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case .dark: detailPanel?.appearance = NSAppearance(named: .darkAqua)
         }
         button.effectiveAppearance.performAsCurrentDrawingAppearance {
-            button.image = sparklineImage(model.samples, markers: model.markers, metric: model.displayedMetric, value: model.format())
+            button.image = sparklineImage(model.samples, markers: model.markers, metric: model.displayedMetric, value: model.formatMenuBar())
         }
         let prefix = model.selectedMetric == .auto ? "Auto · \(model.displayedMetric.rawValue)" : model.displayedMetric.rawValue
         button.title = ""

@@ -2,35 +2,48 @@
 
 [FR](README.md) · [EN](README_en.md)
 
-Prototype natif macOS inspiré d'ActivityLine. Il affiche une sparkline et une
-métrique système dans la barre des menus. Les icônes des applications dominantes
-du top 5 naissent sur les pics puis se déplacent avec l'historique, sans envoyer
-les mesures hors du Mac.
+Moniteur système macOS natif dans la barre des menus. Sparkline temps réel,
+jauges GPU/CPU/RAM/NET cliquables, détail des applications responsables avec
+arrêt forcé, et réglages complets.
 
-## Lancer
+## Fonctionnalités
+
+- Sparkline temps réel (200 ms par défaut, configurable)
+- Mesures CPU, GPU, RAM et réseau (download/upload séparés)
+- Quatre jauges cliquables pour basculer la métrique affichée
+- Icônes des applications dominantes sur la courbe
+- Détail au survol avec arrêt (SIGTERM) ou force kill (SIGKILL)
+- Ouverture de Moniteur d'activité filtré par PID
+- Seuils de couleur configurables (warning/critical)
+- Libellé vertical et jauges positionnables (gauche/droite)
+- Lancement à la connexion
+- Thème clair/sombre/système
+
+## Utilisation
+
+- Survol : ouvrir le détail sous la barre des menus
+- Clic gauche : épingler/détacher le panneau
+- Clic droit : menu contextuel avec métriques et réglages
+- Clic sur une jauge : basculer vers cette métrique
+- Bouton ✕ : quitter le processus (SIGTERM)
+- Bouton 💀 : forcer l'arrêt (SIGKILL)
+
+## Réglages
+
+La fenêtre Réglages (clic droit > Settings…) propose :
+
+- **General** : fréquence, historique, top d'icônes, survol, lancement auto, seuils de couleur
+- **Appearance** : largeur/épaisseur de courbe, taille d'icônes, bordure, position du texte et des jauges, thème
+- **About** : version et informations
+
+## Build & Package
 
 ```sh
 chmod +x run.sh
 ./run.sh
 ```
 
-Le script construit `dist/PKMonitor.app` puis le lance. Il requiert macOS 13 ou
-plus récent et les outils de ligne de commande Xcode.
+Le script construit `dist/PKMonitor.app` puis le lance. Requiert macOS 13+ et
+les outils de ligne de commande Xcode.
 
-## Utilisation
-
-- Survol ou clic gauche : ouvrir le détail sous la barre des menus.
-- Clic droit : choisir une métrique, activer le lancement à la connexion ou quitter.
-- Le nom de la métrique est empilé verticalement dans la barre des menus.
-- Chaque application peut être localisée dans Moniteur d'activité ou arrêtée après confirmation.
-
-## Réglages
-
-La fenêtre Réglages propose la fréquence d'actualisation, la durée d'historique,
-le nombre d'icônes, l'ouverture au survol, le lancement à la connexion, la largeur
-et l'épaisseur de la courbe, la taille des icônes et le thème du panneau.
-
-CPU, RAM et réseau utilisent les API système locales. macOS ne fournit pas de
-métrique GPU publique et stable : le mode GPU affiche donc `N/A` dans ce prototype.
-
-Voir le [CHANGELOG](CHANGELOG.md) pour l'historique complet.
+## Voir le [CHANGELOG](CHANGELOG.md) pour l'historique complet.

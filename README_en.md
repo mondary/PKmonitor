@@ -2,34 +2,47 @@
 
 [FR](README.md) · [EN](README_en.md)
 
-Native macOS prototype inspired by ActivityLine. It displays a sparkline and a
-live system metric in the menu bar. Dominant application icons appear on spikes
-for the top five consumers and move with the history without sending measurements
-off the Mac.
+Native macOS system monitor in the menu bar. Real-time sparkline, clickable
+GPU/CPU/RAM/NET gauges, responsible app details with force kill, and full settings.
 
-## Run
+## Features
+
+- Real-time sparkline (200 ms default, configurable)
+- CPU, GPU, RAM and network measurements (separate download/upload)
+- Four clickable gauges to switch displayed metric
+- Dominant app icons on the curve
+- Detail on hover with terminate (SIGTERM) or force kill (SIGKILL)
+- Activity Monitor filtered by PID
+- Configurable color thresholds (warning/critical)
+- Vertical label and gauges positionable (left/right)
+- Launch at login
+- Light/dark/system theme
+
+## Usage
+
+- Hover: open details below the menu bar
+- Left-click: pin/unpin the panel
+- Right-click: context menu with metrics and settings
+- Click on a gauge: switch to that metric
+- ✕ button: quit the process (SIGTERM)
+- 💀 button: force kill (SIGKILL)
+
+## Settings
+
+The Settings window (right-click > Settings…) provides:
+
+- **General**: refresh rate, history, icon count, hover, launch at login, color thresholds
+- **Appearance**: sparkline width/thickness, icon size, border, text and gauge position, theme
+- **About**: version and info
+
+## Build & Package
 
 ```sh
 chmod +x run.sh
 ./run.sh
 ```
 
-The script builds `dist/PKMonitor.app` and launches it. It requires macOS 13 or
-newer and the Xcode command-line tools.
+The script builds `dist/PKMonitor.app` and launches it. Requires macOS 13+ and
+Xcode command-line tools.
 
-## Usage
-
-- Hover or left-click: open details below the menu bar.
-- Right-click: select a metric, enable launch at login, or quit.
-- The metric name is stacked vertically in the menu bar.
-- Each application can be located in Activity Monitor or terminated after confirmation.
-
-## Settings
-
-The Settings window provides refresh rate, history duration, icon count, hover
-behavior, launch at login, sparkline width and thickness, icon size, and panel theme.
-
-CPU, RAM, and network use local system APIs. macOS has no stable public GPU
-usage API, so GPU mode displays `N/A` in this prototype.
-
-See [CHANGELOG](CHANGELOG.md) for full history.
+## See [CHANGELOG](CHANGELOG.md) for full history.

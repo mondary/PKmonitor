@@ -904,8 +904,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             showError(title: "Could not quit \(app.name)", message: String(cString: strerror(errno)))
             return
         }
-        panelPinned = false
-        hideDetailPanel()
     }
 
     private func confirmForceKill(of app: AppUsage) {
@@ -921,8 +919,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             showError(title: "Could not force kill \(app.name)", message: String(cString: strerror(errno)))
             return
         }
-        panelPinned = false
-        hideDetailPanel()
     }
 
     private func showError(title: String, message: String) {

@@ -6,7 +6,7 @@ Historique des évolutions de PKMonitor.
 
 ## TODO — Roadmap
 
-Statut : `2026.09.10` (prototype fonctionnel)
+Statut : `2026.09.11` (prototype fonctionnel)
 
 ### Prochaines étapes
 - [x] Mesures CPU, RAM et réseau locales
@@ -18,6 +18,11 @@ Statut : `2026.09.10` (prototype fonctionnel)
 ---
 
 ## Releases
+
+### [2026.09.11] - 2026-09-03
+#### Changed
+- Le panneau reste ouvert après un arrêt ou force kill
+- README FR/EN restructurés selon la convention PK
 
 ### [2026.09.10] - 2026-09-03
 #### Added

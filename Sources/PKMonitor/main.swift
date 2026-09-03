@@ -318,7 +318,17 @@ final class MonitorModel: ObservableObject {
     }
 
     func format(_ app: AppUsage) -> String {
-        displayedMetric == .ram ? Self.formatBytes(app.memory) : String(format: "%.1f%%", app.cpu)
+        switch displayedMetric {
+        case .ram:
+            let pct = String(format: "%.0f%%", app.memory / reading.totalRAM * 100)
+            return settings.showAbsoluteValues ? "\(pct) (\(Self.formatBytes(app.memory)))" : pct
+        case .cpu:
+            let pct = String(format: "%.1f%%", app.cpu)
+            let cores = app.cpu / 100 * Double(reading.cpuCores)
+            return settings.showAbsoluteValues ? "\(pct) (\(String(format: "%.1f", cores))c)" : pct
+        default:
+            return String(format: "%.1f%%", app.cpu)
+        }
     }
 
     private func update(onUpdate: @escaping () -> Void) {

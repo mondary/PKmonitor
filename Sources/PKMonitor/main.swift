@@ -16,6 +16,7 @@ enum Metric: String, CaseIterable, Identifiable {
 struct AppUsage: Identifiable, Equatable {
     let name: String
     let path: String
+    let pid: Int32
     let cpu: Double
     let memory: Double
     var id: String { path }
@@ -212,7 +213,7 @@ final class MonitorModel: ObservableObject {
         let process = Process()
         let pipe = Pipe()
         process.executableURL = URL(fileURLWithPath: "/bin/ps")
-        process.arguments = ["-Ao", "%cpu=,rss=,comm="]
+        process.arguments = ["-Ao", "pid=,%cpu=,rss=,comm="]
         process.standardOutput = pipe
         process.standardError = FileHandle.nullDevice
         do { try process.run() } catch { return [] }
@@ -220,21 +221,32 @@ final class MonitorModel: ObservableObject {
         process.waitUntilExit()
         guard let text = String(data: data, encoding: .utf8) else { return [] }
 
-        var totals: [String: (name: String, cpu: Double, memory: Double)] = [:]
+        var totals: [String: (name: String, pid: Int32, hasMainPID: Bool, cpu: Double, memory: Double)] = [:]
         for line in text.split(separator: "\n") {
-            let parts = line.split(maxSplits: 2, whereSeparator: \ .isWhitespace)
-            guard parts.count == 3,
-                  let cpu = Double(parts[0]),
-                  let memoryKB = Double(parts[1]),
-                  let path = appBundlePath(from: String(parts[2])) else { continue }
+            let parts = line.split(maxSplits: 3, whereSeparator: \ .isWhitespace)
+            guard parts.count == 4,
+                  let pid = Int32(parts[0]),
+                  let cpu = Double(parts[1]),
+                  let memoryKB = Double(parts[2]) else { continue }
+            let executablePath = String(parts[3])
+            guard let path = appBundlePath(from: executablePath) else { continue }
             let name = Bundle(path: path)?.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
                 ?? Bundle(path: path)?.object(forInfoDictionaryKey: "CFBundleName") as? String
                 ?? appName(from: path)
             guard name != "PKMonitor" else { continue }
-            let current = totals[path] ?? (name, 0, 0)
-            totals[path] = (name, current.cpu + cpu, current.memory + memoryKB * 1024)
+            let isMainPID = executablePath.hasPrefix(path + "/Contents/MacOS/")
+            let current = totals[path] ?? (name, pid, false, 0, 0)
+            totals[path] = (
+                name,
+                isMainPID || !current.hasMainPID ? pid : current.pid,
+                isMainPID || current.hasMainPID,
+                current.cpu + cpu,
+                current.memory + memoryKB * 1024
+            )
         }
-        return totals.map { AppUsage(name: $0.value.name, path: $0.key, cpu: $0.value.cpu, memory: $0.value.memory) }
+        return totals.map {
+            AppUsage(name: $0.value.name, path: $0.key, pid: $0.value.pid, cpu: $0.value.cpu, memory: $0.value.memory)
+        }
     }
 
     nonisolated static func appBundlePath(from executablePath: String) -> String? {
@@ -264,6 +276,8 @@ final class MonitorModel: ObservableObject {
 
 struct DetailView: View {
     @ObservedObject var model: MonitorModel
+    let openActivityMonitor: (AppUsage) -> Void
+    let terminateProcess: (AppUsage) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -272,36 +286,42 @@ struct DetailView: View {
                 Spacer()
                 Text(model.format()).font(.title2.monospacedDigit().weight(.semibold))
             }
-            SparklineShape(values: model.samples)
-                .stroke(.primary, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
-                .frame(height: 42)
-
             Divider()
             if model.displayedApps.isEmpty {
                 Text("Collecting app activity…").foregroundStyle(.secondary)
             } else {
-                ForEach(model.displayedApps) { app in
-                    HStack(spacing: 9) {
-                        Image(nsImage: NSWorkspace.shared.icon(forFile: app.path))
-                            .resizable().frame(width: 24, height: 24)
-                        Text(app.name).font(.system(size: 15)).lineLimit(1)
-                        Spacer()
-                        Text(model.format(app))
-                            .font(.system(size: 15)).foregroundStyle(.secondary).monospacedDigit()
-                        Button {
-                            NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Activity Monitor.app"))
-                        } label: {
-                            Image(systemName: "arrow.up.right.square")
+                VStack(spacing: 8) {
+                    ForEach(model.displayedApps) { app in
+                        HStack(spacing: 9) {
+                            Image(nsImage: NSWorkspace.shared.icon(forFile: app.path))
+                                .resizable().frame(width: 24, height: 24)
+                            Text(app.name).font(.system(size: 15)).lineLimit(1)
+                            Spacer()
+                            Text(model.format(app))
+                                .font(.system(size: 15)).foregroundStyle(.secondary).monospacedDigit()
+                            Button { openActivityMonitor(app) } label: {
+                                Image(systemName: "arrow.up.right.square")
+                            }
+                            .buttonStyle(.plain)
+                            .help("Open Activity Monitor filtered on PID \(app.pid)")
+                            Button { terminateProcess(app) } label: {
+                                Image(systemName: "xmark.octagon")
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.red)
+                            .help("Quit \(app.name)")
                         }
-                        .buttonStyle(.plain)
-                        .help("Open Activity Monitor")
                     }
                 }
             }
         }
         .padding(16)
         .frame(width: 320)
-        .background(.ultraThinMaterial)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(.separator.opacity(0.5), lineWidth: 0.5)
+        }
     }
 
 }
@@ -327,7 +347,8 @@ struct SparklineShape: Shape {
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let model = MonitorModel()
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-    private let popover = NSPopover()
+    private var detailPanel: NSPanel?
+    private var trackingArea: NSTrackingArea?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -340,28 +361,92 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         button.toolTip = "PKMonitor — left-click for details, right-click for menu"
         button.setAccessibilityLabel("PKMonitor system activity")
 
-        popover.behavior = .transient
-        popover.animates = true
-        popover.contentViewController = NSHostingController(rootView: DetailView(model: model))
+        let tracking = NSTrackingArea(
+            rect: button.bounds,
+            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+            owner: self
+        )
+        button.addTrackingArea(tracking)
+        trackingArea = tracking
+        setupDetailPanel()
         model.start { [weak self] in self?.refreshStatusItem() }
     }
 
     @objc private func statusClicked() {
         if NSApp.currentEvent?.type == .rightMouseUp {
+            hideDetailPanel()
             let menu = makeMenu()
             menu.delegate = self
             statusItem.menu = menu
             statusItem.button?.performClick(nil)
         } else {
-            if popover.isShown { popover.performClose(nil) }
-            else if let button = statusItem.button {
-                popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            }
+            detailPanel?.isVisible == true ? hideDetailPanel() : showDetailPanel()
+        }
+    }
+
+    @objc func mouseEntered(with event: NSEvent) {
+        showDetailPanel()
+    }
+
+    @objc func mouseExited(with event: NSEvent) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
+            guard let self,
+                  self.statusButtonFrame?.contains(NSEvent.mouseLocation) != true,
+                  self.detailPanel?.frame.contains(NSEvent.mouseLocation) != true else { return }
+            self.hideDetailPanel()
         }
     }
 
     func menuDidClose(_ menu: NSMenu) {
         statusItem.menu = nil
+    }
+
+    private func setupDetailPanel() {
+        let panel = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 320, height: 286),
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = true
+        panel.level = .popUpMenu
+        panel.collectionBehavior = [.canJoinAllSpaces, .transient]
+        panel.hidesOnDeactivate = false
+        let hosting = NSHostingController(rootView: DetailView(
+            model: model,
+            openActivityMonitor: { [weak self] in self?.openActivityMonitor(for: $0) },
+            terminateProcess: { [weak self] in self?.confirmTermination(of: $0) }
+        ))
+        hosting.view.wantsLayer = true
+        hosting.view.layer?.cornerRadius = 16
+        hosting.view.layer?.masksToBounds = true
+        hosting.view.addTrackingArea(NSTrackingArea(
+            rect: hosting.view.bounds,
+            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+            owner: self
+        ))
+        panel.contentViewController = hosting
+        detailPanel = panel
+    }
+
+    private var statusButtonFrame: NSRect? {
+        guard let button = statusItem.button, let window = button.window else { return nil }
+        return window.convertToScreen(button.convert(button.bounds, to: nil))
+    }
+
+    private func showDetailPanel() {
+        guard let panel = detailPanel, let buttonFrame = statusButtonFrame else { return }
+        let screen = statusItem.button?.window?.screen ?? NSScreen.main
+        let visible = screen?.visibleFrame ?? .zero
+        let x = max(visible.minX + 8, min(buttonFrame.midX - panel.frame.width / 2, visible.maxX - panel.frame.width - 8))
+        panel.setFrameOrigin(NSPoint(x: x, y: buttonFrame.minY - panel.frame.height - 6))
+        panel.orderFrontRegardless()
+    }
+
+    private func hideDetailPanel() {
+        detailPanel?.orderOut(nil)
     }
 
     private func refreshStatusItem() {
@@ -386,8 +471,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         menu.addItem(.separator())
         for app in model.displayedApps {
-            let item = NSMenuItem(title: "\(app.name)    \(model.format(app))", action: #selector(openActivityMonitor), keyEquivalent: "")
+            let item = NSMenuItem(title: "\(app.name)    \(model.format(app))", action: #selector(openActivityMonitorFromMenu(_:)), keyEquivalent: "")
             item.target = self
+            item.representedObject = Int(app.pid)
             item.image = NSWorkspace.shared.icon(forFile: app.path)
             item.image?.size = NSSize(width: 16, height: 16)
             menu.addItem(item)
@@ -412,8 +498,62 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         refreshStatusItem()
     }
 
-    @objc private func openActivityMonitor() {
+    @objc private func openActivityMonitorFromMenu(_ sender: NSMenuItem) {
+        guard let pid = sender.representedObject as? Int else { return }
+        openActivityMonitor(pid: Int32(pid))
+    }
+
+    private func openActivityMonitor(for app: AppUsage) {
+        openActivityMonitor(pid: app.pid)
+    }
+
+    private func openActivityMonitor(pid: Int32) {
+        hideDetailPanel()
         NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Activity Monitor.app"))
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            let source = """
+            tell application "Activity Monitor" to activate
+            tell application "System Events"
+                tell process "Activity Monitor"
+                    keystroke "f" using command down
+                    delay 0.1
+                    keystroke "\(pid)"
+                end tell
+            end tell
+            """
+            var error: NSDictionary?
+            NSAppleScript(source: source)?.executeAndReturnError(&error)
+            guard let error else { return }
+            self.showError(
+                title: "Activity Monitor could not be filtered",
+                message: error[NSAppleScript.errorMessage] as? String ?? "Allow PKMonitor to control System Events in Privacy & Security > Automation."
+            )
+        }
+    }
+
+    private func confirmTermination(of app: AppUsage) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "Quit \(app.name)?"
+        alert.informativeText = "PKMonitor will ask process \(app.pid) to quit. Unsaved work may be lost."
+        alert.addButton(withTitle: "Quit Process")
+        alert.addButton(withTitle: "Cancel")
+        NSApp.activate(ignoringOtherApps: true)
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        guard Darwin.kill(app.pid, SIGTERM) == 0 else {
+            showError(title: "Could not quit \(app.name)", message: String(cString: strerror(errno)))
+            return
+        }
+        hideDetailPanel()
+    }
+
+    private func showError(title: String, message: String) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = title
+        alert.informativeText = message
+        NSApp.activate(ignoringOtherApps: true)
+        alert.runModal()
     }
 
     @objc private func toggleLogin(_ sender: NSMenuItem) {

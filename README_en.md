@@ -18,9 +18,10 @@ newer and the Xcode command-line tools.
 
 ## Usage
 
-- Left-click: open details and the responsible applications.
+- Hover or left-click: open details below the menu bar.
 - Right-click: select a metric, enable launch at login, or quit.
 - The metric name is stacked vertically in the menu bar.
+- Each application can be located in Activity Monitor or terminated after confirmation.
 
 CPU, RAM, and network use local system APIs. macOS has no stable public GPU
 usage API, so GPU mode displays `N/A` in this prototype.

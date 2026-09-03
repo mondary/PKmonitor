@@ -19,9 +19,10 @@ plus récent et les outils de ligne de commande Xcode.
 
 ## Utilisation
 
-- Clic gauche : ouvrir le détail et les applications responsables.
+- Survol ou clic gauche : ouvrir le détail sous la barre des menus.
 - Clic droit : choisir une métrique, activer le lancement à la connexion ou quitter.
 - Le nom de la métrique est empilé verticalement dans la barre des menus.
+- Chaque application peut être localisée dans Moniteur d'activité ou arrêtée après confirmation.
 
 CPU, RAM et réseau utilisent les API système locales. macOS ne fournit pas de
 métrique GPU publique et stable : le mode GPU affiche donc `N/A` dans ce prototype.

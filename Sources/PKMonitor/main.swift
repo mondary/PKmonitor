@@ -440,6 +440,22 @@ struct DetailView: View {
     let terminateProcess: (AppUsage) -> Void
     let forceKillProcess: (AppUsage) -> Void
 
+    private var absoluteDetail: String {
+        switch model.displayedMetric {
+        case .cpu:
+            let cores = Double(model.reading.cpuCores) * model.reading.cpu / 100
+            return String(format: "%.1f / %d cores", cores, model.reading.cpuCores)
+        case .ram:
+            let total = MonitorModel.formatBytes(model.reading.totalRAM)
+            let used = MonitorModel.formatBytes(model.reading.usedRAM)
+            return "\(used) / \(total)"
+        case .gpu:
+            return "GPU utilization"
+        default:
+            return ""
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
@@ -465,9 +481,16 @@ struct DetailView: View {
                         }
                     }
                 } else {
-                    Text(model.format())
-                        .font(.title2.monospacedDigit().weight(.semibold))
-                        .foregroundColor(Color(nsColor: settings.colorForValue(model.reading.value(for: model.displayedMetric))))
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("\(Int(model.reading.value(for: model.displayedMetric).rounded()))%")
+                            .font(.title2.monospacedDigit().weight(.semibold))
+                            .foregroundColor(Color(nsColor: settings.colorForValue(model.reading.value(for: model.displayedMetric))))
+                        if settings.showAbsoluteValues {
+                            Text(absoluteDetail)
+                                .font(.system(size: 11)).monospacedDigit()
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 }
             }
             Divider()
@@ -536,14 +559,18 @@ struct SparklineShape: Shape {
 
 enum SettingsSection: String, CaseIterable, Identifiable {
     case general = "General"
-    case appearance = "Appearance"
+    case sparkline = "Sparkline"
+    case gauges = "Gauges"
+    case panel = "Panel"
     case about = "About"
 
     var id: String { rawValue }
     var icon: String {
         switch self {
         case .general: "gearshape"
-        case .appearance: "paintbrush"
+        case .sparkline: "waveform.path.ecg"
+        case .gauges: "barometer"
+        case .panel: "rectangle.on.rectangle"
         case .about: "info.circle"
         }
     }
@@ -562,11 +589,13 @@ struct SettingsView: View {
         } detail: {
             switch selection ?? .general {
             case .general: GeneralSettingsView(settings: settings)
-            case .appearance: AppearanceSettingsView(settings: settings)
+            case .sparkline: SparklineSettingsView(settings: settings)
+            case .gauges: GaugesSettingsView(settings: settings)
+            case .panel: PanelSettingsView(settings: settings)
             case .about: AboutSettingsView()
             }
         }
-        .frame(minWidth: 680, minHeight: 440)
+        .frame(minWidth: 720, minHeight: 500)
     }
 }
 
@@ -583,15 +612,18 @@ struct GeneralSettingsView: View {
                     Text("500 ms").tag(0.5)
                     Text("1 second").tag(1.0)
                 }
-                Picker("History", selection: $settings.historySeconds) {
+                Picker("History duration", selection: $settings.historySeconds) {
                     Text("5 seconds").tag(5.0)
                     Text("8 seconds").tag(8.0)
                     Text("15 seconds").tag(15.0)
                     Text("30 seconds").tag(30.0)
                 }
-                Stepper("Application icons: \(settings.iconCount)", value: $settings.iconCount, in: 1...5)
-                Toggle("Show details on hover", isOn: $settings.showOnHover)
-                Toggle("Show absolute values", isOn: $settings.showAbsoluteValues)
+                Stepper("Top apps: \(settings.iconCount)", value: $settings.iconCount, in: 1...5)
+            }
+
+            Section("Detail Panel") {
+                Toggle("Show on hover", isOn: $settings.showOnHover)
+                Toggle("Show absolute values (cores, GB)", isOn: $settings.showAbsoluteValues)
             }
 
             Section("Color Thresholds") {
@@ -622,7 +654,7 @@ struct GeneralSettingsView: View {
             }
 
             Section {
-                Button("Restore Defaults") { settings.restoreDefaults() }
+                Button("Restore All Defaults") { settings.restoreDefaults() }
             }
         }
         .formStyle(.grouped)
@@ -638,54 +670,145 @@ struct GeneralSettingsView: View {
     }
 }
 
-struct AppearanceSettingsView: View {
+struct SparklineSettingsView: View {
     @ObservedObject var settings: AppSettings
 
     var body: some View {
         Form {
-            Section("Menu Bar") {
-                LabeledContent("Sparkline width") {
+            Section("Graph") {
+                LabeledContent("Width") {
                     HStack {
-                        Slider(value: $settings.sparklineWidth, in: 56...120, step: 4).frame(width: 180)
+                        Slider(value: $settings.sparklineWidth, in: 56...160, step: 4).frame(width: 200)
                         Text("\(Int(settings.sparklineWidth)) pt").monospacedDigit().frame(width: 48)
                     }
                 }
-                LabeledContent("Line width") {
+                LabeledContent("Line thickness") {
                     HStack {
-                        Slider(value: $settings.lineWidth, in: 1...3, step: 0.2).frame(width: 180)
+                        Slider(value: $settings.lineWidth, in: 1...3, step: 0.2).frame(width: 200)
                         Text("\(settings.lineWidth, specifier: "%.1f") pt").monospacedDigit().frame(width: 48)
                     }
                 }
-                LabeledContent("Icon size") {
+            }
+
+            Section("App Icons") {
+                LabeledContent("Size") {
                     HStack {
-                        Slider(value: $settings.iconSize, in: 10...18, step: 1).frame(width: 180)
+                        Slider(value: $settings.iconSize, in: 10...18, step: 1).frame(width: 200)
                         Text("\(Int(settings.iconSize)) pt").monospacedDigit().frame(width: 48)
                     }
                 }
-                Toggle("Icon border", isOn: $settings.showIconBorder)
-                Picker("Value position", selection: $settings.valuePosition) {
-                    ForEach(ValuePosition.allCases) { pos in Text(pos.rawValue).tag(pos) }
-                }
-                Toggle("Show metric label", isOn: $settings.showLabel)
-                Picker("Label position", selection: $settings.labelPosition) {
-                    ForEach(ValuePosition.allCases) { pos in Text(pos.rawValue).tag(pos) }
-                }
-                Toggle("Show metric gauges", isOn: $settings.showGauges)
-                Picker("Gauge position", selection: $settings.gaugePosition) {
-                    ForEach(ValuePosition.allCases) { pos in Text(pos.rawValue).tag(pos) }
-                }
-                Toggle("Show gauge labels", isOn: $settings.showGaugeLabels)
+                Toggle("Show border around icons", isOn: $settings.showIconBorder)
             }
 
-            Section("Details Panel") {
+            Section("Value Label") {
+                Picker("Position", selection: $settings.valuePosition) {
+                    ForEach(ValuePosition.allCases) { pos in Text(pos.rawValue).tag(pos) }
+                }
+            }
+
+            Section("Vertical Label") {
+                Toggle("Show metric name", isOn: $settings.showLabel)
+                Picker("Position", selection: $settings.labelPosition) {
+                    ForEach(ValuePosition.allCases) { pos in Text(pos.rawValue).tag(pos) }
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .navigationTitle("Sparkline")
+    }
+}
+
+struct GaugesSettingsView: View {
+    @ObservedObject var settings: AppSettings
+
+    var body: some View {
+        Form {
+            Section("Gauges") {
+                Toggle("Show gauges", isOn: $settings.showGauges)
+                Picker("Position", selection: $settings.gaugePosition) {
+                    ForEach(ValuePosition.allCases) { pos in Text(pos.rawValue).tag(pos) }
+                }
+                Toggle("Show labels on gauges", isOn: $settings.showGaugeLabels)
+            }
+
+            Section("Preview") {
+                HStack(spacing: 12) {
+                    ForEach([Metric.gpu, .cpu, .ram, .network], id: \.self) { m in
+                        VStack(spacing: 4) {
+                            Text(m == .network ? "NET" : m.rawValue)
+                                .font(.system(size: 9, weight: .heavy))
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(Color.accentColor.opacity(0.3))
+                                .frame(width: 20, height: 40)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 3)
+                                        .stroke(Color.accentColor, lineWidth: 1)
+                                        .frame(width: 20, height: 40)
+                                )
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+            }
+        }
+        .formStyle(.grouped)
+        .navigationTitle("Gauges")
+    }
+}
+
+struct PanelSettingsView: View {
+    @ObservedObject var settings: AppSettings
+
+    var body: some View {
+        Form {
+            Section("Theme") {
                 Picker("Appearance", selection: $settings.appearance) {
                     ForEach(AppearanceMode.allCases) { mode in Text(mode.rawValue).tag(mode) }
                 }
                 .pickerStyle(.segmented)
             }
+
+            Section("Layout Preview") {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "waveform.path.ecg")
+                        Text("Sparkline graph")
+                        Spacer()
+                        Text("← graph area")
+                            .foregroundStyle(.secondary)
+                    }
+                    .font(.caption)
+                    HStack {
+                        Image(systemName: "arrow.down.to.line")
+                        Text("Value label")
+                        Spacer()
+                        Text(settings.valuePosition == .left ? "left" : "right")
+                            .foregroundStyle(.secondary)
+                    }
+                    .font(.caption)
+                    HStack {
+                        Image(systemName: "textformat.abc")
+                        Text("Vertical label")
+                        Spacer()
+                        Text(settings.showLabel ? (settings.labelPosition == .left ? "left" : "right") : "hidden")
+                            .foregroundStyle(.secondary)
+                    }
+                    .font(.caption)
+                    HStack {
+                        Image(systemName: "barometer")
+                        Text("Gauges")
+                        Spacer()
+                        Text(settings.showGauges ? (settings.gaugePosition == .left ? "left" : "right") : "hidden")
+                            .foregroundStyle(.secondary)
+                    }
+                    .font(.caption)
+                }
+                .padding(.vertical, 4)
+            }
         }
         .formStyle(.grouped)
-        .navigationTitle("Appearance")
+        .navigationTitle("Panel")
     }
 }
 

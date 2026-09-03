@@ -6,7 +6,7 @@ Historique des évolutions de PKMonitor.
 
 ## TODO — Roadmap
 
-Statut : `2026.09.12` (prototype fonctionnel)
+Statut : `2026.09.13` (prototype fonctionnel)
 
 ### Prochaines étapes
 - [x] Mesures CPU, RAM et réseau locales
@@ -18,6 +18,12 @@ Statut : `2026.09.12` (prototype fonctionnel)
 ---
 
 ## Releases
+
+### [2026.09.13] - 2026-09-03
+#### Changed
+- Réglages restructurés en 5 sections : General, Sparkline, Gauges, Panel, About
+- Valeurs absolues affichées dans le panneau de détail (cores, Go)
+- Aperçu visuel des jauges et de la disposition dans les réglages
 
 ### [2026.09.12] - 2026-09-03
 #### Added

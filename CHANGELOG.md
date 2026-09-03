@@ -6,7 +6,7 @@ Historique des évolutions de PKMonitor.
 
 ## TODO — Roadmap
 
-Statut : `2026.09.07` (prototype fonctionnel)
+Statut : `2026.09.08` (prototype fonctionnel)
 
 ### Prochaines étapes
 - [x] Mesures CPU, RAM et réseau locales
@@ -18,6 +18,14 @@ Statut : `2026.09.07` (prototype fonctionnel)
 ---
 
 ## Releases
+
+### [2026.09.08] - 2026-09-03
+#### Added
+- Seuils de couleur configurables (warning orange, critical rouge)
+- Couleur appliquée à la valeur et aux jauges
+
+#### Fixed
+- Espacement vertical des libellés de métrique
 
 ### [2026.09.07] - 2026-09-03
 #### Added

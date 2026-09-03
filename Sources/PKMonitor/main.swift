@@ -48,6 +48,8 @@ final class AppSettings: ObservableObject {
     @Published var appearance: AppearanceMode { didSet { defaults.set(appearance.rawValue, forKey: "appearance") } }
     @Published var valuePosition: ValuePosition { didSet { defaults.set(valuePosition.rawValue, forKey: "valuePosition") } }
     @Published var showGauges: Bool { didSet { defaults.set(showGauges, forKey: "showGauges") } }
+    @Published var warningThreshold: Double { didSet { defaults.set(warningThreshold, forKey: "warningThreshold") } }
+    @Published var criticalThreshold: Double { didSet { defaults.set(criticalThreshold, forKey: "criticalThreshold") } }
     @Published private(set) var launchAtLogin = SMAppService.mainApp.status == .enabled
 
     private let defaults = UserDefaults.standard
@@ -63,6 +65,8 @@ final class AppSettings: ObservableObject {
         appearance = AppearanceMode(rawValue: defaults.string(forKey: "appearance") ?? "") ?? .system
         valuePosition = ValuePosition(rawValue: defaults.string(forKey: "valuePosition") ?? "") ?? .left
         showGauges = defaults.object(forKey: "showGauges") as? Bool ?? true
+        warningThreshold = defaults.object(forKey: "warningThreshold") as? Double ?? 80
+        criticalThreshold = defaults.object(forKey: "criticalThreshold") as? Double ?? 95
     }
 
     func setLaunchAtLogin(_ enabled: Bool) throws {
@@ -82,6 +86,14 @@ final class AppSettings: ObservableObject {
         appearance = .system
         valuePosition = .left
         showGauges = true
+        warningThreshold = 80
+        criticalThreshold = 95
+    }
+
+    func colorForValue(_ value: Double) -> NSColor {
+        if value >= criticalThreshold { return .systemRed }
+        if value >= warningThreshold { return .systemOrange }
+        return .labelColor
     }
 }
 
@@ -509,6 +521,23 @@ struct GeneralSettingsView: View {
                 Toggle("Show details on hover", isOn: $settings.showOnHover)
             }
 
+            Section("Color Thresholds") {
+                LabeledContent("Warning") {
+                    HStack {
+                        Slider(value: $settings.warningThreshold, in: 50...100, step: 5).frame(width: 160)
+                        Text("\(Int(settings.warningThreshold))%").monospacedDigit().frame(width: 40)
+                        Circle().fill(.orange).frame(width: 10, height: 10)
+                    }
+                }
+                LabeledContent("Critical") {
+                    HStack {
+                        Slider(value: $settings.criticalThreshold, in: 50...100, step: 5).frame(width: 160)
+                        Text("\(Int(settings.criticalThreshold))%").monospacedDigit().frame(width: 40)
+                        Circle().fill(.red).frame(width: 10, height: 10)
+                    }
+                }
+            }
+
             Section("System") {
                 Toggle("Launch at login", isOn: Binding(
                     get: { settings.launchAtLogin },
@@ -905,12 +934,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         defer { image.unlockFocus() }
 
         let valueFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)
-        let valueAttrs: [NSAttributedString.Key: Any] = [.font: valueFont, .foregroundColor: NSColor.labelColor]
+        let valueColor = settings.colorForValue(model.reading.value(for: metric))
+        let valueAttrs: [NSAttributedString.Key: Any] = [.font: valueFont, .foregroundColor: valueColor]
         let valueSize = (value as NSString).size(withAttributes: valueAttrs)
         let label = metric == .network ? "NET" : metric.rawValue.uppercased()
         let labelFont = NSFont.systemFont(ofSize: 8, weight: .heavy)
         let labelAttrs: [NSAttributedString.Key: Any] = [.font: labelFont, .foregroundColor: NSColor.labelColor]
         let labelCharSize = ("M" as NSString).size(withAttributes: labelAttrs)
+        let lineH: CGFloat = 7
 
         let valueOnLeft = settings.valuePosition == .left
         let graphOffset: CGFloat = valueOnLeft ? textReserved : labelReserved
@@ -920,11 +951,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let valueX = textReserved - valueSize.width - 4
             (value as NSString).draw(at: NSPoint(x: valueX, y: (size.height - valueSize.height) / 2), withAttributes: valueAttrs)
             for (index, character) in label.enumerated() {
-                String(character).draw(at: NSPoint(x: graphOffset + graphWidth + 4, y: size.height - labelCharSize.height - CGFloat(index) * (labelCharSize.height + 1)), withAttributes: labelAttrs)
+                String(character).draw(at: NSPoint(x: graphOffset + graphWidth + 4, y: size.height - labelCharSize.height - CGFloat(index) * lineH), withAttributes: labelAttrs)
             }
         } else {
             for (index, character) in label.enumerated() {
-                String(character).draw(at: NSPoint(x: 2, y: size.height - labelCharSize.height - CGFloat(index) * (labelCharSize.height + 1)), withAttributes: labelAttrs)
+                String(character).draw(at: NSPoint(x: 2, y: size.height - labelCharSize.height - CGFloat(index) * lineH), withAttributes: labelAttrs)
             }
             let valueX = graphOffset + graphWidth + 4
             (value as NSString).draw(at: NSPoint(x: valueX, y: (size.height - valueSize.height) / 2), withAttributes: valueAttrs)
@@ -991,11 +1022,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
                 let fillHeight = bgRect.height * fill
                 let fillRect = NSRect(x: bgRect.minX, y: bgRect.minY, width: bgRect.width, height: fillHeight)
-                (isActive ? NSColor.controlAccentColor : NSColor.tertiaryLabelColor).setFill()
+                let gaugeColor = settings.colorForValue(model.reading.value(for: m))
+                (isActive ? gaugeColor : NSColor.tertiaryLabelColor).setFill()
                 NSBezierPath(roundedRect: fillRect, xRadius: 2, yRadius: 2).fill()
 
                 if isActive {
-                    NSColor.controlAccentColor.setStroke()
+                    gaugeColor.setStroke()
                     NSBezierPath(roundedRect: bgRect, xRadius: 2, yRadius: 2).stroke()
                 }
 

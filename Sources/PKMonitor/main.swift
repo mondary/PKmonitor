@@ -286,7 +286,7 @@ final class MonitorModel: ObservableObject {
     func format(_ metric: Metric? = nil) -> String {
         let metric = metric ?? displayedMetric
         switch metric {
-        case .network: return Self.formatBytes(reading.network) + "/s"
+        case .network: return "↓\(Self.formatBytes(reading.download))/s ↑\(Self.formatBytes(reading.upload))/s"
         default: return "\(Int(reading.value(for: metric).rounded()))%"
         }
     }
@@ -994,10 +994,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let valueAttrs: [NSAttributedString.Key: Any] = [.font: valueFont, .foregroundColor: valueColor]
         let valueSize = (value as NSString).size(withAttributes: valueAttrs)
         let label = metric == .network ? "NET" : metric.rawValue.uppercased()
-        let labelFont = NSFont.systemFont(ofSize: 8, weight: .heavy)
+        let labelFont = NSFont.systemFont(ofSize: 6, weight: .heavy)
         let labelAttrs: [NSAttributedString.Key: Any] = [.font: labelFont, .foregroundColor: NSColor.labelColor]
         let labelCharSize = ("M" as NSString).size(withAttributes: labelAttrs)
-        let lineH: CGFloat = 7
+        let lineH: CGFloat = 5
 
         let gaugesOnLeft = settings.gaugePosition == .left
         let valueOnLeft = settings.valuePosition == .left

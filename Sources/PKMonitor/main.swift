@@ -1,5 +1,6 @@
 import AppKit
 import Darwin
+import IOKit
 import ServiceManagement
 import SwiftUI
 
@@ -93,13 +94,14 @@ struct AppUsage: Identifiable, Equatable {
 struct Reading {
     var cpu = 0.0
     var ram = 0.0
+    var gpu = 0.0
     var network = 0.0
     var apps: [AppUsage] = []
 
     func value(for metric: Metric) -> Double {
         switch metric {
         case .auto, .cpu: cpu
-        case .gpu: 0
+        case .gpu: gpu
         case .ram: ram
         case .network: network
         }
@@ -112,7 +114,7 @@ final class SystemSampler {
     private var previousNetworkDate = Date()
 
     func sample(previousApps: [AppUsage]) -> Reading {
-        Reading(cpu: cpuUsage(), ram: memoryUsage(), network: networkRate(), apps: previousApps)
+        Reading(cpu: cpuUsage(), ram: memoryUsage(), gpu: gpuUsage(), network: networkRate(), apps: previousApps)
     }
 
     private func cpuUsage() -> Double {
@@ -176,6 +178,31 @@ final class SystemSampler {
         guard let previousBytes, total >= previousBytes, elapsed > 0 else { return 0 }
         return Double(total - previousBytes) / elapsed
     }
+
+    private func gpuUsage() -> Double {
+        var iterator: io_iterator_t = 0
+        let matching = IOServiceMatching("IOAccelerator")
+        guard IOServiceGetMatchingServices(kIOMainPortDefault, matching, &iterator) == KERN_SUCCESS else { return 0 }
+        defer { IOObjectRelease(iterator) }
+
+        var total: Double = 0
+        var count = 0
+        var entry = IOIteratorNext(iterator)
+        while entry != 0 {
+            defer { IOObjectRelease(entry) }
+            if let props = IORegistryEntrySearchCFProperty(entry, "IOService", "PerformanceStatistics" as CFString, kCFAllocatorDefault, IOOptionBits(kIORegistryIterateRecursively | kIORegistryIterateParents)) as? [String: Any] {
+                if let util = props["Device Utilization %"] as? Double {
+                    total += util
+                    count += 1
+                } else if let util = props["GPU Core Utilization"] as? Double {
+                    total += util
+                    count += 1
+                }
+            }
+            entry = IOIteratorNext(iterator)
+        }
+        return count > 0 ? total / Double(count) : 0
+    }
 }
 
 @MainActor
@@ -220,7 +247,6 @@ final class MonitorModel: ObservableObject {
         let metric = metric ?? displayedMetric
         switch metric {
         case .network: return Self.formatBytes(reading.network) + "/s"
-        case .gpu: return "N/A"
         default: return "\(Int(reading.value(for: metric).rounded()))%"
         }
     }
@@ -266,6 +292,7 @@ final class MonitorModel: ObservableObject {
     }
 
     private func automaticMetric() -> Metric {
+        if reading.gpu > 80 { return .gpu }
         if reading.network > 5_000_000 { return .network }
         if reading.ram > 85 { return .ram }
         return .cpu
@@ -274,7 +301,6 @@ final class MonitorModel: ObservableObject {
     private func normalizedValue() -> Double {
         switch displayedMetric {
         case .network: return min(1, log10(max(1, reading.network)) / 8)
-        case .gpu: return 0
         default: return reading.value(for: displayedMetric) / 100
         }
     }

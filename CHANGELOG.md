@@ -6,7 +6,7 @@ Historique des évolutions de PKMonitor.
 
 ## TODO — Roadmap
 
-Statut : `2026.09.05` (prototype fonctionnel)
+Statut : `2026.09.06` (prototype fonctionnel)
 
 ### Prochaines étapes
 - [x] Mesures CPU, RAM et réseau locales
@@ -18,6 +18,10 @@ Statut : `2026.09.05` (prototype fonctionnel)
 ---
 
 ## Releases
+
+### [2026.09.06] - 2026-09-03
+#### Added
+- Mesure GPU via IOKit (IOAccelerator PerformanceStatistics)
 
 ### [2026.09.05] - 2026-09-03
 #### Changed

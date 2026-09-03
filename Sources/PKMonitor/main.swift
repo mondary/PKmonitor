@@ -566,6 +566,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var hoverTimer: Timer?
     private var lastPointerInside = Date.distantPast
     private var panelPinned = false
+    private var hoverSuppressed = false
 
     override init() {
         let settings = AppSettings()
@@ -597,6 +598,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func statusClicked() {
         if NSApp.currentEvent?.type == .rightMouseUp {
             panelPinned = false
+            hoverSuppressed = true
             hideDetailPanel()
             let menu = makeMenu()
             menu.delegate = self
@@ -646,6 +648,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let location = NSEvent.mouseLocation
         let overButton = statusButtonFrame?.contains(location) == true
         let overPanel = detailPanel?.isVisible == true && detailPanel?.frame.contains(location) == true
+        if !overButton { hoverSuppressed = false }
+        if hoverSuppressed { return }
         if overButton || overPanel {
             lastPointerInside = Date()
             if overButton, detailPanel?.isVisible != true { showDetailPanel() }

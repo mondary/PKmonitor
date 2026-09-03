@@ -6,7 +6,7 @@ Historique des évolutions de PKMonitor.
 
 ## TODO — Roadmap
 
-Statut : `2026.09.06` (prototype fonctionnel)
+Statut : `2026.09.07` (prototype fonctionnel)
 
 ### Prochaines étapes
 - [x] Mesures CPU, RAM et réseau locales
@@ -18,6 +18,12 @@ Statut : `2026.09.06` (prototype fonctionnel)
 ---
 
 ## Releases
+
+### [2026.09.07] - 2026-09-03
+#### Added
+- Quatre jauges cliquables (GPU, CPU, RAM, NET) à droite de la sparkline
+- Basculement de métrique par clic sur une jauge
+- Option pour afficher/masquer les jauges dans les réglages
 
 ### [2026.09.06] - 2026-09-03
 #### Added

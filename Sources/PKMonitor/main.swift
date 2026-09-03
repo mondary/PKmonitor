@@ -47,6 +47,7 @@ final class AppSettings: ObservableObject {
     @Published var lineWidth: Double { didSet { defaults.set(lineWidth, forKey: "lineWidth") } }
     @Published var appearance: AppearanceMode { didSet { defaults.set(appearance.rawValue, forKey: "appearance") } }
     @Published var valuePosition: ValuePosition { didSet { defaults.set(valuePosition.rawValue, forKey: "valuePosition") } }
+    @Published var showGauges: Bool { didSet { defaults.set(showGauges, forKey: "showGauges") } }
     @Published private(set) var launchAtLogin = SMAppService.mainApp.status == .enabled
 
     private let defaults = UserDefaults.standard
@@ -61,6 +62,7 @@ final class AppSettings: ObservableObject {
         lineWidth = defaults.object(forKey: "lineWidth") as? Double ?? 1.6
         appearance = AppearanceMode(rawValue: defaults.string(forKey: "appearance") ?? "") ?? .system
         valuePosition = ValuePosition(rawValue: defaults.string(forKey: "valuePosition") ?? "") ?? .left
+        showGauges = defaults.object(forKey: "showGauges") as? Bool ?? true
     }
 
     func setLaunchAtLogin(_ enabled: Bool) throws {
@@ -79,6 +81,7 @@ final class AppSettings: ObservableObject {
         lineWidth = 1.6
         appearance = .system
         valuePosition = .left
+        showGauges = true
     }
 }
 
@@ -560,6 +563,7 @@ struct AppearanceSettingsView: View {
                 Picker("Value position", selection: $settings.valuePosition) {
                     ForEach(ValuePosition.allCases) { pos in Text(pos.rawValue).tag(pos) }
                 }
+                Toggle("Show metric gauges", isOn: $settings.showGauges)
             }
 
             Section("Details Panel") {
@@ -644,6 +648,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             statusItem.menu = menu
             statusItem.button?.performClick(nil)
         } else {
+            if let button = statusItem.button, let event = NSApp.currentEvent {
+                let localPoint = button.convert(event.locationInWindow, from: nil)
+                let imagePoint = NSPoint(x: localPoint.x, y: button.bounds.height - localPoint.y)
+                if let tappedMetric = metricForClick(at: imagePoint) {
+                    model.select(tappedMetric)
+                    refreshStatusItem()
+                    return
+                }
+            }
             panelPinned.toggle()
             panelPinned ? showDetailPanel() : hideDetailPanel()
         }
@@ -871,10 +884,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func quit() { NSApp.terminate(nil) }
 
+    private var gaugeRects: [Metric: NSRect] = [:]
+
+    func metricForClick(at point: NSPoint) -> Metric? {
+        guard settings.showGauges else { return nil }
+        for (metric, rect) in gaugeRects {
+            if rect.contains(point) { return metric }
+        }
+        return nil
+    }
+
     private func sparklineImage(_ values: [Double], markers: [String?], metric: Metric, value: String) -> NSImage {
         let textReserved: CGFloat = 58
         let labelReserved: CGFloat = 18
-        let totalWidth = textReserved + labelReserved + settings.sparklineWidth
+        let gaugeReserved: CGFloat = settings.showGauges ? 56 : 0
+        let totalWidth = textReserved + labelReserved + settings.sparklineWidth + gaugeReserved
         let size = NSSize(width: totalWidth, height: 18)
         let image = NSImage(size: size)
         image.lockFocus()
@@ -941,6 +965,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             NSColor.separatorColor.setStroke()
             NSBezierPath(roundedRect: iconRect, xRadius: 4, yRadius: 4).stroke()
             NSWorkspace.shared.icon(forFile: marker).draw(in: iconRect.insetBy(dx: 1, dy: 1))
+        }
+
+        if settings.showGauges {
+            let gaugeMetrics: [Metric] = [.gpu, .cpu, .ram, .network]
+            let gaugeW: CGFloat = 10
+            let gaugeGap: CGFloat = 4
+            let gaugeStartX = size.width - gaugeReserved + 2
+            let gaugeFont = NSFont.systemFont(ofSize: 5, weight: .bold)
+            let gaugeAttrs: [NSAttributedString.Key: Any] = [.font: gaugeFont, .foregroundColor: NSColor.secondaryLabelColor]
+            let activeGaugeAttrs: [NSAttributedString.Key: Any] = [.font: gaugeFont, .foregroundColor: NSColor.labelColor]
+            var newGaugeRects: [Metric: NSRect] = [:]
+
+            for (i, m) in gaugeMetrics.enumerated() {
+                let gx = gaugeStartX + CGFloat(i) * (gaugeW + gaugeGap)
+                let gaugeRect = NSRect(x: gx, y: 1, width: gaugeW, height: size.height - 2)
+                newGaugeRects[m] = gaugeRect
+
+                let isActive = m == metric
+                let fill = CGFloat(max(0, min(1, model.reading.value(for: m) / 100)))
+                let bgRect = gaugeRect.insetBy(dx: 1, dy: 1)
+
+                NSColor.separatorColor.setFill()
+                NSBezierPath(roundedRect: bgRect, xRadius: 2, yRadius: 2).fill()
+
+                let fillHeight = bgRect.height * fill
+                let fillRect = NSRect(x: bgRect.minX, y: bgRect.minY, width: bgRect.width, height: fillHeight)
+                (isActive ? NSColor.controlAccentColor : NSColor.tertiaryLabelColor).setFill()
+                NSBezierPath(roundedRect: fillRect, xRadius: 2, yRadius: 2).fill()
+
+                if isActive {
+                    NSColor.controlAccentColor.setStroke()
+                    NSBezierPath(roundedRect: bgRect, xRadius: 2, yRadius: 2).stroke()
+                }
+
+                let tag = m == .network ? "N" : String(m.rawValue.prefix(1))
+                let tagSize = (tag as NSString).size(withAttributes: isActive ? activeGaugeAttrs : gaugeAttrs)
+                (tag as NSString).draw(at: NSPoint(x: gx + (gaugeW - tagSize.width) / 2, y: size.height - tagSize.height - 1), withAttributes: isActive ? activeGaugeAttrs : gaugeAttrs)
+            }
+            gaugeRects = newGaugeRects
+        } else {
+            gaugeRects.removeAll()
         }
 
         image.isTemplate = false

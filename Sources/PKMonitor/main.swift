@@ -28,6 +28,13 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
     }
 }
 
+enum ValuePosition: String, CaseIterable, Identifiable {
+    case left = "Left"
+    case right = "Right"
+
+    var id: String { rawValue }
+}
+
 @MainActor
 final class AppSettings: ObservableObject {
     @Published var updateInterval: Double { didSet { defaults.set(updateInterval, forKey: "updateInterval") } }
@@ -38,6 +45,7 @@ final class AppSettings: ObservableObject {
     @Published var iconSize: Double { didSet { defaults.set(iconSize, forKey: "iconSize") } }
     @Published var lineWidth: Double { didSet { defaults.set(lineWidth, forKey: "lineWidth") } }
     @Published var appearance: AppearanceMode { didSet { defaults.set(appearance.rawValue, forKey: "appearance") } }
+    @Published var valuePosition: ValuePosition { didSet { defaults.set(valuePosition.rawValue, forKey: "valuePosition") } }
     @Published private(set) var launchAtLogin = SMAppService.mainApp.status == .enabled
 
     private let defaults = UserDefaults.standard
@@ -51,6 +59,7 @@ final class AppSettings: ObservableObject {
         iconSize = defaults.object(forKey: "iconSize") as? Double ?? 15
         lineWidth = defaults.object(forKey: "lineWidth") as? Double ?? 1.6
         appearance = AppearanceMode(rawValue: defaults.string(forKey: "appearance") ?? "") ?? .system
+        valuePosition = ValuePosition(rawValue: defaults.string(forKey: "valuePosition") ?? "") ?? .left
     }
 
     func setLaunchAtLogin(_ enabled: Bool) throws {
@@ -68,6 +77,7 @@ final class AppSettings: ObservableObject {
         iconSize = 15
         lineWidth = 1.6
         appearance = .system
+        valuePosition = .left
     }
 }
 
@@ -521,6 +531,9 @@ struct AppearanceSettingsView: View {
                         Text("\(Int(settings.iconSize)) pt").monospacedDigit().frame(width: 48)
                     }
                 }
+                Picker("Value position", selection: $settings.valuePosition) {
+                    ForEach(ValuePosition.allCases) { pos in Text(pos.rawValue).tag(pos) }
+                }
             }
 
             Section("Details Panel") {
@@ -684,10 +697,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case .dark: detailPanel?.appearance = NSAppearance(named: .darkAqua)
         }
         button.effectiveAppearance.performAsCurrentDrawingAppearance {
-            button.image = sparklineImage(model.samples, markers: model.markers, metric: model.displayedMetric)
+            button.image = sparklineImage(model.samples, markers: model.markers, metric: model.displayedMetric, value: model.format())
         }
         let prefix = model.selectedMetric == .auto ? "Auto · \(model.displayedMetric.rawValue)" : model.displayedMetric.rawValue
-        button.title = " \(model.format())"
+        button.title = ""
         button.setAccessibilityValue("\(prefix), \(model.format())")
     }
 
@@ -832,22 +845,51 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func quit() { NSApp.terminate(nil) }
 
-    private func sparklineImage(_ values: [Double], markers: [String?], metric: Metric) -> NSImage {
-        let size = NSSize(width: settings.sparklineWidth, height: 18)
+    private func sparklineImage(_ values: [Double], markers: [String?], metric: Metric, value: String) -> NSImage {
+        let textReserved: CGFloat = 58
+        let labelReserved: CGFloat = 18
+        let totalWidth = textReserved + labelReserved + settings.sparklineWidth
+        let size = NSSize(width: totalWidth, height: 18)
         let image = NSImage(size: size)
         image.lockFocus()
         defer { image.unlockFocus() }
+
+        let valueFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)
+        let valueAttrs: [NSAttributedString.Key: Any] = [.font: valueFont, .foregroundColor: NSColor.labelColor]
+        let valueSize = (value as NSString).size(withAttributes: valueAttrs)
+        let label = metric == .network ? "NET" : metric.rawValue.uppercased()
+        let labelFont = NSFont.systemFont(ofSize: 8, weight: .heavy)
+        let labelAttrs: [NSAttributedString.Key: Any] = [.font: labelFont, .foregroundColor: NSColor.labelColor]
+        let labelCharSize = ("M" as NSString).size(withAttributes: labelAttrs)
+
+        let valueOnLeft = settings.valuePosition == .left
+        let graphOffset: CGFloat = valueOnLeft ? textReserved : labelReserved
+        let graphWidth = settings.sparklineWidth - 12
+
+        if valueOnLeft {
+            let valueX = textReserved - valueSize.width - 4
+            (value as NSString).draw(at: NSPoint(x: valueX, y: (size.height - valueSize.height) / 2), withAttributes: valueAttrs)
+            for (index, character) in label.enumerated() {
+                String(character).draw(at: NSPoint(x: graphOffset + graphWidth + 4, y: size.height - labelCharSize.height - CGFloat(index) * (labelCharSize.height + 1)), withAttributes: labelAttrs)
+            }
+        } else {
+            for (index, character) in label.enumerated() {
+                String(character).draw(at: NSPoint(x: 2, y: size.height - labelCharSize.height - CGFloat(index) * (labelCharSize.height + 1)), withAttributes: labelAttrs)
+            }
+            let valueX = graphOffset + graphWidth + 4
+            (value as NSString).draw(at: NSPoint(x: valueX, y: (size.height - valueSize.height) / 2), withAttributes: valueAttrs)
+        }
+
         guard values.count > 1 else { return image }
 
         let rect = NSRect(origin: .zero, size: size)
-        let graphWidth = size.width - 12
         let capacity = max(2, Int(settings.historySeconds / settings.updateInterval))
         let scaledValues = MonitorModel.scaledHistory(values)
         let path = NSBezierPath()
-        for (index, value) in scaledValues.enumerated() {
+        for (index, val) in scaledValues.enumerated() {
             let point = NSPoint(
-                x: graphWidth * CGFloat(capacity - values.count + index) / CGFloat(capacity - 1),
-                y: 2 + (rect.height - 4) * CGFloat(max(0, min(1, value)))
+                x: graphOffset + graphWidth * CGFloat(capacity - values.count + index) / CGFloat(capacity - 1),
+                y: 2 + (rect.height - 4) * CGFloat(max(0, min(1, val)))
             )
             index == 0 ? path.move(to: point) : path.line(to: point)
         }
@@ -859,7 +901,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         for (index, marker) in markers.enumerated() {
             guard let marker else { continue }
-            let x = graphWidth * CGFloat(capacity - markers.count + index) / CGFloat(capacity - 1)
+            let x = graphOffset + graphWidth * CGFloat(capacity - markers.count + index) / CGFloat(capacity - 1)
             let y = 2 + (rect.height - 4) * CGFloat(max(0, min(1, scaledValues[index])))
             let iconSize = settings.iconSize
             let iconRect = NSRect(
@@ -875,12 +917,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             NSWorkspace.shared.icon(forFile: marker).draw(in: iconRect.insetBy(dx: 1, dy: 1))
         }
 
-        let label = metric == .network ? "NET" : metric.rawValue.uppercased()
-        let font = NSFont.systemFont(ofSize: 5.5, weight: .bold)
-        let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: NSColor.labelColor]
-        for (index, character) in label.enumerated() {
-            String(character).draw(at: NSPoint(x: graphWidth + 4, y: 12 - CGFloat(index) * 5.5), withAttributes: attributes)
-        }
         image.isTemplate = false
         return image
     }

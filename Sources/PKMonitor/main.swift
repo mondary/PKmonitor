@@ -984,7 +984,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func sparklineImage(_ values: [Double], markers: [String?], metric: Metric, value: String) -> NSImage {
         let textW: CGFloat = 58
-        let labelW: CGFloat = settings.showLabel ? 24 : 0
+        let labelW: CGFloat = settings.showLabel ? 30 : 0
         let gaugeW: CGFloat = settings.showGauges ? 74 : 0
         let graphW = settings.sparklineWidth
         let totalWidth = textW + labelW + graphW + gaugeW
@@ -1037,7 +1037,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard values.count > 1 else { return image }
 
         let rect = NSRect(origin: .zero, size: size)
-        let sparkMargin: CGFloat = 4
+        let sparkMargin: CGFloat = 8
         let drawGraphW = graphW - sparkMargin * 2
         let capacity = max(2, Int(settings.historySeconds / settings.updateInterval))
         let scaledValues = MonitorModel.scaledHistory(values)

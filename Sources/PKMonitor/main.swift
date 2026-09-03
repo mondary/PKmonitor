@@ -48,6 +48,10 @@ final class AppSettings: ObservableObject {
     @Published var appearance: AppearanceMode { didSet { defaults.set(appearance.rawValue, forKey: "appearance") } }
     @Published var valuePosition: ValuePosition { didSet { defaults.set(valuePosition.rawValue, forKey: "valuePosition") } }
     @Published var showGauges: Bool { didSet { defaults.set(showGauges, forKey: "showGauges") } }
+    @Published var gaugePosition: ValuePosition { didSet { defaults.set(gaugePosition.rawValue, forKey: "gaugePosition") } }
+    @Published var showGaugeLabels: Bool { didSet { defaults.set(showGaugeLabels, forKey: "showGaugeLabels") } }
+    @Published var labelPosition: ValuePosition { didSet { defaults.set(labelPosition.rawValue, forKey: "labelPosition") } }
+    @Published var showLabel: Bool { didSet { defaults.set(showLabel, forKey: "showLabel") } }
     @Published var warningThreshold: Double { didSet { defaults.set(warningThreshold, forKey: "warningThreshold") } }
     @Published var criticalThreshold: Double { didSet { defaults.set(criticalThreshold, forKey: "criticalThreshold") } }
     @Published private(set) var launchAtLogin = SMAppService.mainApp.status == .enabled
@@ -65,6 +69,10 @@ final class AppSettings: ObservableObject {
         appearance = AppearanceMode(rawValue: defaults.string(forKey: "appearance") ?? "") ?? .system
         valuePosition = ValuePosition(rawValue: defaults.string(forKey: "valuePosition") ?? "") ?? .left
         showGauges = defaults.object(forKey: "showGauges") as? Bool ?? true
+        gaugePosition = ValuePosition(rawValue: defaults.string(forKey: "gaugePosition") ?? "") ?? .right
+        showGaugeLabels = defaults.object(forKey: "showGaugeLabels") as? Bool ?? true
+        labelPosition = ValuePosition(rawValue: defaults.string(forKey: "labelPosition") ?? "") ?? .right
+        showLabel = defaults.object(forKey: "showLabel") as? Bool ?? true
         warningThreshold = defaults.object(forKey: "warningThreshold") as? Double ?? 80
         criticalThreshold = defaults.object(forKey: "criticalThreshold") as? Double ?? 95
     }
@@ -86,6 +94,10 @@ final class AppSettings: ObservableObject {
         appearance = .system
         valuePosition = .left
         showGauges = true
+        gaugePosition = .right
+        showGaugeLabels = true
+        labelPosition = .right
+        showLabel = true
         warningThreshold = 80
         criticalThreshold = 95
     }
@@ -592,7 +604,15 @@ struct AppearanceSettingsView: View {
                 Picker("Value position", selection: $settings.valuePosition) {
                     ForEach(ValuePosition.allCases) { pos in Text(pos.rawValue).tag(pos) }
                 }
+                Toggle("Show metric label", isOn: $settings.showLabel)
+                Picker("Label position", selection: $settings.labelPosition) {
+                    ForEach(ValuePosition.allCases) { pos in Text(pos.rawValue).tag(pos) }
+                }
                 Toggle("Show metric gauges", isOn: $settings.showGauges)
+                Picker("Gauge position", selection: $settings.gaugePosition) {
+                    ForEach(ValuePosition.allCases) { pos in Text(pos.rawValue).tag(pos) }
+                }
+                Toggle("Show gauge labels", isOn: $settings.showGaugeLabels)
             }
 
             Section("Details Panel") {
@@ -924,10 +944,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func sparklineImage(_ values: [Double], markers: [String?], metric: Metric, value: String) -> NSImage {
-        let textReserved: CGFloat = 58
-        let labelReserved: CGFloat = 18
-        let gaugeReserved: CGFloat = settings.showGauges ? 74 : 0
-        let totalWidth = textReserved + labelReserved + settings.sparklineWidth + gaugeReserved
+        let textW: CGFloat = 58
+        let labelW: CGFloat = settings.showLabel ? 24 : 0
+        let gaugeW: CGFloat = settings.showGauges ? 74 : 0
+        let graphW = settings.sparklineWidth
+        let totalWidth = textW + labelW + graphW + gaugeW
         let size = NSSize(width: totalWidth, height: 18)
         let image = NSImage(size: size)
         image.lockFocus()
@@ -943,33 +964,48 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let labelCharSize = ("M" as NSString).size(withAttributes: labelAttrs)
         let lineH: CGFloat = 7
 
+        let gaugesOnLeft = settings.gaugePosition == .left
         let valueOnLeft = settings.valuePosition == .left
-        let graphOffset: CGFloat = valueOnLeft ? textReserved : labelReserved
-        let graphWidth = settings.sparklineWidth - 12
+        let labelOnLeft = settings.labelPosition == .left
+
+        var cursor: CGFloat = 0
+        var gaugeStartX: CGFloat = 0
+        var valueX: CGFloat = 0
+        var labelStartX: CGFloat = 0
+        var graphStartX: CGFloat = 0
+
+        if gaugesOnLeft { gaugeStartX = cursor; cursor += gaugeW }
+        if valueOnLeft { valueX = cursor; cursor += textW }
+        if labelOnLeft { labelStartX = cursor; cursor += labelW }
+        graphStartX = cursor; cursor += graphW
+        if !labelOnLeft { labelStartX = cursor; cursor += labelW }
+        if !valueOnLeft { valueX = cursor; cursor += textW }
+        if !gaugesOnLeft { gaugeStartX = cursor; cursor += gaugeW }
 
         if valueOnLeft {
-            let valueX = textReserved - valueSize.width - 4
-            (value as NSString).draw(at: NSPoint(x: valueX, y: (size.height - valueSize.height) / 2), withAttributes: valueAttrs)
-            for (index, character) in label.enumerated() {
-                String(character).draw(at: NSPoint(x: graphOffset + graphWidth + 4, y: size.height - labelCharSize.height - CGFloat(index) * lineH), withAttributes: labelAttrs)
-            }
+            (value as NSString).draw(at: NSPoint(x: valueX + textW - valueSize.width - 4, y: (size.height - valueSize.height) / 2), withAttributes: valueAttrs)
         } else {
+            (value as NSString).draw(at: NSPoint(x: valueX + 4, y: (size.height - valueSize.height) / 2), withAttributes: valueAttrs)
+        }
+
+        if settings.showLabel {
             for (index, character) in label.enumerated() {
-                String(character).draw(at: NSPoint(x: 2, y: size.height - labelCharSize.height - CGFloat(index) * lineH), withAttributes: labelAttrs)
+                let lx = labelOnLeft ? labelStartX + 2 : labelStartX + 2
+                String(character).draw(at: NSPoint(x: lx, y: size.height - labelCharSize.height - CGFloat(index) * lineH), withAttributes: labelAttrs)
             }
-            let valueX = graphOffset + graphWidth + 4
-            (value as NSString).draw(at: NSPoint(x: valueX, y: (size.height - valueSize.height) / 2), withAttributes: valueAttrs)
         }
 
         guard values.count > 1 else { return image }
 
         let rect = NSRect(origin: .zero, size: size)
+        let sparkMargin: CGFloat = 4
+        let drawGraphW = graphW - sparkMargin * 2
         let capacity = max(2, Int(settings.historySeconds / settings.updateInterval))
         let scaledValues = MonitorModel.scaledHistory(values)
         let path = NSBezierPath()
         for (index, val) in scaledValues.enumerated() {
             let point = NSPoint(
-                x: graphOffset + graphWidth * CGFloat(capacity - values.count + index) / CGFloat(capacity - 1),
+                x: graphStartX + sparkMargin + drawGraphW * CGFloat(capacity - values.count + index) / CGFloat(capacity - 1),
                 y: 2 + (rect.height - 4) * CGFloat(max(0, min(1, val)))
             )
             index == 0 ? path.move(to: point) : path.line(to: point)
@@ -982,14 +1018,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         for (index, marker) in markers.enumerated() {
             guard let marker else { continue }
-            let x = graphOffset + graphWidth * CGFloat(capacity - markers.count + index) / CGFloat(capacity - 1)
+            let x = graphStartX + sparkMargin + drawGraphW * CGFloat(capacity - markers.count + index) / CGFloat(capacity - 1)
             let y = 2 + (rect.height - 4) * CGFloat(max(0, min(1, scaledValues[index])))
-            let iconSize = settings.iconSize
+            let iconSz = settings.iconSize
             let iconRect = NSRect(
-                x: x - iconSize / 2,
-                y: max(0, min(rect.height - iconSize, y - iconSize / 2)),
-                width: iconSize,
-                height: iconSize
+                x: x - iconSz / 2,
+                y: max(0, min(rect.height - iconSz, y - iconSz / 2)),
+                width: iconSz,
+                height: iconSz
             )
             NSColor.windowBackgroundColor.setFill()
             NSBezierPath(roundedRect: iconRect, xRadius: 4, yRadius: 4).fill()
@@ -1000,40 +1036,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         if settings.showGauges {
             let gaugeMetrics: [Metric] = [.gpu, .cpu, .ram, .network]
-            let gaugeW: CGFloat = 16
-            let gaugeGap: CGFloat = 2
-            let gaugeStartX = size.width - gaugeReserved + 2
-            let gaugeFont = NSFont.monospacedDigitSystemFont(ofSize: 6, weight: .heavy)
-            let gaugeAttrs: [NSAttributedString.Key: Any] = [.font: gaugeFont, .foregroundColor: NSColor.secondaryLabelColor]
-            let activeGaugeAttrs: [NSAttributedString.Key: Any] = [.font: gaugeFont, .foregroundColor: NSColor.labelColor]
+            let gW: CGFloat = 16
+            let gGap: CGFloat = 2
+            let gFont = NSFont.monospacedDigitSystemFont(ofSize: 6, weight: .heavy)
+            let gAttrs: [NSAttributedString.Key: Any] = [.font: gFont, .foregroundColor: NSColor.secondaryLabelColor]
+            let gActiveAttrs: [NSAttributedString.Key: Any] = [.font: gFont, .foregroundColor: NSColor.labelColor]
             var newGaugeRects: [Metric: NSRect] = [:]
 
             for (i, m) in gaugeMetrics.enumerated() {
-                let gx = gaugeStartX + CGFloat(i) * (gaugeW + gaugeGap)
-                let gaugeRect = NSRect(x: gx, y: 1, width: gaugeW, height: size.height - 2)
-                newGaugeRects[m] = gaugeRect
+                let gx = gaugeStartX + 2 + CGFloat(i) * (gW + gGap)
+                let gRect = NSRect(x: gx, y: 1, width: gW, height: size.height - 2)
+                newGaugeRects[m] = gRect
 
                 let isActive = m == metric
                 let fill = CGFloat(max(0, min(1, model.reading.value(for: m) / 100)))
-                let bgRect = gaugeRect.insetBy(dx: 1, dy: 1)
+                let bg = gRect.insetBy(dx: 1, dy: 1)
 
                 NSColor.separatorColor.setFill()
-                NSBezierPath(roundedRect: bgRect, xRadius: 2, yRadius: 2).fill()
+                NSBezierPath(roundedRect: bg, xRadius: 2, yRadius: 2).fill()
 
-                let fillHeight = bgRect.height * fill
-                let fillRect = NSRect(x: bgRect.minX, y: bgRect.minY, width: bgRect.width, height: fillHeight)
-                let gaugeColor = settings.colorForValue(model.reading.value(for: m))
-                (isActive ? gaugeColor : NSColor.tertiaryLabelColor).setFill()
-                NSBezierPath(roundedRect: fillRect, xRadius: 2, yRadius: 2).fill()
+                let fillH = bg.height * fill
+                let fillR = NSRect(x: bg.minX, y: bg.minY, width: bg.width, height: fillH)
+                let gColor = settings.colorForValue(model.reading.value(for: m))
+                (isActive ? gColor : NSColor.tertiaryLabelColor).setFill()
+                NSBezierPath(roundedRect: fillR, xRadius: 2, yRadius: 2).fill()
 
                 if isActive {
-                    gaugeColor.setStroke()
-                    NSBezierPath(roundedRect: bgRect, xRadius: 2, yRadius: 2).stroke()
+                    gColor.setStroke()
+                    NSBezierPath(roundedRect: bg, xRadius: 2, yRadius: 2).stroke()
                 }
 
-                let tag = m == .network ? "NET" : m.rawValue
-                let tagSize = (tag as NSString).size(withAttributes: isActive ? activeGaugeAttrs : gaugeAttrs)
-                (tag as NSString).draw(at: NSPoint(x: gx + (gaugeW - tagSize.width) / 2, y: size.height - tagSize.height - 1), withAttributes: isActive ? activeGaugeAttrs : gaugeAttrs)
+                if settings.showGaugeLabels {
+                    let tag = m == .network ? "NET" : m.rawValue
+                    let tagSize = (tag as NSString).size(withAttributes: isActive ? gActiveAttrs : gAttrs)
+                    (tag as NSString).draw(at: NSPoint(x: gx + (gW - tagSize.width) / 2, y: size.height - tagSize.height - 1), withAttributes: isActive ? gActiveAttrs : gAttrs)
+                }
             }
             gaugeRects = newGaugeRects
         } else {

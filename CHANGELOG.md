@@ -6,7 +6,7 @@ Historique des évolutions de PKMonitor.
 
 ## TODO — Roadmap
 
-Statut : `2026.09.08` (prototype fonctionnel)
+Statut : `2026.09.09` (prototype fonctionnel)
 
 ### Prochaines étapes
 - [x] Mesures CPU, RAM et réseau locales
@@ -18,6 +18,13 @@ Statut : `2026.09.08` (prototype fonctionnel)
 ---
 
 ## Releases
+
+### [2026.09.09] - 2026-09-03
+#### Added
+- Position des jauges paramétrable (gauche/droite)
+- Libellés des jauges affichables/masquables
+- Position du libellé vertical paramétrable (gauche/droite)
+- Libellé vertical affichable/masquable
 
 ### [2026.09.08] - 2026-09-03
 #### Added

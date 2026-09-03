@@ -897,7 +897,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func sparklineImage(_ values: [Double], markers: [String?], metric: Metric, value: String) -> NSImage {
         let textReserved: CGFloat = 58
         let labelReserved: CGFloat = 18
-        let gaugeReserved: CGFloat = settings.showGauges ? 56 : 0
+        let gaugeReserved: CGFloat = settings.showGauges ? 74 : 0
         let totalWidth = textReserved + labelReserved + settings.sparklineWidth + gaugeReserved
         let size = NSSize(width: totalWidth, height: 18)
         let image = NSImage(size: size)
@@ -969,10 +969,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         if settings.showGauges {
             let gaugeMetrics: [Metric] = [.gpu, .cpu, .ram, .network]
-            let gaugeW: CGFloat = 10
-            let gaugeGap: CGFloat = 4
+            let gaugeW: CGFloat = 16
+            let gaugeGap: CGFloat = 2
             let gaugeStartX = size.width - gaugeReserved + 2
-            let gaugeFont = NSFont.systemFont(ofSize: 5, weight: .bold)
+            let gaugeFont = NSFont.monospacedDigitSystemFont(ofSize: 6, weight: .heavy)
             let gaugeAttrs: [NSAttributedString.Key: Any] = [.font: gaugeFont, .foregroundColor: NSColor.secondaryLabelColor]
             let activeGaugeAttrs: [NSAttributedString.Key: Any] = [.font: gaugeFont, .foregroundColor: NSColor.labelColor]
             var newGaugeRects: [Metric: NSRect] = [:]
@@ -999,7 +999,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     NSBezierPath(roundedRect: bgRect, xRadius: 2, yRadius: 2).stroke()
                 }
 
-                let tag = m == .network ? "N" : String(m.rawValue.prefix(1))
+                let tag = m == .network ? "NET" : m.rawValue
                 let tagSize = (tag as NSString).size(withAttributes: isActive ? activeGaugeAttrs : gaugeAttrs)
                 (tag as NSString).draw(at: NSPoint(x: gx + (gaugeW - tagSize.width) / 2, y: size.height - tagSize.height - 1), withAttributes: isActive ? activeGaugeAttrs : gaugeAttrs)
             }

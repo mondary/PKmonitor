@@ -6,7 +6,7 @@ Historique des évolutions de PKMonitor.
 
 ## TODO — Roadmap
 
-Statut : `2026.09.11` (prototype fonctionnel)
+Statut : `2026.09.12` (prototype fonctionnel)
 
 ### Prochaines étapes
 - [x] Mesures CPU, RAM et réseau locales
@@ -18,6 +18,13 @@ Statut : `2026.09.11` (prototype fonctionnel)
 ---
 
 ## Releases
+
+### [2026.09.12] - 2026-09-03
+#### Added
+- Valeurs absolues pour CPU (cores), RAM (Go utilisés) et réseau (débit)
+- Option pour afficher/masquer les valeurs absolues
+- Couleurs sur le détail réseau (bleu download, orange upload)
+- Détail réseau affiché verticalement
 
 ### [2026.09.11] - 2026-09-03
 #### Changed

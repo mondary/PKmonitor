@@ -53,6 +53,7 @@ final class AppSettings: ObservableObject {
     @Published var labelPosition: ValuePosition { didSet { defaults.set(labelPosition.rawValue, forKey: "labelPosition") } }
     @Published var showLabel: Bool { didSet { defaults.set(showLabel, forKey: "showLabel") } }
     @Published var showIconBorder: Bool { didSet { defaults.set(showIconBorder, forKey: "showIconBorder") } }
+    @Published var showAbsoluteValues: Bool { didSet { defaults.set(showAbsoluteValues, forKey: "showAbsoluteValues") } }
     @Published var warningThreshold: Double { didSet { defaults.set(warningThreshold, forKey: "warningThreshold") } }
     @Published var criticalThreshold: Double { didSet { defaults.set(criticalThreshold, forKey: "criticalThreshold") } }
     @Published private(set) var launchAtLogin = SMAppService.mainApp.status == .enabled
@@ -75,6 +76,7 @@ final class AppSettings: ObservableObject {
         labelPosition = ValuePosition(rawValue: defaults.string(forKey: "labelPosition") ?? "") ?? .right
         showLabel = defaults.object(forKey: "showLabel") as? Bool ?? true
         showIconBorder = defaults.object(forKey: "showIconBorder") as? Bool ?? true
+        showAbsoluteValues = defaults.object(forKey: "showAbsoluteValues") as? Bool ?? true
         warningThreshold = defaults.object(forKey: "warningThreshold") as? Double ?? 80
         criticalThreshold = defaults.object(forKey: "criticalThreshold") as? Double ?? 95
     }
@@ -101,6 +103,7 @@ final class AppSettings: ObservableObject {
         labelPosition = .right
         showLabel = true
         showIconBorder = true
+        showAbsoluteValues = true
         warningThreshold = 80
         criticalThreshold = 95
     }
@@ -128,6 +131,9 @@ struct Reading {
     var network = 0.0
     var download = 0.0
     var upload = 0.0
+    var totalRAM: Double = Double(ProcessInfo.processInfo.physicalMemory)
+    var usedRAM: Double = 0
+    var cpuCores: Int = ProcessInfo.processInfo.activeProcessorCount
     var apps: [AppUsage] = []
 
     func value(for metric: Metric) -> Double {
@@ -149,7 +155,8 @@ final class SystemSampler {
 
     func sample(previousApps: [AppUsage]) -> Reading {
         let net = networkRate()
-        return Reading(cpu: cpuUsage(), ram: memoryUsage(), gpu: gpuUsage(), network: net.total, download: net.download, upload: net.upload, apps: previousApps)
+        let mem = memoryUsage()
+        return Reading(cpu: cpuUsage(), ram: mem.percent, gpu: gpuUsage(), network: net.total, download: net.download, upload: net.upload, usedRAM: Double(mem.usedBytes), apps: previousApps)
     }
 
     private func cpuUsage() -> Double {
@@ -171,7 +178,7 @@ final class SystemSampler {
         return 100 * Double(totalDelta - (idle - previousCPU.idle)) / Double(totalDelta)
     }
 
-    private func memoryUsage() -> Double {
+    private func memoryUsage() -> (percent: Double, usedBytes: UInt64) {
         var stats = vm_statistics64()
         var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64_data_t>.size / MemoryLayout<integer_t>.size)
         let result = withUnsafeMutablePointer(to: &stats) {
@@ -179,10 +186,11 @@ final class SystemSampler {
                 host_statistics64(mach_host_self(), HOST_VM_INFO64, $0, &count)
             }
         }
-        guard result == KERN_SUCCESS else { return 0 }
+        guard result == KERN_SUCCESS else { return (0, 0) }
         let usedPages = UInt64(stats.active_count) + UInt64(stats.wire_count) + UInt64(stats.compressor_page_count)
         let usedBytes = usedPages * UInt64(vm_kernel_page_size)
-        return min(100, 100 * Double(usedBytes) / Double(ProcessInfo.processInfo.physicalMemory))
+        let percent = min(100, 100 * Double(usedBytes) / Double(ProcessInfo.processInfo.physicalMemory))
+        return (percent, usedBytes)
     }
 
     private func networkRate() -> (total: Double, download: Double, upload: Double) {
@@ -285,9 +293,18 @@ final class MonitorModel: ObservableObject {
 
     func format(_ metric: Metric? = nil) -> String {
         let metric = metric ?? displayedMetric
+        let pct = "\(Int(reading.value(for: metric).rounded()))%"
+        guard settings.showAbsoluteValues else { return pct }
         switch metric {
-        case .network: return "↓\(Self.formatBytes(reading.download))/s ↑\(Self.formatBytes(reading.upload))/s"
-        default: return "\(Int(reading.value(for: metric).rounded()))%"
+        case .cpu:
+            let cores = Double(reading.cpuCores) * reading.cpu / 100
+            return "\(pct) (\(String(format: "%.1f", cores)) cores)"
+        case .ram:
+            return "\(pct) (\(Self.formatBytes(reading.usedRAM)))"
+        case .network:
+            return "↓\(Self.formatBytes(reading.download))/s ↑\(Self.formatBytes(reading.upload))/s"
+        default:
+            return pct
         }
     }
 
@@ -428,7 +445,30 @@ struct DetailView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(model.displayedMetric.rawValue).font(.headline)
                 Spacer()
-                Text(model.format()).font(.title2.monospacedDigit().weight(.semibold))
+                if model.displayedMetric == .network {
+                    VStack(alignment: .trailing, spacing: 2) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.down")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(.blue)
+                            Text(MonitorModel.formatBytes(model.reading.download) + "/s")
+                                .font(.system(size: 14, weight: .semibold)).monospacedDigit()
+                                .foregroundStyle(.blue)
+                        }
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.up")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(.orange)
+                            Text(MonitorModel.formatBytes(model.reading.upload) + "/s")
+                                .font(.system(size: 14, weight: .semibold)).monospacedDigit()
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                } else {
+                    Text(model.format())
+                        .font(.title2.monospacedDigit().weight(.semibold))
+                        .foregroundColor(Color(nsColor: settings.colorForValue(model.reading.value(for: model.displayedMetric))))
+                }
             }
             Divider()
             if model.displayedApps.isEmpty {
@@ -466,7 +506,7 @@ struct DetailView: View {
             }
         }
         .padding(16)
-        .frame(width: 320)
+        .frame(width: 360)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -551,6 +591,7 @@ struct GeneralSettingsView: View {
                 }
                 Stepper("Application icons: \(settings.iconCount)", value: $settings.iconCount, in: 1...5)
                 Toggle("Show details on hover", isOn: $settings.showOnHover)
+                Toggle("Show absolute values", isOn: $settings.showAbsoluteValues)
             }
 
             Section("Color Thresholds") {

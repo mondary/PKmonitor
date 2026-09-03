@@ -321,11 +321,11 @@ final class MonitorModel: ObservableObject {
         switch displayedMetric {
         case .ram:
             let pct = String(format: "%.0f%%", app.memory / reading.totalRAM * 100)
-            return settings.showAbsoluteValues ? "\(pct) (\(Self.formatBytes(app.memory)))" : pct
+            return settings.showAbsoluteValues ? "\(Self.formatBytes(app.memory))  \(pct)" : pct
         case .cpu:
             let pct = String(format: "%.1f%%", app.cpu)
             let cores = app.cpu / 100 * Double(reading.cpuCores)
-            return settings.showAbsoluteValues ? "\(pct) (\(String(format: "%.1f", cores))c)" : pct
+            return settings.showAbsoluteValues ? "\(String(format: "%.1f", cores))c  \(pct)" : pct
         default:
             return String(format: "%.1f%%", app.cpu)
         }
@@ -430,9 +430,10 @@ final class MonitorModel: ObservableObject {
     }
 
     nonisolated static func formatBytes(_ bytes: Double) -> String {
-        if bytes >= 1_000_000 { return String(format: "%.1f MB", bytes / 1_000_000) }
-        if bytes >= 1_000 { return String(format: "%.0f KB", bytes / 1_000) }
-        return "\(Int(bytes)) B"
+        if bytes >= 1_000_000_000 { return String(format: "%.1f Go", bytes / 1_000_000_000) }
+        if bytes >= 1_000_000 { return String(format: "%.0f Mo", bytes / 1_000_000) }
+        if bytes >= 1_000 { return String(format: "%.0f Ko", bytes / 1_000) }
+        return "\(Int(bytes)) o"
     }
 
     nonisolated static func scaledHistory(_ values: [Double]) -> [Double] {

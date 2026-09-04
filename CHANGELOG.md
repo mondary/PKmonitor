@@ -6,7 +6,7 @@ Historique des évolutions de PKMonitor.
 
 ## TODO — Roadmap
 
-Statut : `2026.09.13` (prototype fonctionnel)
+Statut : `2026.09.14` (prototype fonctionnel)
 
 ### Prochaines étapes
 - [x] Mesures CPU, RAM et réseau locales
@@ -14,10 +14,20 @@ Statut : `2026.09.13` (prototype fonctionnel)
 - [x] Popover de détail et menu contextuel
 - [ ] Mesure GPU native fiable
 - [ ] Alertes réseau et distribution signée
+- [ ] Déport d'icônes tierces dans la seconde barre (type Bartender/Ice : permission Accessibilité + APIs privées, restauration des positions à la sortie)
 
 ---
 
 ## Releases
+
+### [2026.09.14] - 2026-09-04
+#### Added
+- Emplacement de l'icône au choix : menu barre ou « Second Bar », une pilule dynamique dessinée juste sous la barre système, à droite (style Bartender, limitée à PKMonitor)
+- Seconde barre personnalisable : 4 modes de fond (None, Tint, Hover = blur au survol, Blur permanent), couleur de fond libre (ColorPicker avec opacité), marges réglables sur les 4 côtés (la taille de la pilule s'y adapte), contenu clair/sombre/auto
+#### Fixed
+- Lisibilité de la seconde barre : le contenu suivait une apparence fixe (texte noir sur fond sombre) ; il suit désormais le système ou le réglage dédié
+- `appBundlePath` renvoyait un slash final, cassant la détection du PID principal des applications
+- Self-test remis en ordre (unités françaises, comparaison flottante tolérante)
 
 ### [2026.09.13] - 2026-09-03
 #### Changed

@@ -17,6 +17,7 @@ arrêt forcé, et réglages complets.
 - Seuils de couleur configurables (warning/critical)
 - Libellé vertical et jauges positionnables (gauche/droite)
 - Lancement à la connexion
+- Emplacement de l'icône : menu barre ou seconde barre personnalisable (pilule à droite : fond None/Tint/Hover/Blur, couleur libre, marges 4 côtés, contenu clair/sombre/auto)
 - Thème clair/sombre/système
 
 ## Utilisation
@@ -32,7 +33,7 @@ arrêt forcé, et réglages complets.
 
 La fenêtre Réglages (clic droit > Settings…) propose :
 
-- **General** : fréquence, historique, top d'icônes, survol, lancement auto, seuils de couleur
+- **General** : fréquence, historique, top d'icônes, survol, emplacement de l'icône, lancement auto, seuils de couleur
 - **Appearance** : largeur/épaisseur de courbe, taille d'icônes, bordure, position du texte et des jauges, thème
 - **About** : version et informations
 

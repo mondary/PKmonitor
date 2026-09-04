@@ -16,6 +16,7 @@ GPU/CPU/RAM/NET gauges, responsible app details with force kill, and full settin
 - Configurable color thresholds (warning/critical)
 - Vertical label and gauges positionable (left/right)
 - Launch at login
+- Icon location: menu bar or customizable second bar (right-aligned pill: None/Tint/Hover/Blur background, free color, 4-side padding, light/dark/auto content)
 - Light/dark/system theme
 
 ## Usage
@@ -31,7 +32,7 @@ GPU/CPU/RAM/NET gauges, responsible app details with force kill, and full settin
 
 The Settings window (right-click > Settings…) provides:
 
-- **General**: refresh rate, history, icon count, hover, launch at login, color thresholds
+- **General**: refresh rate, history, icon count, hover, icon location, launch at login, color thresholds
 - **Appearance**: sparkline width/thickness, icon size, border, text and gauge position, theme
 - **About**: version and info
 

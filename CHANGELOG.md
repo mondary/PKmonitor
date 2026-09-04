@@ -6,7 +6,7 @@ Historique des évolutions de PKMonitor.
 
 ## TODO — Roadmap
 
-Statut : `2026.09.14` (prototype fonctionnel)
+Statut : `2026.09.15` (prototype fonctionnel)
 
 ### Prochaines étapes
 - [x] Mesures CPU, RAM et réseau locales
@@ -19,6 +19,21 @@ Statut : `2026.09.14` (prototype fonctionnel)
 ---
 
 ## Releases
+
+### [2026.09.15] - 2026-09-04
+#### Added
+- Noms d'applications cliquables dans le panneau de détail (affiche toutes les fenêtres de l'app)
+- Numéro de version affiché discrètement en bas du panneau de détail
+- Largeur des jauges réglable (10–28 pt) dans les réglages
+- Jauge réseau centre-zéro : download (bleu) vers le bas, upload (orange) vers le haut
+- Lettres identifiant chaque jauge en bas (G/C/R/N)
+#### Changed
+- Toutes les jauges sont maintenant toujours colorées selon leurs seuils, pas seulement la jauge active
+- Clic gauche sur l'icône force l'affichage du détail sans épinglage (le panneau se ferme automatiquement au survol sortant)
+#### Fixed
+- Calcul RAM corrigé : utilise désormais la formule macOS standard (app memory + wired + compressed) au lieu de active + wired + compressed
+- `appBundlePath` renvoyait un slash final, cassant la détection du PID principal des applications
+- Self-test remis en ordre (unités françaises, comparaison flottante tolérante)
 
 ### [2026.09.14] - 2026-09-04
 #### Added

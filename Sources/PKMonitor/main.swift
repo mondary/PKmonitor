@@ -68,6 +68,7 @@ final class AppSettings: ObservableObject {
     @Published var gaugePosition: ValuePosition { didSet { defaults.set(gaugePosition.rawValue, forKey: "gaugePosition") } }
     @Published var showGaugeLabels: Bool { didSet { defaults.set(showGaugeLabels, forKey: "showGaugeLabels") } }
     @Published var gaugeOrder: String { didSet { defaults.set(gaugeOrder, forKey: "gaugeOrder") } }
+    @Published var gaugeWidth: Double { didSet { defaults.set(gaugeWidth, forKey: "gaugeWidth") } }
 
     var gaugeMetrics: [Metric] {
         let parsed = gaugeOrder.split(separator: ",").compactMap { Metric(rawValue: String($0)) }
@@ -105,6 +106,7 @@ final class AppSettings: ObservableObject {
         gaugePosition = ValuePosition(rawValue: defaults.string(forKey: "gaugePosition") ?? "") ?? .right
         showGaugeLabels = defaults.object(forKey: "showGaugeLabels") as? Bool ?? true
         gaugeOrder = defaults.string(forKey: "gaugeOrder") ?? "GPU,CPU,RAM,Network"
+        gaugeWidth = defaults.object(forKey: "gaugeWidth") as? Double ?? 16
         labelPosition = ValuePosition(rawValue: defaults.string(forKey: "labelPosition") ?? "") ?? .right
         showLabel = defaults.object(forKey: "showLabel") as? Bool ?? true
         showIconBorder = defaults.object(forKey: "showIconBorder") as? Bool ?? true
@@ -141,6 +143,7 @@ final class AppSettings: ObservableObject {
         gaugePosition = .right
         showGaugeLabels = true
         gaugeOrder = "GPU,CPU,RAM,Network"
+        gaugeWidth = 16
         labelPosition = .right
         showLabel = true
         showIconBorder = true
@@ -236,7 +239,8 @@ final class SystemSampler {
             }
         }
         guard result == KERN_SUCCESS else { return (0, 0) }
-        let usedPages = UInt64(stats.active_count) + UInt64(stats.wire_count) + UInt64(stats.compressor_page_count)
+        let appPages = UInt64(max(0, Int64(stats.internal_page_count) - Int64(stats.purgeable_count)))
+        let usedPages = appPages + UInt64(stats.wire_count) + UInt64(stats.compressor_page_count)
         let usedBytes = usedPages * UInt64(vm_kernel_page_size)
         let percent = min(100, 100 * Double(usedBytes) / Double(ProcessInfo.processInfo.physicalMemory))
         return (percent, usedBytes)
@@ -506,6 +510,8 @@ struct DetailView: View {
     let openActivityMonitor: (AppUsage) -> Void
     let terminateProcess: (AppUsage) -> Void
     let forceKillProcess: (AppUsage) -> Void
+    let activateApp: (AppUsage) -> Void
+    @State private var hoveredApp: String?
 
     private var absoluteDetail: String {
         switch model.displayedMetric {
@@ -569,7 +575,16 @@ struct DetailView: View {
                         HStack(spacing: 9) {
                             Image(nsImage: NSWorkspace.shared.icon(forFile: app.path))
                                 .resizable().frame(width: 24, height: 24)
-                            Text(app.name).font(.system(size: 15)).lineLimit(1)
+                            Button { activateApp(app) } label: {
+                                Text(app.name)
+                                    .font(.system(size: 15))
+                                    .lineLimit(1)
+                                    .underline(hoveredApp == app.id)
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(hoveredApp == app.id ? Color.accentColor : Color.primary)
+                            .help("Show all \(app.name) windows")
+                            .onHover { inside in hoveredApp = inside ? app.id : nil }
                             Spacer()
                             Text(model.format(app))
                                 .font(.system(size: 15)).foregroundStyle(.secondary).monospacedDigit()
@@ -593,6 +608,12 @@ struct DetailView: View {
                         }
                     }
                 }
+            }
+            HStack {
+                Spacer()
+                Text("PKMonitor v\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev")")
+                    .font(.system(size: 9, design: .monospaced))
+                    .foregroundStyle(.tertiary)
             }
         }
         .padding(16)
@@ -970,6 +991,13 @@ struct GaugesSettingsView: View {
                             .labelsHidden().frame(width: 180)
                     }
                     Toggle("Show labels on gauges", isOn: $settings.showGaugeLabels)
+                    SettingLine("Gauge width") {
+                        HStack {
+                            Slider(value: $settings.gaugeWidth, in: 10...28, step: 2)
+                            Text("\(Int(settings.gaugeWidth)) pt").monospacedDigit().foregroundStyle(.secondary).frame(width: 42)
+                        }
+                        .frame(width: 220)
+                    }
                 }
                 SettingsCard("Gauge Order", icon: "arrow.up.arrow.down", subtitle: "Drag to reorder the four gauges from left to right.") {
                     GaugeOrderList(gaugeOrder: Binding(
@@ -1296,7 +1324,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             settings: settings,
             openActivityMonitor: { [weak self] in self?.openActivityMonitor(for: $0) },
             terminateProcess: { [weak self] in self?.confirmTermination(of: $0) },
-            forceKillProcess: { [weak self] in self?.confirmForceKill(of: $0) }
+            forceKillProcess: { [weak self] in self?.confirmForceKill(of: $0) },
+            activateApp: { [weak self] in self?.activateApp($0) }
         ))
         hosting.view.wantsLayer = true
         hosting.view.layer?.cornerRadius = 16
@@ -1577,6 +1606,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
+    private func activateApp(_ app: AppUsage) {
+        hideDetailPanel()
+        if let bundle = Bundle(path: app.path), let id = bundle.bundleIdentifier {
+            NSWorkspace.shared.open(URL(string: "app://\(id)")!)
+        } else {
+            NSWorkspace.shared.open(URL(fileURLWithPath: app.path))
+        }
+        let name = Bundle(path: app.path)?.object(forInfoDictionaryKey: "CFBundleName") as? String
+            ?? URL(fileURLWithPath: app.path).deletingPathExtension().lastPathComponent
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            let source = """
+            tell application "System Events"
+                set frontmost of process "\(name)" to true
+            end tell
+            """
+            var error: NSDictionary?
+            NSAppleScript(source: source)?.executeAndReturnError(&error)
+        }
+    }
+
     private func confirmTermination(of app: AppUsage) {
         let alert = NSAlert()
         alert.alertStyle = .warning
@@ -1668,7 +1717,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func sparklineImage(_ values: [Double], markers: [String?], metric: Metric, value: String) -> NSImage {
         let textW: CGFloat = 58
         let labelW: CGFloat = settings.showLabel ? 30 : 0
-        let gaugeW: CGFloat = settings.showGauges ? 74 : 0
+        let gaugeW: CGFloat = settings.showGauges ? CGFloat(settings.gaugeMetrics.count) * (CGFloat(settings.gaugeWidth) + 2) + 2 : 0
         let graphW = settings.sparklineWidth
         let totalWidth = textW + labelW + graphW + gaugeW
         let size = NSSize(width: totalWidth, height: 18)
@@ -1760,7 +1809,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         if settings.showGauges {
             let gaugeMetrics = settings.gaugeMetrics
-            let gW: CGFloat = 16
+            let gW = CGFloat(settings.gaugeWidth)
             let gGap: CGFloat = 2
             let gFont = NSFont.monospacedDigitSystemFont(ofSize: 6, weight: .heavy)
             let gAttrs: [NSAttributedString.Key: Any] = [.font: gFont, .foregroundColor: NSColor.secondaryLabelColor]
@@ -1788,18 +1837,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     let midY = bg.minY + halfH
 
                     let dlH = halfH * dlFill
-                    let dlR = NSRect(x: bg.minX, y: midY, width: bg.width, height: dlH)
+                    let dlR = NSRect(x: bg.minX, y: midY - dlH, width: bg.width, height: dlH)
                     let ulH = halfH * ulFill
-                    let ulR = NSRect(x: bg.minX, y: bg.minY, width: bg.width, height: ulH)
+                    let ulR = NSRect(x: bg.minX, y: midY, width: bg.width, height: ulH)
 
-                    let netColor = settings.colorForValue(model.reading.network / 100_000)
-                    netColor.setFill()
+                    NSColor.systemBlue.setFill()
                     NSBezierPath(roundedRect: dlR, xRadius: 2, yRadius: 2).fill()
-                    NSColor.systemTeal.setFill()
+                    NSColor.systemOrange.setFill()
                     NSBezierPath(roundedRect: ulR, xRadius: 2, yRadius: 2).fill()
 
                     if isActive {
-                        netColor.setStroke()
+                        NSColor.labelColor.setStroke()
                         NSBezierPath(roundedRect: bg, xRadius: 2, yRadius: 2).stroke()
                     }
                 } else {

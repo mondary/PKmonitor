@@ -67,6 +67,12 @@ final class AppSettings: ObservableObject {
     @Published var showGauges: Bool { didSet { defaults.set(showGauges, forKey: "showGauges") } }
     @Published var gaugePosition: ValuePosition { didSet { defaults.set(gaugePosition.rawValue, forKey: "gaugePosition") } }
     @Published var showGaugeLabels: Bool { didSet { defaults.set(showGaugeLabels, forKey: "showGaugeLabels") } }
+    @Published var gaugeOrder: String { didSet { defaults.set(gaugeOrder, forKey: "gaugeOrder") } }
+
+    var gaugeMetrics: [Metric] {
+        let parsed = gaugeOrder.split(separator: ",").compactMap { Metric(rawValue: String($0)) }
+        return parsed.count == 4 ? parsed : [.gpu, .cpu, .ram, .network]
+    }
     @Published var labelPosition: ValuePosition { didSet { defaults.set(labelPosition.rawValue, forKey: "labelPosition") } }
     @Published var showLabel: Bool { didSet { defaults.set(showLabel, forKey: "showLabel") } }
     @Published var showIconBorder: Bool { didSet { defaults.set(showIconBorder, forKey: "showIconBorder") } }
@@ -98,6 +104,7 @@ final class AppSettings: ObservableObject {
         showGauges = defaults.object(forKey: "showGauges") as? Bool ?? true
         gaugePosition = ValuePosition(rawValue: defaults.string(forKey: "gaugePosition") ?? "") ?? .right
         showGaugeLabels = defaults.object(forKey: "showGaugeLabels") as? Bool ?? true
+        gaugeOrder = defaults.string(forKey: "gaugeOrder") ?? "GPU,CPU,RAM,Network"
         labelPosition = ValuePosition(rawValue: defaults.string(forKey: "labelPosition") ?? "") ?? .right
         showLabel = defaults.object(forKey: "showLabel") as? Bool ?? true
         showIconBorder = defaults.object(forKey: "showIconBorder") as? Bool ?? true
@@ -133,6 +140,7 @@ final class AppSettings: ObservableObject {
         showGauges = true
         gaugePosition = .right
         showGaugeLabels = true
+        gaugeOrder = "GPU,CPU,RAM,Network"
         labelPosition = .right
         showLabel = true
         showIconBorder = true
@@ -963,9 +971,15 @@ struct GaugesSettingsView: View {
                     }
                     Toggle("Show labels on gauges", isOn: $settings.showGaugeLabels)
                 }
+                SettingsCard("Gauge Order", icon: "arrow.up.arrow.down", subtitle: "Drag to reorder the four gauges from left to right.") {
+                    GaugeOrderList(gaugeOrder: Binding(
+                        get: { settings.gaugeMetrics },
+                        set: { settings.gaugeOrder = $0.map(\.rawValue).joined(separator: ",") }
+                    ))
+                }
                 SettingsCard("Preview", icon: "eye", subtitle: "The active metric is highlighted in the live readout.") {
                     HStack(spacing: 18) {
-                        ForEach([Metric.gpu, .cpu, .ram, .network], id: \.self) { metric in
+                        ForEach(settings.gaugeMetrics, id: \.self) { metric in
                             VStack(spacing: 5) {
                                 Text(metric == .network ? "NET" : metric.rawValue).font(.system(size: 9, weight: .bold))
                                 RoundedRectangle(cornerRadius: 4).fill(Color.accentColor.opacity(0.28)).frame(width: 24, height: 56)
@@ -978,6 +992,44 @@ struct GaugesSettingsView: View {
                 }
             }
             .padding(28)
+        }
+    }
+}
+
+struct GaugeOrderList: View {
+    @Binding var gaugeOrder: [Metric]
+
+    var body: some View {
+        List {
+            ForEach(gaugeOrder, id: \.self) { metric in
+                HStack(spacing: 10) {
+                    Image(systemName: "line.3.horizontal")
+                        .foregroundStyle(.tertiary)
+                    Text(metric == .network ? "NET" : metric.rawValue)
+                        .font(.system(size: 13, weight: .medium))
+                    Spacer()
+                    Text(gaugeLetter(metric))
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 2)
+            }
+            .onMove { from, to in
+                gaugeOrder.move(fromOffsets: from, toOffset: to)
+            }
+        }
+        .listStyle(.plain)
+        .frame(height: 130)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func gaugeLetter(_ metric: Metric) -> String {
+        switch metric {
+        case .gpu: "G"
+        case .cpu: "C"
+        case .ram: "R"
+        case .network: "N"
+        default: ""
         }
     }
 }
@@ -1132,7 +1184,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var settingsWindow: NSWindow?
     private var hoverTimer: Timer?
     private var lastPointerInside = Date.distantPast
-    private var panelPinned = false
     private var hoverSuppressed = false
     private var underBarPanel: NSPanel?
     private var underBarIconView: UnderBarIconView?
@@ -1174,7 +1225,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func statusClicked() {
         if NSApp.currentEvent?.type == .rightMouseUp {
-            panelPinned = false
             hoverSuppressed = true
             hideDetailPanel()
             showStatusMenu()
@@ -1185,7 +1235,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func underBarClicked(right: Bool) {
         if right {
-            panelPinned = false
             hoverSuppressed = true
             hideDetailPanel()
             showStatusMenu()
@@ -1211,8 +1260,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             refreshStatusItem()
             return
         }
-        panelPinned.toggle()
-        panelPinned ? showDetailPanel() : hideDetailPanel()
+        showDetailPanel()
     }
 
     private func statusBarClickPoint() -> NSPoint? {
@@ -1261,7 +1309,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         updateUnderBarTick()
         updateUnderBarStyle()
         guard settings.showOnHover else {
-            if !panelPinned, detailPanel?.isVisible == true { hideDetailPanel() }
+            if detailPanel?.isVisible == true { hideDetailPanel() }
             return
         }
         let location = NSEvent.mouseLocation
@@ -1272,7 +1320,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if overButton || overPanel {
             lastPointerInside = Date()
             if overButton, detailPanel?.isVisible != true { showDetailPanel() }
-        } else if !panelPinned, detailPanel?.isVisible == true, Date().timeIntervalSince(lastPointerInside) > 0.3 {
+        } else if detailPanel?.isVisible == true, Date().timeIntervalSince(lastPointerInside) > 0.3 {
             hideDetailPanel()
         }
     }
@@ -1300,7 +1348,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func applyIconLocation() {
-        panelPinned = false
         hideDetailPanel()
         let under = settings.iconLocation == .underBar
         statusItem.isVisible = !under
@@ -1507,7 +1554,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func openActivityMonitor(pid: Int32) {
-        panelPinned = false
         hideDetailPanel()
         NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Activity Monitor.app"))
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
@@ -1713,12 +1759,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         if settings.showGauges {
-            let gaugeMetrics: [Metric] = [.gpu, .cpu, .ram, .network]
+            let gaugeMetrics = settings.gaugeMetrics
             let gW: CGFloat = 16
             let gGap: CGFloat = 2
             let gFont = NSFont.monospacedDigitSystemFont(ofSize: 6, weight: .heavy)
             let gAttrs: [NSAttributedString.Key: Any] = [.font: gFont, .foregroundColor: NSColor.secondaryLabelColor]
             let gActiveAttrs: [NSAttributedString.Key: Any] = [.font: gFont, .foregroundColor: NSColor.labelColor]
+            let tagFont = NSFont.systemFont(ofSize: 5, weight: .heavy)
+            let tagAttrs: [NSAttributedString.Key: Any] = [.font: tagFont, .foregroundColor: NSColor.tertiaryLabelColor]
             var newGaugeRects: [Metric: NSRect] = [:]
 
             for (i, m) in gaugeMetrics.enumerated() {
@@ -1745,9 +1793,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     let ulR = NSRect(x: bg.minX, y: bg.minY, width: bg.width, height: ulH)
 
                     let netColor = settings.colorForValue(model.reading.network / 100_000)
-                    (isActive ? netColor : NSColor.tertiaryLabelColor).setFill()
+                    netColor.setFill()
                     NSBezierPath(roundedRect: dlR, xRadius: 2, yRadius: 2).fill()
-                    (isActive ? NSColor.systemTeal : NSColor.tertiaryLabelColor).setFill()
+                    NSColor.systemTeal.setFill()
                     NSBezierPath(roundedRect: ulR, xRadius: 2, yRadius: 2).fill()
 
                     if isActive {
@@ -1759,7 +1807,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     let fillH = bg.height * fill
                     let fillR = NSRect(x: bg.minX, y: bg.minY, width: bg.width, height: fillH)
                     let gColor = settings.colorForValue(model.reading.value(for: m))
-                    (isActive ? gColor : NSColor.tertiaryLabelColor).setFill()
+                    gColor.setFill()
                     NSBezierPath(roundedRect: fillR, xRadius: 2, yRadius: 2).fill()
 
                     if isActive {
@@ -1773,6 +1821,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     let tagSize = (tag as NSString).size(withAttributes: isActive ? gActiveAttrs : gAttrs)
                     (tag as NSString).draw(at: NSPoint(x: gx + (gW - tagSize.width) / 2, y: size.height - tagSize.height - 1), withAttributes: isActive ? gActiveAttrs : gAttrs)
                 }
+
+                let letter: String = {
+                    switch m {
+                    case .gpu: return "G"
+                    case .cpu: return "C"
+                    case .ram: return "R"
+                    case .network: return "N"
+                    default: return ""
+                    }
+                }()
+                let letterSize = (letter as NSString).size(withAttributes: tagAttrs)
+                (letter as NSString).draw(at: NSPoint(x: gx + (gW - letterSize.width) / 2, y: 2), withAttributes: tagAttrs)
             }
             gaugeRects = newGaugeRects
         } else {

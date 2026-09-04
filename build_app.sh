@@ -9,6 +9,9 @@ swift build --package-path "$ROOT" -c release --disable-index-store
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
 cp "$ROOT/.build/release/PKMonitor" "$APP/Contents/MacOS/PKMonitor"
+mkdir -p "$APP/Contents/Resources/ProjectIcons"
+cp "$ROOT/icon.png" "$APP/Contents/Resources/icon.png"
+cp "$ROOT/ProjectIcons/"*.png "$APP/Contents/Resources/ProjectIcons/"
 
 cat > "$APP/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>

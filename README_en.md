@@ -1,49 +1,57 @@
 # PKMonitor
 
-[FR](README.md) · [EN](README_en.md)
+![Project icon](icon.png)
 
-Native macOS system monitor in the menu bar. Real-time sparkline, clickable
-GPU/CPU/RAM/NET gauges, responsible app details with force kill, and full settings.
+[🇫🇷 FR](README.md) · [🇬🇧 EN](README_en.md)
 
-## Features
+A native, focused macOS system monitor in the menu bar.
 
-- Real-time sparkline (200 ms default, configurable)
-- CPU, GPU, RAM and network measurements (separate download/upload)
-- Four clickable gauges to switch displayed metric
-- Dominant app icons on the curve
-- Detail on hover with terminate (SIGTERM) or force kill (SIGKILL)
-- Activity Monitor filtered by PID
-- Configurable color thresholds (warning/critical)
-- Vertical label and gauges positionable (left/right)
-- Launch at login
-- Icon location: menu bar or customizable second bar (right-aligned pill: None/Tint/Hover/Blur background, free color, 4-side padding, light/dark/auto content)
-- Light/dark/system theme
+Version `2026.09.17` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
-## Usage
+## ✅ Features
 
-- Hover: open details below the menu bar
-- Left-click: pin/unpin the panel
-- Right-click: context menu with metrics and settings
-- Click on a gauge: switch to that metric
-- ✕ button: quit the process (SIGTERM)
-- 💀 button: force kill (SIGKILL)
+- Real-time sparkline with dominant application icons
+- CPU, GPU, RAM, network and disk space
+- Two-line disk module: total capacity in red, free space in blue
+- Individually enabled, reorderable and configurable segments
+- Display toggles for Sparkline, Gauges and Panel
+- Hover detail panel with process termination controls
+- Categorized Settings navigation, search and project library
+- Light/dark/system theme and launch at login
 
-## Settings
+## 🧠 Usage
 
-The Settings window (right-click > Settings…) provides:
+- Hover the menu bar item to open details
+- Click a segment to change the active metric
+- Right-click to open the menu and Settings
 
-- **General**: refresh rate, history, icon count, hover, icon location, launch at login, color thresholds
-- **Appearance**: sparkline width/thickness, icon size, border, text and gauge position, theme
-- **About**: version and info
+## ⚙️ Settings
 
-## Build & Package
+The Settings window provides a categorized sidebar, search, per-module display toggles and detailed controls for the display, gauges, panel and sparkline. It also includes Help & Support and Project Library sections.
+
+## 🧾 Commands
 
 ```sh
-chmod +x run.sh
 ./run.sh
+swift build
+swift run PKMonitor --self-test
 ```
 
-The script builds `dist/PKMonitor.app` and launches it. Requires macOS 13+ and
-Xcode command-line tools.
+## 📦 Build & Package
 
-## See [CHANGELOG](CHANGELOG.md) for full history.
+`run.sh` builds `dist/PKMonitor.app` in production mode using the Xcode command-line tools.
+
+## 🧪 Installation
+
+Requires macOS 13+ and the Xcode command-line tools. Run `./run.sh`, then keep `dist/PKMonitor.app` or copy it to Applications.
+
+## 📋 History
+
+See the [CHANGELOG](CHANGELOG.md) for full history.
+
+## 🔗 Links
+
+- [GitHub](https://github.com/mondary/PKmonitor)
+- [Project library](https://github.com/mondary?tab=repositories)
+- [Ko-fi](https://ko-fi.com/pouark)
+- [Store copy](store/description-store.md)

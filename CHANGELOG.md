@@ -6,7 +6,7 @@ Historique des évolutions de PKMonitor.
 
 ## TODO — Roadmap
 
-Statut : `2026.09.15` (prototype fonctionnel)
+Statut : `2026.09.17` (prototype fonctionnel)
 
 ### Prochaines étapes
 - [x] Mesures CPU, RAM et réseau locales
@@ -19,6 +19,27 @@ Statut : `2026.09.15` (prototype fonctionnel)
 ---
 
 ## Releases
+
+### [2026.09.17] - 2026-09-04
+#### Added
+- Bibliothèque de projets avec les icônes officielles récupérées depuis les dépôts GitHub
+- Descriptions et liens directs pour les applications macOS et extensions Chrome récentes
+- Icône officielle `icon.png` utilisée dans la sidebar Settings et la page About
+
+#### Changed
+- Assets des projets intégrés au bundle de production
+
+#### Fixed
+- Suppression des pictogrammes SF Symbols génériques dans la bibliothèque de projets
+
+### [2026.09.16] - 2026-09-04
+#### Added
+- Navigation des réglages inspirée de Vorssaint : catégories, recherche, aide et bibliothèque de projets
+- Module Disque en deux lignes dans la barre des menus : capacité totale en rouge et espace libre en bleu
+- Toggles d’activation dans les en-têtes Sparkline, Gauges et Panel
+
+#### Changed
+- README FR/EN et documentation store synchronisés avec les fonctionnalités livrées
 
 ### [2026.09.15] - 2026-09-04
 #### Added

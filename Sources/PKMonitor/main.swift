@@ -10,6 +10,7 @@ enum Metric: String, CaseIterable, Identifiable {
     case cpu = "CPU"
     case gpu = "GPU"
     case ram = "RAM"
+    case disk = "Disk"
     case network = "Network"
 
     var id: String { rawValue }
@@ -59,6 +60,8 @@ final class AppSettings: ObservableObject {
     @Published var historySeconds: Double { didSet { defaults.set(historySeconds, forKey: "historySeconds") } }
     @Published var iconCount: Int { didSet { defaults.set(iconCount, forKey: "iconCount") } }
     @Published var showOnHover: Bool { didSet { defaults.set(showOnHover, forKey: "showOnHover") } }
+    @Published var showSparkline: Bool { didSet { defaults.set(showSparkline, forKey: "showSparkline") } }
+    @Published var showPanel: Bool { didSet { defaults.set(showPanel, forKey: "showPanel") } }
     @Published var sparklineWidth: Double { didSet { defaults.set(sparklineWidth, forKey: "sparklineWidth") } }
     @Published var iconSize: Double { didSet { defaults.set(iconSize, forKey: "iconSize") } }
     @Published var lineWidth: Double { didSet { defaults.set(lineWidth, forKey: "lineWidth") } }
@@ -68,11 +71,17 @@ final class AppSettings: ObservableObject {
     @Published var gaugePosition: ValuePosition { didSet { defaults.set(gaugePosition.rawValue, forKey: "gaugePosition") } }
     @Published var showGaugeLabels: Bool { didSet { defaults.set(showGaugeLabels, forKey: "showGaugeLabels") } }
     @Published var gaugeOrder: String { didSet { defaults.set(gaugeOrder, forKey: "gaugeOrder") } }
+    @Published var enabledMetrics: String { didSet { defaults.set(enabledMetrics, forKey: "enabledMetrics") } }
     @Published var gaugeWidth: Double { didSet { defaults.set(gaugeWidth, forKey: "gaugeWidth") } }
+    @Published var elementSpacing: Double { didSet { defaults.set(elementSpacing, forKey: "elementSpacing") } }
 
     var gaugeMetrics: [Metric] {
         let parsed = gaugeOrder.split(separator: ",").compactMap { Metric(rawValue: String($0)) }
-        return parsed.count == 4 ? parsed : [.gpu, .cpu, .ram, .network]
+        return parsed.isEmpty ? [.gpu, .cpu, .ram, .disk, .network] : parsed
+    }
+    var enabledGaugeMetrics: [Metric] {
+        let enabled = Set(enabledMetrics.split(separator: ",").compactMap { Metric(rawValue: String($0)) })
+        return gaugeMetrics.filter { enabled.contains($0) }
     }
     @Published var labelPosition: ValuePosition { didSet { defaults.set(labelPosition.rawValue, forKey: "labelPosition") } }
     @Published var showLabel: Bool { didSet { defaults.set(showLabel, forKey: "showLabel") } }
@@ -97,6 +106,8 @@ final class AppSettings: ObservableObject {
         historySeconds = defaults.object(forKey: "historySeconds") as? Double ?? 8
         iconCount = defaults.object(forKey: "iconCount") as? Int ?? 5
         showOnHover = defaults.object(forKey: "showOnHover") as? Bool ?? true
+        showSparkline = defaults.object(forKey: "showSparkline") as? Bool ?? true
+        showPanel = defaults.object(forKey: "showPanel") as? Bool ?? true
         sparklineWidth = defaults.object(forKey: "sparklineWidth") as? Double ?? 80
         iconSize = defaults.object(forKey: "iconSize") as? Double ?? 15
         lineWidth = defaults.object(forKey: "lineWidth") as? Double ?? 1.6
@@ -105,8 +116,10 @@ final class AppSettings: ObservableObject {
         showGauges = defaults.object(forKey: "showGauges") as? Bool ?? true
         gaugePosition = ValuePosition(rawValue: defaults.string(forKey: "gaugePosition") ?? "") ?? .right
         showGaugeLabels = defaults.object(forKey: "showGaugeLabels") as? Bool ?? true
-        gaugeOrder = defaults.string(forKey: "gaugeOrder") ?? "GPU,CPU,RAM,Network"
+        gaugeOrder = defaults.string(forKey: "gaugeOrder") ?? "GPU,CPU,RAM,Disk,Network"
+        enabledMetrics = defaults.string(forKey: "enabledMetrics") ?? "GPU,CPU,RAM,Disk,Network"
         gaugeWidth = defaults.object(forKey: "gaugeWidth") as? Double ?? 16
+        elementSpacing = defaults.object(forKey: "elementSpacing") as? Double ?? 4
         labelPosition = ValuePosition(rawValue: defaults.string(forKey: "labelPosition") ?? "") ?? .right
         showLabel = defaults.object(forKey: "showLabel") as? Bool ?? true
         showIconBorder = defaults.object(forKey: "showIconBorder") as? Bool ?? true
@@ -134,6 +147,8 @@ final class AppSettings: ObservableObject {
         historySeconds = 8
         iconCount = 5
         showOnHover = true
+        showSparkline = true
+        showPanel = true
         sparklineWidth = 80
         iconSize = 15
         lineWidth = 1.6
@@ -142,8 +157,10 @@ final class AppSettings: ObservableObject {
         showGauges = true
         gaugePosition = .right
         showGaugeLabels = true
-        gaugeOrder = "GPU,CPU,RAM,Network"
+        gaugeOrder = "GPU,CPU,RAM,Disk,Network"
+        enabledMetrics = "GPU,CPU,RAM,Disk,Network"
         gaugeWidth = 16
+        elementSpacing = 4
         labelPosition = .right
         showLabel = true
         showIconBorder = true
@@ -181,6 +198,9 @@ struct Reading {
     var ram = 0.0
     var gpu = 0.0
     var network = 0.0
+    var disk = 0.0
+    var freeDisk: UInt64 = 0
+    var totalDisk: UInt64 = 0
     var download = 0.0
     var upload = 0.0
     var totalRAM: Double = Double(ProcessInfo.processInfo.physicalMemory)
@@ -193,6 +213,7 @@ struct Reading {
         case .auto, .cpu: cpu
         case .gpu: gpu
         case .ram: ram
+        case .disk: disk
         case .network: network
         }
     }
@@ -208,7 +229,17 @@ final class SystemSampler {
     func sample(previousApps: [AppUsage]) -> Reading {
         let net = networkRate()
         let mem = memoryUsage()
-        return Reading(cpu: cpuUsage(), ram: mem.percent, gpu: gpuUsage(), network: net.total, download: net.download, upload: net.upload, usedRAM: Double(mem.usedBytes), apps: previousApps)
+        let disk = diskUsage()
+        return Reading(cpu: cpuUsage(), ram: mem.percent, gpu: gpuUsage(), network: net.total, disk: disk.percent, freeDisk: disk.free, totalDisk: disk.total, download: net.download, upload: net.upload, usedRAM: Double(mem.usedBytes), apps: previousApps)
+    }
+
+    private func diskUsage() -> (percent: Double, free: UInt64, total: UInt64) {
+        let keys: Set<URLResourceKey> = [.volumeTotalCapacityKey, .volumeAvailableCapacityForImportantUsageKey]
+        guard let values = try? URL(fileURLWithPath: NSHomeDirectory()).resourceValues(forKeys: keys),
+              let total = values.volumeTotalCapacity,
+              let free = values.volumeAvailableCapacityForImportantUsage else { return (0, 0, 0) }
+        let used = max(Int64(0), Int64(total) - Int64(free))
+        return (100 * Double(used) / Double(max(1, total)), UInt64(free), UInt64(total))
     }
 
     private func cpuUsage() -> Double {
@@ -354,6 +385,8 @@ final class MonitorModel: ObservableObject {
             return "\(pct) (\(String(format: "%.1f", cores)) cores)"
         case .ram:
             return "\(pct) (\(Self.formatBytes(reading.usedRAM)))"
+        case .disk:
+            return "\(pct) (\(Self.formatBytes(Double(reading.freeDisk))) free / \(Self.formatBytes(Double(reading.totalDisk))))"
         case .network:
             return "↓\(Self.formatBytes(reading.download))/s ↑\(Self.formatBytes(reading.upload))/s"
         default:
@@ -364,6 +397,7 @@ final class MonitorModel: ObservableObject {
     func formatMenuBar() -> String {
         switch displayedMetric {
         case .network: return "↓\(Self.formatBytes(reading.download))/s"
+        case .disk: return "\(Self.formatBytes(Double(reading.freeDisk))) free"
         default: return "\(Int(reading.value(for: displayedMetric).rounded()))%"
         }
     }
@@ -442,7 +476,7 @@ final class MonitorModel: ObservableObject {
         let process = Process()
         let pipe = Pipe()
         process.executableURL = URL(fileURLWithPath: "/bin/ps")
-        process.arguments = ["-Ao", "pid=,%cpu=,rss=,comm="]
+        process.arguments = ["-ww", "-Ao", "pid=,%cpu=,rss=,comm="]
         process.standardOutput = pipe
         process.standardError = FileHandle.nullDevice
         do { try process.run() } catch { return [] }
@@ -459,9 +493,12 @@ final class MonitorModel: ObservableObject {
                   let memoryKB = Double(parts[2]) else { continue }
             let executablePath = String(parts[3])
             guard let path = appBundlePath(from: executablePath) else { continue }
-            let name = Bundle(path: path)?.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
+            let fallbackName = appName(from: path)
+            let bundleName = Bundle(path: path)?.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
                 ?? Bundle(path: path)?.object(forInfoDictionaryKey: "CFBundleName") as? String
-                ?? appName(from: path)
+            let name = bundleName.flatMap { candidate in
+                candidate == "com" || candidate.hasPrefix("com.") ? nil : candidate
+            } ?? fallbackName
             guard name != "PKMonitor" else { continue }
             let isMainPID = executablePath.hasPrefix(path + "/Contents/MacOS/")
             let current = totals[path] ?? (name, pid, false, 0, 0)
@@ -583,7 +620,7 @@ struct DetailView: View {
                             }
                             .buttonStyle(.plain)
                             .foregroundStyle(hoveredApp == app.id ? Color.accentColor : Color.primary)
-                            .help("Show all \(app.name) windows")
+                            .help("Show all \(app.name) windows\nPID \(app.pid)\n\(app.path)")
                             .onHover { inside in hoveredApp = inside ? app.id : nil }
                             Spacer()
                             Text(model.format(app))
@@ -651,6 +688,8 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     case gauges = "Gauges"
     case panel = "Panel"
     case about = "About"
+    case support = "Help & Support"
+    case library = "Project Library"
 
     var id: String { rawValue }
     var icon: String {
@@ -660,6 +699,33 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .gauges: "barometer"
         case .panel: "rectangle.on.rectangle"
         case .about: "info.circle"
+        case .support: "heart"
+        case .library: "square.grid.2x2"
+        }
+    }
+    var category: String {
+        switch self {
+        case .general, .sparkline, .gauges, .panel: "MONITORING"
+        case .about, .support, .library: "PK PROJECTS"
+        }
+    }
+    var keywords: String { "\(rawValue) \(category)".lowercased() }
+}
+
+private enum ProjectLinks {
+    static let github = URL(string: "https://github.com/mondary/PKmonitor")!
+    static let githubProfile = URL(string: "https://github.com/mondary")!
+    static let koFi = URL(string: "https://ko-fi.com/pouark")!
+}
+
+private struct ProjectIconView: View {
+    let name: String
+    var body: some View {
+        if let image = NSImage(contentsOf: URL(fileURLWithPath: Bundle.main.path(forResource: name, ofType: "png", inDirectory: "ProjectIcons") ?? "")) {
+            Image(nsImage: image).resizable().interpolation(.high).scaledToFit()
+        } else {
+            Image(nsImage: NSImage(named: "icon") ?? NSImage())
+                .resizable().scaledToFit()
         }
     }
 }
@@ -667,16 +733,28 @@ enum SettingsSection: String, CaseIterable, Identifiable {
 struct SettingsView: View {
     @ObservedObject var settings: AppSettings
     @State private var selection: SettingsSection? = .general
+    @State private var searchText = ""
+
+    private var filteredSections: [SettingsSection] {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !query.isEmpty else { return SettingsSection.allCases }
+        return SettingsSection.allCases.filter { $0.keywords.contains(query) }
+    }
+    private var groupedSections: [(String, [SettingsSection])] {
+        let grouped = Dictionary(grouping: filteredSections, by: \.category)
+        return ["MONITORING", "PK PROJECTS"].compactMap { key in
+            guard let values = grouped[key], !values.isEmpty else { return nil }
+            return (key, values)
+        }
+    }
 
     var body: some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 10) {
-                    Image(systemName: "waveform.path.ecg")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 34, height: 34)
-                        .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    Image(nsImage: NSImage(contentsOf: URL(fileURLWithPath: Bundle.main.path(forResource: "icon", ofType: "png") ?? "")) ?? NSImage())
+                        .resizable().scaledToFit().frame(width: 34, height: 34)
+                        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                     VStack(alignment: .leading, spacing: 2) {
                         Text("PKMonitor").font(.headline)
                         Text("System activity").font(.caption).foregroundStyle(.secondary)
@@ -692,13 +770,38 @@ struct SettingsView: View {
                     .padding(.horizontal, 20)
                     .padding(.bottom, 8)
 
+                HStack(spacing: 7) {
+                    Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                    TextField("Search settings", text: $searchText)
+                        .textFieldStyle(.plain)
+                        .onSubmit {
+                            if let first = filteredSections.first { selection = first }
+                        }
+                }
+                .padding(.horizontal, 10)
+                .frame(height: 30)
+                .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 7))
+                .padding(.horizontal, 12)
+                .padding(.bottom, 12)
+
                 VStack(spacing: 3) {
-                    ForEach(SettingsSection.allCases) { section in
+                    ForEach(groupedSections, id: \.0) { group, sections in
+                        Text(group).font(.system(size: 9, weight: .bold)).foregroundStyle(.tertiary)
+                            .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 20).padding(.top, 8)
+                        ForEach(sections) { section in
                         Button {
                             selection = section
                         } label: {
                             HStack(spacing: 11) {
-                                Image(systemName: section.icon)
+                    Group {
+                        if section == .about {
+                            Image(nsImage: NSImage(contentsOf: URL(fileURLWithPath: Bundle.main.path(forResource: "icon", ofType: "png") ?? "")) ?? NSImage())
+                                .resizable().scaledToFit()
+                        } else {
+                            Image(systemName: section.icon)
+                        }
+                    }
+                    .frame(width: 20, height: 20)
                                     .font(.system(size: 14, weight: .medium))
                                     .frame(width: 20)
                                 Text(section.rawValue)
@@ -713,6 +816,7 @@ struct SettingsView: View {
                         }
                         .buttonStyle(.plain)
                         .padding(.horizontal, 10)
+                        }
                     }
                 }
                 Spacer()
@@ -734,6 +838,8 @@ struct SettingsView: View {
                 case .gauges: GaugesSettingsView(settings: settings)
                 case .panel: PanelSettingsView(settings: settings)
                 case .about: AboutSettingsView()
+                case .support: SupportSettingsView()
+                case .library: ProjectLibraryView()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -746,11 +852,30 @@ struct SettingsView: View {
 struct SettingsHeader: View {
     let title: String
     let subtitle: String
+    var icon: String = "gearshape"
+    var enabled: Binding<Bool>? = nil
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(title).font(.system(size: 28, weight: .bold, design: .rounded))
-            Text(subtitle).font(.system(size: 13)).foregroundStyle(.secondary)
+        HStack(alignment: .top, spacing: 16) {
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 10) {
+                    Image(systemName: icon)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Color.accentColor)
+                        .frame(width: 34, height: 34)
+                        .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    Text(title).font(.system(size: 28, weight: .bold, design: .rounded))
+                }
+                Text(subtitle).font(.system(size: 13)).foregroundStyle(.secondary)
+                    .padding(.leading, 44)
+            }
+            Spacer(minLength: 0)
+            if let enabled {
+                Toggle("", isOn: enabled)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .accessibilityLabel("Show \(title)")
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.bottom, 4)
@@ -761,12 +886,14 @@ struct SettingsCard<Content: View>: View {
     let title: String
     let icon: String
     let subtitle: String?
+    let enabled: Binding<Bool>?
     @ViewBuilder let content: () -> Content
 
-    init(_ title: String, icon: String, subtitle: String? = nil, @ViewBuilder content: @escaping () -> Content) {
+    init(_ title: String, icon: String, subtitle: String? = nil, enabled: Binding<Bool>? = nil, @ViewBuilder content: @escaping () -> Content) {
         self.title = title
         self.icon = icon
         self.subtitle = subtitle
+        self.enabled = enabled
         self.content = content
     }
 
@@ -783,6 +910,10 @@ struct SettingsCard<Content: View>: View {
                     if let subtitle { Text(subtitle).font(.caption).foregroundStyle(.secondary) }
                 }
                 Spacer()
+                if let enabled {
+                    Toggle("", isOn: enabled).labelsHidden().toggleStyle(.switch)
+                        .accessibilityLabel("Show \(title)")
+                }
             }
             content()
         }
@@ -942,7 +1073,7 @@ struct SparklineSettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                SettingsHeader(title: "Sparkline", subtitle: "Tune the compact graph shown in the menu bar.")
+                SettingsHeader(title: "Sparkline", subtitle: "Tune the compact graph shown in the menu bar.", icon: "waveform.path.ecg", enabled: $settings.showSparkline)
                 SettingsCard("Graph", icon: "waveform.path.ecg", subtitle: "Size and rendering detail.") {
                     SettingLine("Width", detail: "The graph also controls the pill width") {
                         HStack { Slider(value: $settings.sparklineWidth, in: 56...160, step: 4); Text("\(Int(settings.sparklineWidth)) pt").monospacedDigit().foregroundStyle(.secondary).frame(width: 48) }
@@ -983,9 +1114,20 @@ struct GaugesSettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                SettingsHeader(title: "Gauges", subtitle: "Keep the four system signals visible at a glance.")
+                SettingsHeader(title: "Gauges", subtitle: "Keep the system signals visible at a glance.", icon: "barometer", enabled: $settings.showGauges)
                 SettingsCard("Gauge Display", icon: "gauge.with.dots.needle.67percent", subtitle: "Choose what is visible beside the graph.") {
-                    Toggle("Show gauges", isOn: $settings.showGauges)
+                    Text("Visible segments").font(.subheadline.weight(.medium)).padding(.top, 4)
+                    ForEach(settings.gaugeMetrics, id: \.self) { metric in
+                        Toggle(metric == .network ? "Network" : metric.rawValue,
+                               isOn: Binding(
+                                get: { settings.enabledGaugeMetrics.contains(metric) },
+                                set: { enabled in
+                                    var values = settings.enabledGaugeMetrics
+                                    if enabled { if !values.contains(metric) { values.append(metric) } }
+                                    else { values.removeAll { $0 == metric } }
+                                    settings.enabledMetrics = values.map(\.rawValue).joined(separator: ",")
+                                }))
+                    }
                     SettingLine("Position") {
                         Picker("Position", selection: $settings.gaugePosition) { ForEach(ValuePosition.allCases) { Text($0.rawValue).tag($0) } }
                             .labelsHidden().frame(width: 180)
@@ -1056,6 +1198,7 @@ struct GaugeOrderList: View {
         case .gpu: "G"
         case .cpu: "C"
         case .ram: "R"
+        case .disk: "D"
         case .network: "N"
         default: ""
         }
@@ -1068,7 +1211,7 @@ struct PanelSettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                SettingsHeader(title: "Panel", subtitle: "Shape the detail panel and its visual language.")
+                SettingsHeader(title: "Panel", subtitle: "Shape the detail panel and its visual language.", icon: "rectangle.on.rectangle", enabled: $settings.showPanel)
                 SettingsCard("Appearance", icon: "paintbrush", subtitle: "Choose how the detail panel follows your Mac.") {
                     Picker("Appearance", selection: $settings.appearance) { ForEach(AppearanceMode.allCases) { Text($0.rawValue).tag($0) } }
                         .pickerStyle(.segmented).frame(maxWidth: 360, alignment: .leading)
@@ -1105,9 +1248,9 @@ struct AboutSettingsView: View {
             VStack(spacing: 0) {
                 ZStack {
                     Circle().fill(Color.accentColor.opacity(0.14)).frame(width: 132, height: 132)
-                    Image(systemName: "waveform.path.ecg")
-                        .font(.system(size: 56, weight: .medium))
-                        .foregroundStyle(Color.accentColor)
+                    Image(nsImage: NSImage(contentsOf: URL(fileURLWithPath: Bundle.main.path(forResource: "icon", ofType: "png") ?? "")) ?? NSImage())
+                        .resizable().scaledToFit().frame(width: 88, height: 88)
+                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                 }
                 .padding(.top, 36)
                 .padding(.bottom, 18)
@@ -1154,6 +1297,126 @@ struct AboutSettingsView: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
             .background(Color(nsColor: .controlBackgroundColor), in: Capsule())
+    }
+}
+
+struct SupportSettingsView: View {
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                SettingsHeader(title: "Help & Support", subtitle: "Support the project and stay connected.", icon: "heart.fill")
+                VStack(alignment: .leading, spacing: 18) {
+                    HStack(alignment: .top, spacing: 16) {
+                        Image(systemName: "cup.and.saucer.fill")
+                            .font(.system(size: 25, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 52, height: 52)
+                            .background(Color(nsColor: NSColor(hex: "#13C3FF")!), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text("Keep PKMonitor independent")
+                                .font(.system(size: 19, weight: .bold, design: .rounded))
+                            Text("A small coffee helps me keep polishing the app, adding modules and maintaining releases.")
+                                .font(.system(size: 13)).foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    Link(destination: ProjectLinks.koFi) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "heart.fill")
+                            Text("Buy me a coffee on Ko-fi").fontWeight(.semibold)
+                            Spacer()
+                            Image(systemName: "arrow.up.right")
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 16).padding(.vertical, 12)
+                        .background(Color(nsColor: NSColor(hex: "#13C3FF")!), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .shadow(color: Color(nsColor: NSColor(hex: "#13C3FF")!).opacity(0.25), radius: 10, y: 5)
+                }
+                .padding(20)
+                .background(
+                    LinearGradient(colors: [Color.accentColor.opacity(0.16), Color(nsColor: .controlBackgroundColor)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                    in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+                )
+                .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Color.accentColor.opacity(0.25), lineWidth: 1))
+
+                SettingsCard("Follow the project", icon: "person.2.fill", subtitle: "Updates, source code and the rest of the project collection.") {
+                    HStack(spacing: 10) {
+                        Link(destination: ProjectLinks.github) { Label("PKMonitor", systemImage: "chevron.left.forwardslash.chevron.right") }
+                            .buttonStyle(.bordered)
+                        Link(destination: ProjectLinks.githubProfile) { Label("GitHub", systemImage: "person.crop.circle") }
+                            .buttonStyle(.bordered)
+                    }
+                }
+                Text("Thank you for helping keep free tools alive.")
+                    .font(.system(size: 12, weight: .medium, design: .rounded)).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }.padding(28)
+        }
+    }
+}
+
+struct ProjectLibraryView: View {
+    private struct Project: Identifiable {
+        let id: String
+        let title: String
+        let kind: String
+        let description: String
+        let iconAsset: String
+        let tint: NSColor
+        var url: URL { URL(string: "https://github.com/mondary/\(id)")! }
+    }
+
+    private let projects = [
+        Project(id: "Macos_PKarchives", title: "PKarchives", kind: "macOS app", description: "Archive your Desktop to Google Drive with rclone, using a native macOS interface or CLI/TUI.", iconAsset: "PKarchives", tint: NSColor(hex: "#8B5CF6")!),
+        Project(id: "PKmonitor", title: "PKMonitor", kind: "macOS app", description: "CPU, GPU, RAM, network and disk metrics in the menu bar.", iconAsset: "icon", tint: NSColor(hex: "#0EA5E9")!),
+        Project(id: "PKwindowsManagement", title: "PKwindowsManagement", kind: "macOS app", description: "Manage windows by keyboard and launch installed applications quickly from the menu bar.", iconAsset: "PKwindowsManagement", tint: NSColor(hex: "#F97316")!),
+        Project(id: "Macos_PKpowerlines", title: "PKpowerlines", kind: "macOS app", description: "A native multi-display powerline showing RAM, CPU, network or battery in real time.", iconAsset: "PKpowerlines", tint: NSColor(hex: "#10B981")!),
+        Project(id: "PKmac-cleanup", title: "LaunchPad", kind: "macOS app", description: "Scan and audit user agents and system daemons with local security analysis.", iconAsset: "PKmac-cleanup", tint: NSColor(hex: "#EC4899")!),
+        Project(id: "Chrome_SimpleGMAIL", title: "PKMail", kind: "Chrome / macOS / Windows / Linux", description: "An immersive IMAP mail client with a vanilla HTML interface and Gmail-style workflows.", iconAsset: "PKMail", tint: NSColor(hex: "#EA4335")!),
+        Project(id: "Chrome_PKshortcuts", title: "PK Chrome Shortcuts", kind: "Chrome extension", description: "Control tabs, navigation and split view with keyboard shortcuts.", iconAsset: "PKshortcuts", tint: NSColor(hex: "#F59E0B")!)
+    ]
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                SettingsHeader(title: "Project Library", subtitle: "Discover the other tools and projects I build.", icon: "square.grid.2x2")
+                Text("Latest projects").font(.system(size: 18, weight: .bold, design: .rounded))
+                Text("Explore the newest macOS apps and Chrome extensions from GitHub.")
+                    .font(.system(size: 13)).foregroundStyle(.secondary)
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
+                    ForEach(projects) { project in
+                        Link(destination: project.url) {
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack(alignment: .top) {
+                                    Group {
+                                        if project.iconAsset == "icon" {
+                                            Image(nsImage: NSImage(contentsOf: URL(fileURLWithPath: Bundle.main.path(forResource: "icon", ofType: "png") ?? "")) ?? NSImage())
+                                                .resizable().scaledToFit()
+                                        } else { ProjectIconView(name: project.iconAsset) }
+                                    }
+                                    .frame(width: 46, height: 46)
+                                    .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                                    Spacer()
+                                    Image(systemName: "arrow.up.right").font(.caption).foregroundStyle(.tertiary)
+                                }
+                                Text(project.title).font(.system(size: 14, weight: .semibold))
+                                Text(project.kind.uppercased()).font(.system(size: 9, weight: .bold)).foregroundStyle(Color(nsColor: project.tint))
+                                Text(project.description).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 145, alignment: .topLeading)
+                            .padding(15)
+                            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous).stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                Link(destination: ProjectLinks.githubProfile) { Label("View all repositories on GitHub", systemImage: "arrow.up.right.square") }
+                    .buttonStyle(.borderedProminent)
+            }.padding(28)
+        }
     }
 }
 
@@ -1364,6 +1627,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func showDetailPanel() {
+        guard settings.showPanel else { return }
         guard let panel = detailPanel, let buttonFrame = statusButtonFrame else { return }
         let screen = NSScreen.screens.first { $0.frame.intersects(buttonFrame) } ?? NSScreen.main
         let visible = screen?.visibleFrame ?? .zero
@@ -1715,20 +1979,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func sparklineImage(_ values: [Double], markers: [String?], metric: Metric, value: String) -> NSImage {
-        let textW: CGFloat = 58
-        let labelW: CGFloat = settings.showLabel ? 30 : 0
-        let gaugeW: CGFloat = settings.showGauges ? CGFloat(settings.gaugeMetrics.count) * (CGFloat(settings.gaugeWidth) + 2) + 2 : 0
-        let graphW = settings.sparklineWidth
+        let gap = CGFloat(settings.elementSpacing)
+        let valueFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)
+        let valueColor = settings.colorForValue(model.reading.value(for: metric))
+        let valueAttrs: [NSAttributedString.Key: Any] = [.font: valueFont, .foregroundColor: valueColor]
+        let valueSize = (value as NSString).size(withAttributes: valueAttrs)
+        let textW = valueSize.width + gap * 2
+        let labelW: CGFloat = settings.showSparkline && settings.showLabel ? 30 : 0
+        let gaugeW: CGFloat = settings.showGauges ? CGFloat(settings.enabledGaugeMetrics.count) * (CGFloat(settings.gaugeWidth) + 2) + 2 : 0
+        let graphW = settings.showSparkline ? settings.sparklineWidth : 0
         let totalWidth = textW + labelW + graphW + gaugeW
         let size = NSSize(width: totalWidth, height: 18)
         let image = NSImage(size: size)
         image.lockFocus()
         defer { image.unlockFocus() }
 
-        let valueFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)
-        let valueColor = settings.colorForValue(model.reading.value(for: metric))
-        let valueAttrs: [NSAttributedString.Key: Any] = [.font: valueFont, .foregroundColor: valueColor]
-        let valueSize = (value as NSString).size(withAttributes: valueAttrs)
         let label = metric == .network ? "NET" : metric.rawValue.uppercased()
         let labelFont = NSFont.systemFont(ofSize: 6, weight: .heavy)
         let labelAttrs: [NSAttributedString.Key: Any] = [.font: labelFont, .foregroundColor: NSColor.labelColor]
@@ -1754,9 +2019,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if !gaugesOnLeft { gaugeStartX = cursor; cursor += gaugeW }
 
         if valueOnLeft {
-            (value as NSString).draw(at: NSPoint(x: valueX + textW - valueSize.width - 4, y: (size.height - valueSize.height) / 2), withAttributes: valueAttrs)
+            (value as NSString).draw(at: NSPoint(x: valueX + textW - valueSize.width - gap, y: (size.height - valueSize.height) / 2), withAttributes: valueAttrs)
         } else {
-            (value as NSString).draw(at: NSPoint(x: valueX + 4, y: (size.height - valueSize.height) / 2), withAttributes: valueAttrs)
+            (value as NSString).draw(at: NSPoint(x: valueX + gap, y: (size.height - valueSize.height) / 2), withAttributes: valueAttrs)
         }
 
         if settings.showLabel {
@@ -1808,7 +2073,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         if settings.showGauges {
-            let gaugeMetrics = settings.gaugeMetrics
+            let gaugeMetrics = settings.enabledGaugeMetrics
             let gW = CGFloat(settings.gaugeWidth)
             let gGap: CGFloat = 2
             let gFont = NSFont.monospacedDigitSystemFont(ofSize: 6, weight: .heavy)
@@ -1825,6 +2090,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
                 let isActive = m == metric
                 let bg = gRect.insetBy(dx: 1, dy: 1)
+
+                if m == .disk {
+                    let diskFont = NSFont.monospacedDigitSystemFont(ofSize: 5.5, weight: isActive ? .bold : .medium)
+                    let totalText = MonitorModel.formatBytes(Double(model.reading.totalDisk))
+                    let freeText = MonitorModel.formatBytes(Double(model.reading.freeDisk))
+                    let totalAttrs: [NSAttributedString.Key: Any] = [.font: diskFont, .foregroundColor: NSColor.systemRed]
+                    let freeAttrs: [NSAttributedString.Key: Any] = [.font: diskFont, .foregroundColor: NSColor.systemBlue]
+                    let totalSize = (totalText as NSString).size(withAttributes: totalAttrs)
+                    let freeSize = (freeText as NSString).size(withAttributes: freeAttrs)
+                    (totalText as NSString).draw(at: NSPoint(x: gx + (gW - totalSize.width) / 2, y: bg.midY + 1), withAttributes: totalAttrs)
+                    (freeText as NSString).draw(at: NSPoint(x: gx + (gW - freeSize.width) / 2, y: bg.minY + 1), withAttributes: freeAttrs)
+                    if isActive {
+                        NSColor.labelColor.setStroke()
+                        NSBezierPath(roundedRect: bg, xRadius: 2, yRadius: 2).stroke()
+                    }
+                    continue
+                }
 
                 NSColor.separatorColor.setFill()
                 NSBezierPath(roundedRect: bg, xRadius: 2, yRadius: 2).fill()
@@ -1875,6 +2157,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     case .gpu: return "G"
                     case .cpu: return "C"
                     case .ram: return "R"
+                    case .disk: return "D"
                     case .network: return "N"
                     default: return ""
                     }

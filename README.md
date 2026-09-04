@@ -1,50 +1,57 @@
 # PKMonitor
 
-[FR](README.md) · [EN](README_en.md)
+![Project icon](icon.png)
 
-Moniteur système macOS natif dans la barre des menus. Sparkline temps réel,
-jauges GPU/CPU/RAM/NET cliquables, détail des applications responsables avec
-arrêt forcé, et réglages complets.
+[🇫🇷 FR](README.md) · [🇬🇧 EN](README_en.md)
 
-## Fonctionnalités
+Moniteur système macOS natif et discret dans la barre des menus.
 
-- Sparkline temps réel (200 ms par défaut, configurable)
-- Mesures CPU, GPU, RAM et réseau (download/upload séparés)
-- Quatre jauges cliquables pour basculer la métrique affichée
-- Icônes des applications dominantes sur la courbe
-- Détail au survol avec arrêt (SIGTERM) ou force kill (SIGKILL)
-- Ouverture de Moniteur d'activité filtré par PID
-- Seuils de couleur configurables (warning/critical)
-- Libellé vertical et jauges positionnables (gauche/droite)
-- Lancement à la connexion
-- Emplacement de l'icône : menu barre ou seconde barre personnalisable (pilule à droite : fond None/Tint/Hover/Blur, couleur libre, marges 4 côtés, contenu clair/sombre/auto)
-- Thème clair/sombre/système
+Version `2026.09.17` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
-## Utilisation
+## ✅ Fonctionnalités
 
-- Survol : ouvrir le détail sous la barre des menus
-- Clic gauche : épingler/détacher le panneau
-- Clic droit : menu contextuel avec métriques et réglages
-- Clic sur une jauge : basculer vers cette métrique
-- Bouton ✕ : quitter le processus (SIGTERM)
-- Bouton 💀 : forcer l'arrêt (SIGKILL)
+- Sparkline temps réel avec icônes des applications dominantes
+- CPU, GPU, RAM, réseau et espace disque
+- Module disque en deux lignes : capacité totale rouge, espace libre bleu
+- Segments activables individuellement, réordonnables et paramétrables
+- Toggles d’affichage pour Sparkline, Gauges et Panel
+- Panneau détaillé au survol avec arrêt de processus
+- Navigation Settings catégorisée, recherche et bibliothèque de projets
+- Thème clair/sombre/système et lancement à la connexion
 
-## Réglages
+## 🧠 Utilisation
 
-La fenêtre Réglages (clic droit > Settings…) propose :
+- Survoler l’élément de la barre des menus pour ouvrir le détail
+- Cliquer sur un segment pour changer la métrique active
+- Clic droit pour ouvrir le menu et les réglages
 
-- **General** : fréquence, historique, top d'icônes, survol, emplacement de l'icône, lancement auto, seuils de couleur
-- **Appearance** : largeur/épaisseur de courbe, taille d'icônes, bordure, position du texte et des jauges, thème
-- **About** : version et informations
+## ⚙️ Réglages
 
-## Build & Package
+La fenêtre Settings propose une sidebar par catégories, un champ de recherche, des toggles par module et des réglages détaillés pour l’affichage, les jauges, le panneau et la sparkline. Elle contient également les pages Help & Support et Project Library.
+
+## 🧾 Commandes
 
 ```sh
-chmod +x run.sh
 ./run.sh
+swift build
+swift run PKMonitor --self-test
 ```
 
-Le script construit `dist/PKMonitor.app` puis le lance. Requiert macOS 13+ et
-les outils de ligne de commande Xcode.
+## 📦 Build & Package
 
-## Voir le [CHANGELOG](CHANGELOG.md) pour l'historique complet.
+`run.sh` construit `dist/PKMonitor.app` en mode production avec les outils de ligne de commande Xcode.
+
+## 🧪 Installation
+
+Requiert macOS 13+ et les outils de ligne de commande Xcode. Exécuter `./run.sh`, puis conserver `dist/PKMonitor.app` ou le copier dans Applications.
+
+## 📋 Historique
+
+Voir le [CHANGELOG](CHANGELOG.md) pour l’historique complet.
+
+## 🔗 Liens
+
+- [GitHub](https://github.com/mondary/PKmonitor)
+- [Bibliothèque des projets](https://github.com/mondary?tab=repositories)
+- [Ko-fi](https://ko-fi.com/pouark)
+- [Store copy](store/description-store.md)

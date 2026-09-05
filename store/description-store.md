@@ -1,6 +1,6 @@
 # PKMonitor — store copy
 
-Version : `2026.09.22`
+Version : `2026.09.23`
 
 ## Tagline FR
 Le moniteur système macOS discret dans la barre des menus.

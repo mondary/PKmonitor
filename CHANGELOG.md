@@ -6,7 +6,7 @@ Historique des évolutions de PKMonitor.
 
 ## TODO — Roadmap
 
-Statut : `2026.09.22` (prototype fonctionnel)
+Statut : `2026.09.23` (prototype fonctionnel)
 
 ### Prochaines étapes
 - [x] Mesures CPU, RAM et réseau locales
@@ -19,6 +19,10 @@ Statut : `2026.09.22` (prototype fonctionnel)
 ---
 
 ## Releases
+
+### [2026.09.23] - 2026-09-04
+#### Added
+- Réglage « Line spacing » (0–10 pt) pour l'interlignage des deux lignes du module disque en mode empilé
 
 ### [2026.09.22] - 2026-09-04
 #### Added

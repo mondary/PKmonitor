@@ -117,6 +117,7 @@ final class AppSettings: ObservableObject {
     @Published var diskPosition: ValuePosition { didSet { defaults.set(diskPosition.rawValue, forKey: "diskPosition") } }
     @Published var diskValueMode: DiskValueMode { didSet { defaults.set(diskValueMode.rawValue, forKey: "diskValueMode") } }
     @Published var diskLayout: DiskLayout { didSet { defaults.set(diskLayout.rawValue, forKey: "diskLayout") } }
+    @Published var diskLineSpacing: Double { didSet { defaults.set(diskLineSpacing, forKey: "diskLineSpacing") } }
     @Published var showDiskTotal: Bool { didSet { defaults.set(showDiskTotal, forKey: "showDiskTotal") } }
     @Published var diskFontSize: Double { didSet { defaults.set(diskFontSize, forKey: "diskFontSize") } }
     @Published var warningThreshold: Double { didSet { defaults.set(warningThreshold, forKey: "warningThreshold") } }
@@ -162,6 +163,7 @@ final class AppSettings: ObservableObject {
         diskPosition = ValuePosition(rawValue: defaults.string(forKey: "diskPosition") ?? "") ?? .right
         diskValueMode = DiskValueMode(rawValue: defaults.string(forKey: "diskValueMode") ?? "") ?? .available
         diskLayout = DiskLayout(rawValue: defaults.string(forKey: "diskLayout") ?? "") ?? .inline
+        diskLineSpacing = defaults.object(forKey: "diskLineSpacing") as? Double ?? 3
         showDiskTotal = defaults.object(forKey: "showDiskTotal") as? Bool ?? true
         diskFontSize = defaults.object(forKey: "diskFontSize") as? Double ?? 11
         warningThreshold = defaults.object(forKey: "warningThreshold") as? Double ?? 80
@@ -218,6 +220,7 @@ final class AppSettings: ObservableObject {
         diskPosition = .right
         diskValueMode = .available
         diskLayout = .inline
+        diskLineSpacing = 3
         showDiskTotal = true
         diskFontSize = 11
         warningThreshold = 80
@@ -1090,6 +1093,10 @@ struct GeneralSettingsView: View {
                             ForEach(DiskLayout.allCases) { layout in Text(layout.rawValue).tag(layout) }
                         }
                         .labelsHidden().pickerStyle(.segmented).frame(width: 220)
+                    }
+                    SettingLine("Line spacing", detail: "Two lines layout only") {
+                        HStack { Slider(value: $settings.diskLineSpacing, in: 0...10, step: 1); Text("\(Int(settings.diskLineSpacing)) pt").monospacedDigit().foregroundStyle(.secondary).frame(width: 48) }
+                            .frame(width: 220)
                     }
                     Toggle("Show total capacity", isOn: $settings.showDiskTotal)
                     SettingLine("Font size") {
@@ -2734,7 +2741,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             if diskStacked { return max(diskFreeW, diskTotalW) + 8 }
             return diskFreeW + (settings.showDiskTotal ? diskSepW + diskTotalW : 0) + 8
         }()
-        let pillHeight: CGFloat = diskStacked ? max(18, CGFloat(settings.diskFontSize) * 2 + 6) : 18
+        let pillHeight: CGFloat = diskStacked ? max(18, CGFloat(settings.diskFontSize) * 2 + 3 + CGFloat(settings.diskLineSpacing)) : 18
         let totalWidth = textW + labelW + graphW + gaugeW + diskW
         let size = NSSize(width: totalWidth, height: pillHeight)
         let image = NSImage(size: size)
@@ -2788,8 +2795,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             if diskStacked, settings.showDiskTotal {
                 let freeSize = (diskFreeText as NSString).size(withAttributes: diskFreeAttrs)
                 let lineH = freeSize.height
-                let bottom = (size.height - lineH * 2 - 3) / 2
-                (diskTotalText as NSString).draw(at: NSPoint(x: x, y: bottom + lineH + 3), withAttributes: diskTotalAttrs)
+                let gap = CGFloat(settings.diskLineSpacing)
+                let bottom = (size.height - lineH * 2 - gap) / 2
+                (diskTotalText as NSString).draw(at: NSPoint(x: x, y: bottom + lineH + gap), withAttributes: diskTotalAttrs)
                 (diskFreeText as NSString).draw(at: NSPoint(x: x, y: bottom), withAttributes: diskFreeAttrs)
             } else {
                 let freeSize = (diskFreeText as NSString).size(withAttributes: diskFreeAttrs)

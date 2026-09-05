@@ -4,7 +4,7 @@ Feuille de route produit. Les fonctionnalités livrées sont détaillées dans [
 
 ## Statut
 
-Version courante : `2026.09.23` — prototype fonctionnel.
+Version courante : `2026.09.24` — prototype fonctionnel.
 
 ## Phase 1 — Moniteur essentiel
 

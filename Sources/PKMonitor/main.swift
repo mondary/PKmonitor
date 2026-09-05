@@ -746,10 +746,12 @@ struct SparklineShape: Shape {
 }
 
 enum SettingsSection: String, CaseIterable, Identifiable {
+    case dashboard = "Dashboard"
     case general = "General"
     case menuBarItems = "Menu Bar Items"
     case sparkline = "Sparkline"
     case gauges = "Gauges"
+    case disk = "Disk"
     case panel = "Panel"
     case about = "About"
     case support = "Help & Support"
@@ -758,10 +760,12 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var icon: String {
         switch self {
+        case .dashboard: "speedometer"
         case .general: "gearshape"
         case .menuBarItems: "dock.rectangle"
         case .sparkline: "waveform.path.ecg"
         case .gauges: "barometer"
+        case .disk: "internaldrive"
         case .panel: "rectangle.on.rectangle"
         case .about: "info.circle"
         case .support: "heart"
@@ -770,11 +774,20 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     }
     var category: String {
         switch self {
-        case .general, .menuBarItems, .sparkline, .gauges, .panel: "MONITORING"
+        case .dashboard, .general, .menuBarItems, .sparkline, .gauges, .disk, .panel: "MONITORING"
         case .about, .support, .library: "PK PROJECTS"
         }
     }
-    var keywords: String { "\(rawValue) \(category) bartender hidden icons second bar".lowercased() }
+    var keywords: String {
+        let extra: String
+        switch self {
+        case .dashboard: extra = "tableau de bord overview stats system info"
+        case .disk: extra = "disque espace libre disponible internaldrive"
+        case .menuBarItems: extra = "bartender hidden icons second bar"
+        default: extra = ""
+        }
+        return "\(rawValue) \(category) \(extra)".lowercased()
+    }
 }
 
 private enum ProjectLinks {
@@ -819,7 +832,8 @@ private struct ProjectIconView: View {
 struct SettingsView: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject var manager: MenuBarItemsManager
-    @State private var selection: SettingsSection? = .general
+    @ObservedObject var model: MonitorModel
+    @State private var selection: SettingsSection? = .dashboard
     @State private var searchText = ""
 
     private var filteredSections: [SettingsSection] {
@@ -912,11 +926,13 @@ struct SettingsView: View {
             Divider()
 
             Group {
-                switch selection ?? .general {
+                switch selection ?? .dashboard {
+                case .dashboard: DashboardView(model: model, settings: settings)
                 case .general: GeneralSettingsView(settings: settings)
                 case .menuBarItems: MenuBarItemsSettingsView(settings: settings, manager: manager)
                 case .sparkline: SparklineSettingsView(settings: settings)
                 case .gauges: GaugesSettingsView(settings: settings)
+                case .disk: DiskSettingsView(settings: settings)
                 case .panel: PanelSettingsView(settings: settings)
                 case .about: AboutSettingsView()
                 case .support: SupportSettingsView()
@@ -1075,36 +1091,6 @@ struct GeneralSettingsView: View {
                     }
                 }
 
-                SettingsCard("Disk Module", icon: "internaldrive", subtitle: "Show total and free space beside the graph, outside the gauges.") {
-                    Toggle("Show disk module", isOn: $settings.showDiskModule)
-                    SettingLine("Position", detail: "Left or right end of the readout") {
-                        Picker("Position", selection: $settings.diskPosition) { ForEach(ValuePosition.allCases) { Text($0.rawValue).tag($0) } }
-                            .labelsHidden().pickerStyle(.segmented).frame(width: 220)
-                    }
-                    SettingLine("Value", detail: "Available includes purgeable APFS space") {
-                        Picker("Value", selection: $settings.diskValueMode) {
-                            Text("Available").tag(DiskValueMode.available)
-                            Text("Free").tag(DiskValueMode.free)
-                        }
-                        .labelsHidden().pickerStyle(.segmented).frame(width: 220)
-                    }
-                    SettingLine("Layout") {
-                        Picker("Layout", selection: $settings.diskLayout) {
-                            ForEach(DiskLayout.allCases) { layout in Text(layout.rawValue).tag(layout) }
-                        }
-                        .labelsHidden().pickerStyle(.segmented).frame(width: 220)
-                    }
-                    SettingLine("Line spacing", detail: "Two lines layout only") {
-                        HStack { Slider(value: $settings.diskLineSpacing, in: 0...10, step: 1); Text("\(Int(settings.diskLineSpacing)) pt").monospacedDigit().foregroundStyle(.secondary).frame(width: 48) }
-                            .frame(width: 220)
-                    }
-                    Toggle("Show total capacity", isOn: $settings.showDiskTotal)
-                    SettingLine("Font size") {
-                        HStack { Slider(value: $settings.diskFontSize, in: 8...14, step: 1); Text("\(Int(settings.diskFontSize)) pt").monospacedDigit().foregroundStyle(.secondary).frame(width: 48) }
-                            .frame(width: 220)
-                    }
-                }
-
                 SettingsCard("Monitoring", icon: "gauge.with.dots.needle.67percent", subtitle: "How often readings and app activity are refreshed.") {
                     SettingLine("Refresh rate") {
                         Picker("Refresh rate", selection: $settings.updateInterval) {
@@ -1121,11 +1107,6 @@ struct GeneralSettingsView: View {
                     SettingLine("Top applications", detail: "Shown as markers on the sparkline") {
                         Stepper("\(settings.iconCount)", value: $settings.iconCount, in: 1...5).labelsHidden().frame(width: 100)
                     }
-                }
-
-                SettingsCard("Detail Panel", icon: "rectangle.on.rectangle", subtitle: "Control what appears when you inspect the readout.") {
-                    Toggle("Show details on hover", isOn: $settings.showOnHover)
-                    Toggle("Show absolute values", isOn: $settings.showAbsoluteValues)
                 }
 
                 SettingsCard("Color Thresholds", icon: "exclamationmark.triangle", subtitle: "Change the warning colors used by the readout.") {
@@ -1327,6 +1308,10 @@ struct PanelSettingsView: View {
                     Picker("Appearance", selection: $settings.appearance) { ForEach(AppearanceMode.allCases) { Text($0.rawValue).tag($0) } }
                         .pickerStyle(.segmented).frame(maxWidth: 360, alignment: .leading)
                 }
+                SettingsCard("Detail Panel", icon: "rectangle.on.rectangle", subtitle: "Control what appears when you inspect the readout.") {
+                    Toggle("Show details on hover", isOn: $settings.showOnHover)
+                    Toggle("Show absolute values", isOn: $settings.showAbsoluteValues)
+                }
                 SettingsCard("Layout Preview", icon: "rectangle.on.rectangle", subtitle: "A quick overview of the current arrangement.") {
                     previewLine("waveform.path.ecg", "Sparkline graph", "Graph area")
                     previewLine("arrow.down.to.line", "Value label", settings.valuePosition == .left ? "Left" : "Right")
@@ -1346,6 +1331,194 @@ struct PanelSettingsView: View {
             Text(value).foregroundStyle(.secondary)
         }
         .font(.system(size: 13))
+    }
+}
+
+nonisolated enum SystemInfo {
+    static func sysctlString(_ name: String) -> String {
+        var size = 0
+        sysctlbyname(name, nil, &size, nil, 0)
+        guard size > 0 else { return "—" }
+        var buffer = [CChar](repeating: 0, count: size)
+        sysctlbyname(name, &buffer, &size, nil, 0)
+        return String(cString: buffer)
+    }
+
+    static func sysctlInt(_ name: String) -> Int32 {
+        var value: Int32 = 0
+        var size = MemoryLayout<Int32>.size
+        sysctlbyname(name, &value, &size, nil, 0)
+        return value
+    }
+
+    static var chip: String { sysctlString("machdep.cpu.brand_string") }
+    static var modelIdentifier: String { sysctlString("hw.model") }
+    static var performanceCores: Int32 { sysctlInt("hw.perflevel0.physicalcpu") }
+    static var efficiencyCores: Int32 { sysctlInt("hw.perflevel1.physicalcpu") }
+    static var totalCores: Int32 { sysctlInt("hw.ncpu") }
+
+    static var serialNumber: String {
+        var iterator: io_iterator_t = 0
+        guard IOServiceGetMatchingServices(kIOMainPortDefault, IOServiceMatching("IOPlatformExpertDevice"), &iterator) == KERN_SUCCESS else { return "—" }
+        defer { IOObjectRelease(iterator) }
+        let entry = IOIteratorNext(iterator)
+        guard entry != 0 else { return "—" }
+        defer { IOObjectRelease(entry) }
+        return IORegistryEntryCreateCFProperty(entry, "IOPlatformSerialNumber" as CFString, kCFAllocatorDefault, 0).takeRetainedValue() as? String ?? "—"
+    }
+
+    static var macOSVersion: String {
+        let v = ProcessInfo.processInfo.operatingSystemVersion
+        return "macOS \(v.majorVersion).\(v.minorVersion).\(v.patchVersion)"
+    }
+
+    static var uptime: TimeInterval {
+        var boot = timeval()
+        var size = MemoryLayout<timeval>.size
+        var mib: [Int32] = [CTL_KERN, KERN_BOOTTIME]
+        sysctl(&mib, 2, &boot, &size, nil, 0)
+        return Date().timeIntervalSince(Date(timeIntervalSince1970: TimeInterval(boot.tv_sec)))
+    }
+}
+
+struct DashboardView: View {
+    @ObservedObject var model: MonitorModel
+    @ObservedObject var settings: AppSettings
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                SettingsHeader(title: "Dashboard", subtitle: "Live overview of this Mac.", icon: "speedometer")
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], alignment: .leading, spacing: 14) {
+                    processorCard
+                    memoryCard
+                    graphicsCard
+                    diskCard
+                    networkCard
+                    systemCard
+                }
+            }
+            .padding(28)
+        }
+    }
+
+    private var processorCard: some View {
+        SettingsCard("Processor", icon: "cpu", subtitle: SystemInfo.chip) {
+            infoRow("Chip", SystemInfo.chip)
+            infoRow("Performance cores", "\(SystemInfo.performanceCores)")
+            infoRow("Efficiency cores", "\(SystemInfo.efficiencyCores)")
+            infoRow("Model identifier", SystemInfo.modelIdentifier)
+        }
+    }
+
+    private var memoryCard: some View {
+        SettingsCard("Memory", icon: "memorychip", subtitle: "Physical memory usage.") {
+            infoRow("Total", MonitorModel.formatBytes(model.reading.totalRAM))
+            infoRow("Used", MonitorModel.formatBytes(model.reading.usedRAM))
+            gaugeRow("Usage", model.reading.ram)
+        }
+    }
+
+    private var graphicsCard: some View {
+        SettingsCard("Graphics", icon: "display", subtitle: SystemInfo.chip) {
+            infoRow("GPU", SystemInfo.chip)
+            gaugeRow("Usage", model.reading.gpu)
+        }
+    }
+
+    private var diskCard: some View {
+        SettingsCard("Disk", icon: "internaldrive", subtitle: "Macintosh HD.") {
+            let free = settings.diskValueMode == .free ? model.reading.pureFreeDisk : model.reading.freeDisk
+            infoRow(settings.diskValueMode.rawValue, MonitorModel.formatBytes(Double(free)))
+            infoRow("Total", MonitorModel.formatBytes(Double(model.reading.totalDisk)))
+            gaugeRow("Used", model.reading.disk)
+        }
+    }
+
+    private var networkCard: some View {
+        SettingsCard("Network", icon: "network", subtitle: "Current throughput.") {
+            infoRow("Download", MonitorModel.formatBytes(model.reading.download) + "/s")
+            infoRow("Upload", MonitorModel.formatBytes(model.reading.upload) + "/s")
+        }
+    }
+
+    private var systemCard: some View {
+        SettingsCard("System", icon: "apple.logo", subtitle: "Hardware and runtime.") {
+            infoRow("macOS", SystemInfo.macOSVersion)
+            infoRow("Uptime", uptimeText)
+            infoRow("Serial number", SystemInfo.serialNumber)
+        }
+    }
+
+    private func infoRow(_ title: String, _ value: String) -> some View {
+        HStack {
+            Text(title).font(.system(size: 13)).foregroundStyle(.secondary)
+            Spacer()
+            Text(value).font(.system(size: 13, weight: .medium).monospacedDigit())
+                .lineLimit(1).truncationMode(.middle)
+        }
+    }
+
+    private func gaugeRow(_ title: String, _ value: Double) -> some View {
+        HStack {
+            Text(title).font(.system(size: 13)).foregroundStyle(.secondary)
+            Spacer()
+            Text("\(Int(value.rounded()))%")
+                .font(.system(size: 13, weight: .semibold).monospacedDigit())
+                .foregroundColor(Color(nsColor: settings.colorForValue(value)))
+        }
+    }
+
+    private var uptimeText: String {
+        let total = Int(SystemInfo.uptime)
+        let days = total / 86400
+        let hours = total % 86400 / 3600
+        let minutes = total % 3600 / 60
+        if days > 0 { return "\(days) d \(hours) h \(minutes) min" }
+        if hours > 0 { return "\(hours) h \(minutes) min" }
+        return "\(minutes) min"
+    }
+}
+
+struct DiskSettingsView: View {
+    @ObservedObject var settings: AppSettings
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                SettingsHeader(title: "Disk", subtitle: "Total and free space beside the graph, outside the gauges.", icon: "internaldrive")
+                SettingsCard("Disk Module", icon: "internaldrive", subtitle: "Show total and free space beside the graph, outside the gauges.") {
+                    Toggle("Show disk module", isOn: $settings.showDiskModule)
+                    SettingLine("Position", detail: "Left or right end of the readout") {
+                        Picker("Position", selection: $settings.diskPosition) { ForEach(ValuePosition.allCases) { Text($0.rawValue).tag($0) } }
+                            .labelsHidden().pickerStyle(.segmented).frame(width: 220)
+                    }
+                    SettingLine("Value", detail: "Available includes purgeable APFS space") {
+                        Picker("Value", selection: $settings.diskValueMode) {
+                            Text("Available").tag(DiskValueMode.available)
+                            Text("Free").tag(DiskValueMode.free)
+                        }
+                        .labelsHidden().pickerStyle(.segmented).frame(width: 220)
+                    }
+                    SettingLine("Layout") {
+                        Picker("Layout", selection: $settings.diskLayout) {
+                            ForEach(DiskLayout.allCases) { layout in Text(layout.rawValue).tag(layout) }
+                        }
+                        .labelsHidden().pickerStyle(.segmented).frame(width: 220)
+                    }
+                    SettingLine("Line spacing", detail: "Two lines layout only") {
+                        HStack { Slider(value: $settings.diskLineSpacing, in: 0...10, step: 1); Text("\(Int(settings.diskLineSpacing)) pt").monospacedDigit().foregroundStyle(.secondary).frame(width: 48) }
+                            .frame(width: 220)
+                    }
+                    Toggle("Show total capacity", isOn: $settings.showDiskTotal)
+                    SettingLine("Font size") {
+                        HStack { Slider(value: $settings.diskFontSize, in: 8...14, step: 1); Text("\(Int(settings.diskFontSize)) pt").monospacedDigit().foregroundStyle(.secondary).frame(width: 48) }
+                            .frame(width: 220)
+                    }
+                }
+            }
+            .padding(28)
+        }
     }
 }
 
@@ -2680,7 +2853,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func openSettings() {
         if settingsWindow == nil {
-            let controller = NSHostingController(rootView: SettingsView(settings: settings, manager: menuBarItemsManager))
+            let controller = NSHostingController(rootView: SettingsView(settings: settings, manager: menuBarItemsManager, model: model))
             let window = NSWindow(contentViewController: controller)
             window.title = "PKMonitor Settings"
             window.styleMask = [.titled, .closable, .miniaturizable, .resizable]

@@ -6,7 +6,7 @@
 
 A native, focused macOS system monitor in the menu bar.
 
-Version `2026.09.23` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
+Version `2026.09.24` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
 ![The menu bar and the second bar](store/screenshots/01-barre-et-seconde-barre.png)
 
@@ -33,7 +33,7 @@ Version `2026.09.23` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
 ## ⚙️ Settings
 
-The Settings window provides a categorized sidebar, search, per-module display toggles and detailed controls for the display, gauges, panel and sparkline. It also includes Help & Support and Project Library sections.
+The Settings window provides a live system dashboard (hardware and metrics), a categorized sidebar, search and one tab per module: sparkline, gauges, disk, panel, menu bar icons. It also includes Help & Support and Project Library sections.
 
 ## 🧾 Commands
 

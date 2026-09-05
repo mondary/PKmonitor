@@ -6,7 +6,7 @@ Historique des évolutions de PKMonitor.
 
 ## TODO — Roadmap
 
-Statut : `2026.09.23` (prototype fonctionnel)
+Statut : `2026.09.24` (prototype fonctionnel)
 
 ### Prochaines étapes
 - [x] Mesures CPU, RAM et réseau locales
@@ -19,6 +19,14 @@ Statut : `2026.09.23` (prototype fonctionnel)
 ---
 
 ## Releases
+
+### [2026.09.24] - 2026-09-04
+#### Added
+- Onglet Dashboard à la Stats : matériel (puce, cœurs performance/efficacité, identifiant modèle), métriques live (mémoire, GPU, disque, réseau), macOS, uptime et numéro de série
+- Onglet Disk dédié : le module disque quitte General ; les toggles du panneau de détail rejoignent la section Panel
+
+#### Changed
+- Sidebar réorganisée : Dashboard en premier, une section par module (Sparkline, Gauges, Disk, Panel)
 
 ### [2026.09.23] - 2026-09-04
 #### Added

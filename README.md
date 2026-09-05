@@ -6,7 +6,7 @@
 
 Moniteur système macOS natif et discret dans la barre des menus.
 
-Version `2026.09.23` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
+Version `2026.09.24` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
 ![La barre des menus et la seconde barre](store/screenshots/01-barre-et-seconde-barre.png)
 
@@ -33,7 +33,7 @@ Version `2026.09.23` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
 ## ⚙️ Réglages
 
-La fenêtre Settings propose une sidebar par catégories, un champ de recherche, des toggles par module et des réglages détaillés pour l’affichage, les jauges, le panneau et la sparkline. Elle contient également les pages Help & Support et Project Library.
+La fenêtre Settings propose un tableau de bord système en direct (matériel et métriques), une sidebar par catégories, un champ de recherche et un onglet par module : sparkline, jauges, disque, panneau, icônes de la menu bar. Elle contient également les pages Help & Support et Project Library.
 
 ## 🧾 Commandes
 

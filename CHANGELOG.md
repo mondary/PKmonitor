@@ -6,7 +6,7 @@ Historique des évolutions de PKMonitor.
 
 ## TODO — Roadmap
 
-Statut : `2026.09.20` (prototype fonctionnel)
+Statut : `2026.09.21` (prototype fonctionnel)
 
 ### Prochaines étapes
 - [x] Mesures CPU, RAM et réseau locales
@@ -19,6 +19,14 @@ Statut : `2026.09.20` (prototype fonctionnel)
 ---
 
 ## Releases
+
+### [2026.09.21] - 2026-09-04
+#### Added
+- Module disque autonome hors des jauges : valeur lisible (taille de police réglable 8–14 pt), position gauche/droite du bandeau, choix Libre vs Disponible (inclut l'espace purgeable APFS), total masquable, module cliquable comme les jauges
+- Carte Settings « Disk Module » dans General
+
+#### Changed
+- Le disque n'apparaît plus dans la liste et l'ordre des jauges
 
 ### [2026.09.20] - 2026-09-04
 #### Changed

@@ -47,6 +47,13 @@ enum IconLocation: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+enum DiskValueMode: String, CaseIterable, Identifiable {
+    case available = "Available"
+    case free = "Free"
+
+    var id: String { rawValue }
+}
+
 enum UnderBarBackground: String, CaseIterable, Identifiable {
     case transparent = "None"
     case color = "Tint"
@@ -78,8 +85,8 @@ final class AppSettings: ObservableObject {
     @Published var elementSpacing: Double { didSet { defaults.set(elementSpacing, forKey: "elementSpacing") } }
 
     var gaugeMetrics: [Metric] {
-        let parsed = gaugeOrder.split(separator: ",").compactMap { Metric(rawValue: String($0)) }
-        return parsed.isEmpty ? [.gpu, .cpu, .ram, .disk, .network] : parsed
+        let parsed = gaugeOrder.split(separator: ",").compactMap { Metric(rawValue: String($0)) }.filter { $0 != .disk }
+        return parsed.isEmpty ? [.gpu, .cpu, .ram, .network] : parsed
     }
     var enabledGaugeMetrics: [Metric] {
         let enabled = Set(enabledMetrics.split(separator: ",").compactMap { Metric(rawValue: String($0)) })
@@ -99,6 +106,11 @@ final class AppSettings: ObservableObject {
     @Published var underBarContent: AppearanceMode { didSet { defaults.set(underBarContent.rawValue, forKey: "underBarContent") } }
     @Published var menuBarItemsSelected: String { didSet { defaults.set(menuBarItemsSelected, forKey: "menuBarItemsSelected") } }
     @Published var menuBarItemsOrder: String { didSet { defaults.set(menuBarItemsOrder, forKey: "menuBarItemsOrder") } }
+    @Published var showDiskModule: Bool { didSet { defaults.set(showDiskModule, forKey: "showDiskModule") } }
+    @Published var diskPosition: ValuePosition { didSet { defaults.set(diskPosition.rawValue, forKey: "diskPosition") } }
+    @Published var diskValueMode: DiskValueMode { didSet { defaults.set(diskValueMode.rawValue, forKey: "diskValueMode") } }
+    @Published var showDiskTotal: Bool { didSet { defaults.set(showDiskTotal, forKey: "showDiskTotal") } }
+    @Published var diskFontSize: Double { didSet { defaults.set(diskFontSize, forKey: "diskFontSize") } }
     @Published var warningThreshold: Double { didSet { defaults.set(warningThreshold, forKey: "warningThreshold") } }
     @Published var criticalThreshold: Double { didSet { defaults.set(criticalThreshold, forKey: "criticalThreshold") } }
     @Published private(set) var launchAtLogin = SMAppService.mainApp.status == .enabled
@@ -138,6 +150,11 @@ final class AppSettings: ObservableObject {
         underBarContent = AppearanceMode(rawValue: defaults.string(forKey: "underBarContent") ?? "") ?? .system
         menuBarItemsSelected = defaults.string(forKey: "menuBarItemsSelected") ?? ""
         menuBarItemsOrder = defaults.string(forKey: "menuBarItemsOrder") ?? ""
+        showDiskModule = defaults.object(forKey: "showDiskModule") as? Bool ?? true
+        diskPosition = ValuePosition(rawValue: defaults.string(forKey: "diskPosition") ?? "") ?? .right
+        diskValueMode = DiskValueMode(rawValue: defaults.string(forKey: "diskValueMode") ?? "") ?? .available
+        showDiskTotal = defaults.object(forKey: "showDiskTotal") as? Bool ?? true
+        diskFontSize = defaults.object(forKey: "diskFontSize") as? Double ?? 11
         warningThreshold = defaults.object(forKey: "warningThreshold") as? Double ?? 80
         criticalThreshold = defaults.object(forKey: "criticalThreshold") as? Double ?? 95
     }
@@ -188,6 +205,11 @@ final class AppSettings: ObservableObject {
         underBarContent = .system
         menuBarItemsSelected = ""
         menuBarItemsOrder = ""
+        showDiskModule = true
+        diskPosition = .right
+        diskValueMode = .available
+        showDiskTotal = true
+        diskFontSize = 11
         warningThreshold = 80
         criticalThreshold = 95
     }
@@ -216,6 +238,7 @@ struct Reading {
     var disk = 0.0
     var freeDisk: UInt64 = 0
     var totalDisk: UInt64 = 0
+    var pureFreeDisk: UInt64 = 0
     var download = 0.0
     var upload = 0.0
     var totalRAM: Double = Double(ProcessInfo.processInfo.physicalMemory)
@@ -245,16 +268,17 @@ final class SystemSampler {
         let net = networkRate()
         let mem = memoryUsage()
         let disk = diskUsage()
-        return Reading(cpu: cpuUsage(), ram: mem.percent, gpu: gpuUsage(), network: net.total, disk: disk.percent, freeDisk: disk.free, totalDisk: disk.total, download: net.download, upload: net.upload, usedRAM: Double(mem.usedBytes), apps: previousApps)
+        return Reading(cpu: cpuUsage(), ram: mem.percent, gpu: gpuUsage(), network: net.total, disk: disk.percent, freeDisk: disk.free, totalDisk: disk.total, pureFreeDisk: disk.pureFree, download: net.download, upload: net.upload, usedRAM: Double(mem.usedBytes), apps: previousApps)
     }
 
-    private func diskUsage() -> (percent: Double, free: UInt64, total: UInt64) {
-        let keys: Set<URLResourceKey> = [.volumeTotalCapacityKey, .volumeAvailableCapacityForImportantUsageKey]
+    private func diskUsage() -> (percent: Double, free: UInt64, total: UInt64, pureFree: UInt64) {
+        let keys: Set<URLResourceKey> = [.volumeTotalCapacityKey, .volumeAvailableCapacityForImportantUsageKey, .volumeAvailableCapacityKey]
         guard let values = try? URL(fileURLWithPath: NSHomeDirectory()).resourceValues(forKeys: keys),
               let total = values.volumeTotalCapacity,
-              let free = values.volumeAvailableCapacityForImportantUsage else { return (0, 0, 0) }
+              let free = values.volumeAvailableCapacityForImportantUsage,
+              let pureFree = values.volumeAvailableCapacity else { return (0, 0, 0, 0) }
         let used = max(Int64(0), Int64(total) - Int64(free))
-        return (100 * Double(used) / Double(max(1, total)), UInt64(free), UInt64(total))
+        return (100 * Double(used) / Double(max(1, total)), UInt64(free), UInt64(total), UInt64(max(0, pureFree)))
     }
 
     private func cpuUsage() -> Double {
@@ -401,7 +425,8 @@ final class MonitorModel: ObservableObject {
         case .ram:
             return "\(pct) (\(Self.formatBytes(reading.usedRAM)))"
         case .disk:
-            return "\(pct) (\(Self.formatBytes(Double(reading.freeDisk))) free / \(Self.formatBytes(Double(reading.totalDisk))))"
+            let free = settings.diskValueMode == .free ? reading.pureFreeDisk : reading.freeDisk
+            return "\(pct) (\(Self.formatBytes(Double(free))) free / \(Self.formatBytes(Double(reading.totalDisk))))"
         case .network:
             return "↓\(Self.formatBytes(reading.download))/s ↑\(Self.formatBytes(reading.upload))/s"
         default:
@@ -412,7 +437,9 @@ final class MonitorModel: ObservableObject {
     func formatMenuBar() -> String {
         switch displayedMetric {
         case .network: return "↓\(Self.formatBytes(reading.download))/s"
-        case .disk: return "\(Self.formatBytes(Double(reading.freeDisk))) free"
+        case .disk:
+            let free = settings.diskValueMode == .free ? reading.pureFreeDisk : reading.freeDisk
+            return "\(Self.formatBytes(Double(free))) free"
         default: return "\(Int(reading.value(for: displayedMetric).rounded()))%"
         }
     }
@@ -1032,6 +1059,26 @@ struct GeneralSettingsView: View {
                         paddingControl("Bottom", value: $settings.underBarPaddingBottom)
                         paddingControl("Left", value: $settings.underBarPaddingLeft)
                         paddingControl("Right", value: $settings.underBarPaddingRight)
+                    }
+                }
+
+                SettingsCard("Disk Module", icon: "internaldrive", subtitle: "Show total and free space beside the graph, outside the gauges.") {
+                    Toggle("Show disk module", isOn: $settings.showDiskModule)
+                    SettingLine("Position", detail: "Left or right end of the readout") {
+                        Picker("Position", selection: $settings.diskPosition) { ForEach(ValuePosition.allCases) { Text($0.rawValue).tag($0) } }
+                            .labelsHidden().pickerStyle(.segmented).frame(width: 220)
+                    }
+                    SettingLine("Value", detail: "Available includes purgeable APFS space") {
+                        Picker("Value", selection: $settings.diskValueMode) {
+                            Text("Available").tag(DiskValueMode.available)
+                            Text("Free").tag(DiskValueMode.free)
+                        }
+                        .labelsHidden().pickerStyle(.segmented).frame(width: 220)
+                    }
+                    Toggle("Show total capacity", isOn: $settings.showDiskTotal)
+                    SettingLine("Font size") {
+                        HStack { Slider(value: $settings.diskFontSize, in: 8...14, step: 1); Text("\(Int(settings.diskFontSize)) pt").monospacedDigit().foregroundStyle(.secondary).frame(width: 48) }
+                            .frame(width: 220)
                     }
                 }
 
@@ -2639,7 +2686,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var gaugeRects: [Metric: NSRect] = [:]
 
     func metricForClick(at point: NSPoint) -> Metric? {
-        guard settings.showGauges else { return nil }
+        guard settings.showGauges || settings.showDiskModule else { return nil }
         for (metric, rect) in gaugeRects {
             if rect.contains(point) { return metric }
         }
@@ -2656,7 +2703,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let labelW: CGFloat = settings.showSparkline && settings.showLabel ? 30 : 0
         let gaugeW: CGFloat = settings.showGauges ? CGFloat(settings.enabledGaugeMetrics.count) * (CGFloat(settings.gaugeWidth) + 2) + 2 : 0
         let graphW = settings.showSparkline ? settings.sparklineWidth : 0
-        let totalWidth = textW + labelW + graphW + gaugeW
+        let diskFont = NSFont.monospacedDigitSystemFont(ofSize: CGFloat(settings.diskFontSize), weight: .semibold)
+        let diskFreeAttrs: [NSAttributedString.Key: Any] = [.font: diskFont, .foregroundColor: NSColor.systemBlue]
+        let diskTotalAttrs: [NSAttributedString.Key: Any] = [.font: diskFont, .foregroundColor: NSColor.systemRed]
+        let diskSepAttrs: [NSAttributedString.Key: Any] = [.font: diskFont, .foregroundColor: NSColor.tertiaryLabelColor]
+        let diskFreeText = MonitorModel.formatBytes(Double(settings.diskValueMode == .free ? model.reading.pureFreeDisk : model.reading.freeDisk))
+        let diskTotalText = MonitorModel.formatBytes(Double(model.reading.totalDisk))
+        let diskW: CGFloat = {
+            guard settings.showDiskModule else { return 0 }
+            var width = (diskFreeText as NSString).size(withAttributes: diskFreeAttrs).width
+            if settings.showDiskTotal {
+                width += (" / " as NSString).size(withAttributes: diskSepAttrs).width
+                width += (diskTotalText as NSString).size(withAttributes: diskTotalAttrs).width
+            }
+            return width + 8
+        }()
+        let totalWidth = textW + labelW + graphW + gaugeW + diskW
         let size = NSSize(width: totalWidth, height: 18)
         let image = NSImage(size: size)
         image.lockFocus()
@@ -2676,8 +2738,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         var gaugeStartX: CGFloat = 0
         var valueX: CGFloat = 0
         var labelStartX: CGFloat = 0
-        var graphStartX: CGFloat = 0
+        var graphStartX = CGFloat(0)
+        var diskStartX: CGFloat = 0
+        let diskOnLeft = settings.diskPosition == .left
 
+        if diskOnLeft { diskStartX = cursor; cursor += diskW }
         if gaugesOnLeft { gaugeStartX = cursor; cursor += gaugeW }
         if valueOnLeft { valueX = cursor; cursor += textW }
         if labelOnLeft { labelStartX = cursor; cursor += labelW }
@@ -2685,6 +2750,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if !labelOnLeft { labelStartX = cursor; cursor += labelW }
         if !valueOnLeft { valueX = cursor; cursor += textW }
         if !gaugesOnLeft { gaugeStartX = cursor; cursor += gaugeW }
+        if !diskOnLeft { diskStartX = cursor; cursor += diskW }
 
         if valueOnLeft {
             (value as NSString).draw(at: NSPoint(x: valueX + textW - valueSize.width - gap, y: (size.height - valueSize.height) / 2), withAttributes: valueAttrs)
@@ -2698,6 +2764,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 String(character).draw(at: NSPoint(x: lx, y: size.height - labelCharSize.height - CGFloat(index) * lineH), withAttributes: labelAttrs)
             }
         }
+
+        var moduleRects: [Metric: NSRect] = [:]
+        if settings.showDiskModule, diskW > 0 {
+            let freeSize = (diskFreeText as NSString).size(withAttributes: diskFreeAttrs)
+            let sepSize = (" / " as NSString).size(withAttributes: diskSepAttrs)
+            var x = diskStartX + 4
+            let y = (size.height - freeSize.height) / 2
+            (diskFreeText as NSString).draw(at: NSPoint(x: x, y: y), withAttributes: diskFreeAttrs)
+            x += freeSize.width
+            if settings.showDiskTotal {
+                (" / " as NSString).draw(at: NSPoint(x: x, y: y), withAttributes: diskSepAttrs)
+                x += sepSize.width
+                (diskTotalText as NSString).draw(at: NSPoint(x: x, y: y), withAttributes: diskTotalAttrs)
+            }
+            moduleRects[.disk] = NSRect(x: diskStartX, y: 0, width: diskW, height: size.height)
+        }
+        if !settings.showGauges { gaugeRects = moduleRects }
 
         guard values.count > 1 else { return image }
 
@@ -2833,10 +2916,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 let letterSize = (letter as NSString).size(withAttributes: tagAttrs)
                 (letter as NSString).draw(at: NSPoint(x: gx + (gW - letterSize.width) / 2, y: 2), withAttributes: tagAttrs)
             }
-            gaugeRects = newGaugeRects
-        } else {
-            gaugeRects.removeAll()
-        }
+            moduleRects.merge(newGaugeRects) { _, new in new }
+            gaugeRects = moduleRects
+            } else {
+                gaugeRects = moduleRects
+            }
 
         image.isTemplate = false
         return image
@@ -2858,6 +2942,8 @@ struct PKMonitorApp {
             assert(IconLocation(rawValue: "Menu Bar") == .menuBar)
             assert(AppSettings.parseIDs("a|1,b|2,") == ["a|1", "b|2"])
             assert(AppSettings.parseIDs("") == [])
+            assert(DiskValueMode(rawValue: "Free") == .free)
+            assert(DiskValueMode(rawValue: "Available") == .available)
             let baseID = MenuBarItemsManager.stableID(bundle: "com.x.y", appName: "X", title: "Wi-Fi", index: 0, existing: [])
             assert(baseID == "com.x.y|Wi-Fi")
             assert(MenuBarItemsManager.stableID(bundle: "com.x.y", appName: "X", title: "Wi-Fi", index: 1, existing: [baseID]) != baseID)

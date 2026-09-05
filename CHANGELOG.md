@@ -6,7 +6,7 @@ Historique des évolutions de PKMonitor.
 
 ## TODO — Roadmap
 
-Statut : `2026.09.17` (prototype fonctionnel)
+Statut : `2026.09.19` (prototype fonctionnel)
 
 ### Prochaines étapes
 - [x] Mesures CPU, RAM et réseau locales
@@ -14,11 +14,31 @@ Statut : `2026.09.17` (prototype fonctionnel)
 - [x] Popover de détail et menu contextuel
 - [ ] Mesure GPU native fiable
 - [ ] Alertes réseau et distribution signée
-- [ ] Déport d'icônes tierces dans la seconde barre (type Bartender/Ice : permission Accessibilité + APIs privées, restauration des positions à la sortie)
+- [x] Déport d'icônes tierces dans la seconde barre (type Bartender/Ice : permission Accessibilité + APIs privées, restauration des positions à la sortie)
 
 ---
 
 ## Releases
+
+### [2026.09.19] - 2026-09-04
+#### Added
+- Project Library repensée : carte vedette PKMonitor avec capture en fondu, cartes avec zone média (screenshot réel ou dégradé + grand picto) et badge de plateforme
+- Captures d'écran officielles dans `store/screenshots/` et intégration en tête des README FR/EN
+- Screenshots des projets PK intégrés au bundle (`ProjectScreenshots/`)
+
+#### Fixed
+- Rendu de l'icône lissé partout (pré-rendu carré haute interpolation) : sidebar, page About, bibliothèque
+- Ligne About de la sidebar avec le symbole SF standard au lieu de l'icône de l'app
+
+### [2026.09.18] - 2026-09-04
+#### Added
+- Icônes des autres applications descendues dans la seconde barre, à la Bartender : énumération via Accessibilité, parc des icônes d'origine hors écran, capture d'image et clic transféré vers le menu d'origine
+- Page Settings « Menu Bar Items » : cases à cocher pour choisir les icônes à descendre, réordonnancement par glisser-déposer, aides à l'octroi des permissions Accessibilité et Enregistrement d'écran
+- Bouton réglages dans le panneau de survol du détail
+
+#### Changed
+- La seconde barre s'affiche désormais dès qu'une icône est descendue, même si la pilule PKMonitor reste dans la barre des menus
+- Restauration automatique des icônes d'origine au décochage ou à la fermeture de PKMonitor
 
 ### [2026.09.17] - 2026-09-04
 #### Added

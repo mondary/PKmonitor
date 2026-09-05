@@ -6,7 +6,11 @@
 
 A native, focused macOS system monitor in the menu bar.
 
-Version `2026.09.17` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
+Version `2026.09.19` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
+
+![The menu bar and the second bar](store/screenshots/01-barre-et-seconde-barre.png)
+
+![The hover detail panel](store/screenshots/02-panneau-detail.png)
 
 ## ✅ Features
 
@@ -14,8 +18,9 @@ Version `2026.09.17` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 - CPU, GPU, RAM, network and disk space
 - Two-line disk module: total capacity in red, free space in blue
 - Individually enabled, reorderable and configurable segments
+- Other apps' menu bar icons lowered into the second bar (Bartender-style)
 - Display toggles for Sparkline, Gauges and Panel
-- Hover detail panel with process termination controls
+- Hover detail panel with process termination controls and a settings button
 - Categorized Settings navigation, search and project library
 - Light/dark/system theme and launch at login
 
@@ -23,6 +28,7 @@ Version `2026.09.17` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
 - Hover the menu bar item to open details
 - Click a segment to change the active metric
+- Click a lowered icon to open its original menu
 - Right-click to open the menu and Settings
 
 ## ⚙️ Settings

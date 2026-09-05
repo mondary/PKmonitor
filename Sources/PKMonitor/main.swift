@@ -1,5 +1,7 @@
 import AppKit
+import ApplicationServices
 import Combine
+import CoreGraphics
 import Darwin
 import IOKit
 import ServiceManagement
@@ -95,6 +97,8 @@ final class AppSettings: ObservableObject {
     @Published var underBarPaddingRight: Double { didSet { defaults.set(underBarPaddingRight, forKey: "underBarPaddingRight") } }
     @Published var underBarBackground: UnderBarBackground { didSet { defaults.set(underBarBackground.rawValue, forKey: "underBarBackground") } }
     @Published var underBarContent: AppearanceMode { didSet { defaults.set(underBarContent.rawValue, forKey: "underBarContent") } }
+    @Published var menuBarItemsSelected: String { didSet { defaults.set(menuBarItemsSelected, forKey: "menuBarItemsSelected") } }
+    @Published var menuBarItemsOrder: String { didSet { defaults.set(menuBarItemsOrder, forKey: "menuBarItemsOrder") } }
     @Published var warningThreshold: Double { didSet { defaults.set(warningThreshold, forKey: "warningThreshold") } }
     @Published var criticalThreshold: Double { didSet { defaults.set(criticalThreshold, forKey: "criticalThreshold") } }
     @Published private(set) var launchAtLogin = SMAppService.mainApp.status == .enabled
@@ -132,8 +136,17 @@ final class AppSettings: ObservableObject {
         underBarPaddingRight = defaults.object(forKey: "underBarPaddingRight") as? Double ?? 12
         underBarBackground = UnderBarBackground(rawValue: defaults.string(forKey: "underBarBackground") ?? "") ?? .blur
         underBarContent = AppearanceMode(rawValue: defaults.string(forKey: "underBarContent") ?? "") ?? .system
+        menuBarItemsSelected = defaults.string(forKey: "menuBarItemsSelected") ?? ""
+        menuBarItemsOrder = defaults.string(forKey: "menuBarItemsOrder") ?? ""
         warningThreshold = defaults.object(forKey: "warningThreshold") as? Double ?? 80
         criticalThreshold = defaults.object(forKey: "criticalThreshold") as? Double ?? 95
+    }
+
+    var selectedMenuBarItems: [String] { Self.parseIDs(menuBarItemsSelected) }
+    var menuBarItemOrderList: [String] { Self.parseIDs(menuBarItemsOrder) }
+
+    nonisolated static func parseIDs(_ raw: String) -> [String] {
+        raw.split(separator: ",").map(String.init).filter { !$0.isEmpty }
     }
 
     func setLaunchAtLogin(_ enabled: Bool) throws {
@@ -173,6 +186,8 @@ final class AppSettings: ObservableObject {
         underBarPaddingRight = 12
         underBarBackground = .blur
         underBarContent = .system
+        menuBarItemsSelected = ""
+        menuBarItemsOrder = ""
         warningThreshold = 80
         criticalThreshold = 95
     }
@@ -548,6 +563,7 @@ struct DetailView: View {
     let terminateProcess: (AppUsage) -> Void
     let forceKillProcess: (AppUsage) -> Void
     let activateApp: (AppUsage) -> Void
+    let openSettings: () -> Void
     @State private var hoveredApp: String?
 
     private var absoluteDetail: String {
@@ -647,6 +663,13 @@ struct DetailView: View {
                 }
             }
             HStack {
+                Button { openSettings() } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 13, weight: .medium))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .help("Open Settings")
                 Spacer()
                 Text("PKMonitor v\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev")")
                     .font(.system(size: 9, design: .monospaced))
@@ -684,6 +707,7 @@ struct SparklineShape: Shape {
 
 enum SettingsSection: String, CaseIterable, Identifiable {
     case general = "General"
+    case menuBarItems = "Menu Bar Items"
     case sparkline = "Sparkline"
     case gauges = "Gauges"
     case panel = "Panel"
@@ -695,6 +719,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .general: "gearshape"
+        case .menuBarItems: "dock.rectangle"
         case .sparkline: "waveform.path.ecg"
         case .gauges: "barometer"
         case .panel: "rectangle.on.rectangle"
@@ -705,17 +730,37 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     }
     var category: String {
         switch self {
-        case .general, .sparkline, .gauges, .panel: "MONITORING"
+        case .general, .menuBarItems, .sparkline, .gauges, .panel: "MONITORING"
         case .about, .support, .library: "PK PROJECTS"
         }
     }
-    var keywords: String { "\(rawValue) \(category)".lowercased() }
+    var keywords: String { "\(rawValue) \(category) bartender hidden icons second bar".lowercased() }
 }
 
 private enum ProjectLinks {
     static let github = URL(string: "https://github.com/mondary/PKmonitor")!
     static let githubProfile = URL(string: "https://github.com/mondary")!
     static let koFi = URL(string: "https://ko-fi.com/pouark")!
+}
+
+@MainActor
+enum AppIcon {
+    private static var cache: [Int: NSImage] = [:]
+
+    static func image(side: CGFloat) -> NSImage {
+        let pixels = max(16, Int(side * 2))
+        if let cached = cache[pixels] { return cached }
+        let source = NSImage(contentsOf: URL(fileURLWithPath: Bundle.main.path(forResource: "icon", ofType: "png") ?? ""))
+            ?? NSImage(named: NSImage.applicationIconName)
+            ?? NSImage()
+        let image = NSImage(size: NSSize(width: pixels, height: pixels))
+        image.lockFocus()
+        NSGraphicsContext.current?.imageInterpolation = .high
+        source.draw(in: NSRect(x: 0, y: 0, width: pixels, height: pixels), from: .zero, operation: .sourceOver, fraction: 1.0)
+        image.unlockFocus()
+        cache[pixels] = image
+        return image
+    }
 }
 
 private struct ProjectIconView: View {
@@ -732,6 +777,7 @@ private struct ProjectIconView: View {
 
 struct SettingsView: View {
     @ObservedObject var settings: AppSettings
+    @ObservedObject var manager: MenuBarItemsManager
     @State private var selection: SettingsSection? = .general
     @State private var searchText = ""
 
@@ -752,8 +798,9 @@ struct SettingsView: View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(spacing: 10) {
-                    Image(nsImage: NSImage(contentsOf: URL(fileURLWithPath: Bundle.main.path(forResource: "icon", ofType: "png") ?? "")) ?? NSImage())
-                        .resizable().scaledToFit().frame(width: 34, height: 34)
+                    Image(nsImage: AppIcon.image(side: 34))
+                        .resizable().interpolation(.high).scaledToFit()
+                        .frame(width: 34, height: 34)
                         .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                     VStack(alignment: .leading, spacing: 2) {
                         Text("PKMonitor").font(.headline)
@@ -793,15 +840,7 @@ struct SettingsView: View {
                             selection = section
                         } label: {
                             HStack(spacing: 11) {
-                    Group {
-                        if section == .about {
-                            Image(nsImage: NSImage(contentsOf: URL(fileURLWithPath: Bundle.main.path(forResource: "icon", ofType: "png") ?? "")) ?? NSImage())
-                                .resizable().scaledToFit()
-                        } else {
-                            Image(systemName: section.icon)
-                        }
-                    }
-                    .frame(width: 20, height: 20)
+                                Image(systemName: section.icon)
                                     .font(.system(size: 14, weight: .medium))
                                     .frame(width: 20)
                                 Text(section.rawValue)
@@ -834,6 +873,7 @@ struct SettingsView: View {
             Group {
                 switch selection ?? .general {
                 case .general: GeneralSettingsView(settings: settings)
+                case .menuBarItems: MenuBarItemsSettingsView(settings: settings, manager: manager)
                 case .sparkline: SparklineSettingsView(settings: settings)
                 case .gauges: GaugesSettingsView(settings: settings)
                 case .panel: PanelSettingsView(settings: settings)
@@ -1248,9 +1288,11 @@ struct AboutSettingsView: View {
             VStack(spacing: 0) {
                 ZStack {
                     Circle().fill(Color.accentColor.opacity(0.14)).frame(width: 132, height: 132)
-                    Image(nsImage: NSImage(contentsOf: URL(fileURLWithPath: Bundle.main.path(forResource: "icon", ofType: "png") ?? "")) ?? NSImage())
-                        .resizable().scaledToFit().frame(width: 88, height: 88)
+                    Image(nsImage: AppIcon.image(side: 88))
+                        .resizable().interpolation(.high).scaledToFit()
+                        .frame(width: 88, height: 88)
                         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        .shadow(color: .black.opacity(0.18), radius: 10, y: 4)
                 }
                 .padding(.top, 36)
                 .padding(.bottom, 18)
@@ -1364,59 +1406,144 @@ struct ProjectLibraryView: View {
         let kind: String
         let description: String
         let iconAsset: String
+        let screenshot: String?
         let tint: NSColor
         var url: URL { URL(string: "https://github.com/mondary/\(id)")! }
     }
 
     private let projects = [
-        Project(id: "Macos_PKarchives", title: "PKarchives", kind: "macOS app", description: "Archive your Desktop to Google Drive with rclone, using a native macOS interface or CLI/TUI.", iconAsset: "PKarchives", tint: NSColor(hex: "#8B5CF6")!),
-        Project(id: "PKmonitor", title: "PKMonitor", kind: "macOS app", description: "CPU, GPU, RAM, network and disk metrics in the menu bar.", iconAsset: "icon", tint: NSColor(hex: "#0EA5E9")!),
-        Project(id: "PKwindowsManagement", title: "PKwindowsManagement", kind: "macOS app", description: "Manage windows by keyboard and launch installed applications quickly from the menu bar.", iconAsset: "PKwindowsManagement", tint: NSColor(hex: "#F97316")!),
-        Project(id: "Macos_PKpowerlines", title: "PKpowerlines", kind: "macOS app", description: "A native multi-display powerline showing RAM, CPU, network or battery in real time.", iconAsset: "PKpowerlines", tint: NSColor(hex: "#10B981")!),
-        Project(id: "PKmac-cleanup", title: "LaunchPad", kind: "macOS app", description: "Scan and audit user agents and system daemons with local security analysis.", iconAsset: "PKmac-cleanup", tint: NSColor(hex: "#EC4899")!),
-        Project(id: "Chrome_SimpleGMAIL", title: "PKMail", kind: "Chrome / macOS / Windows / Linux", description: "An immersive IMAP mail client with a vanilla HTML interface and Gmail-style workflows.", iconAsset: "PKMail", tint: NSColor(hex: "#EA4335")!),
-        Project(id: "Chrome_PKshortcuts", title: "PK Chrome Shortcuts", kind: "Chrome extension", description: "Control tabs, navigation and split view with keyboard shortcuts.", iconAsset: "PKshortcuts", tint: NSColor(hex: "#F59E0B")!)
+        Project(id: "Macos_PKarchives", title: "PKarchives", kind: "macOS app", description: "Archive your Desktop to Google Drive with rclone, using a native macOS interface or CLI/TUI.", iconAsset: "PKarchives", screenshot: "PKarchives", tint: NSColor(hex: "#8B5CF6")!),
+        Project(id: "PKmonitor", title: "PKMonitor", kind: "macOS app", description: "CPU, GPU, RAM, network and disk metrics in the menu bar.", iconAsset: "icon", screenshot: "PKmonitor", tint: NSColor(hex: "#0EA5E9")!),
+        Project(id: "PKwindowsManagement", title: "PKwindowsManagement", kind: "macOS app", description: "Manage windows by keyboard and launch installed applications quickly from the menu bar.", iconAsset: "PKwindowsManagement", screenshot: nil, tint: NSColor(hex: "#F97316")!),
+        Project(id: "Macos_PKpowerlines", title: "PKpowerlines", kind: "macOS app", description: "A native multi-display powerline showing RAM, CPU, network or battery in real time.", iconAsset: "PKpowerlines", screenshot: "PKpowerlines", tint: NSColor(hex: "#10B981")!),
+        Project(id: "PKmac-cleanup", title: "LaunchPad", kind: "macOS app", description: "Scan and audit user agents and system daemons with local security analysis.", iconAsset: "PKmac-cleanup", screenshot: nil, tint: NSColor(hex: "#EC4899")!),
+        Project(id: "Chrome_SimpleGMAIL", title: "PKMail", kind: "Chrome / macOS / Windows / Linux", description: "An immersive IMAP mail client with a vanilla HTML interface and Gmail-style workflows.", iconAsset: "PKMail", screenshot: nil, tint: NSColor(hex: "#EA4335")!),
+        Project(id: "Chrome_PKshortcuts", title: "PK Chrome Shortcuts", kind: "Chrome extension", description: "Control tabs, navigation and split view with keyboard shortcuts.", iconAsset: "PKshortcuts", screenshot: nil, tint: NSColor(hex: "#F59E0B")!)
     ]
+
+    private var featured: Project { projects.first { $0.id == "PKmonitor" }! }
+    private var gridProjects: [Project] { projects.filter { $0.id != "PKmonitor" } }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 SettingsHeader(title: "Project Library", subtitle: "Discover the other tools and projects I build.", icon: "square.grid.2x2")
-                Text("Latest projects").font(.system(size: 18, weight: .bold, design: .rounded))
-                Text("Explore the newest macOS apps and Chrome extensions from GitHub.")
-                    .font(.system(size: 13)).foregroundStyle(.secondary)
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
-                    ForEach(projects) { project in
-                        Link(destination: project.url) {
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack(alignment: .top) {
-                                    Group {
-                                        if project.iconAsset == "icon" {
-                                            Image(nsImage: NSImage(contentsOf: URL(fileURLWithPath: Bundle.main.path(forResource: "icon", ofType: "png") ?? "")) ?? NSImage())
-                                                .resizable().scaledToFit()
-                                        } else { ProjectIconView(name: project.iconAsset) }
-                                    }
-                                    .frame(width: 46, height: 46)
-                                    .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-                                    Spacer()
-                                    Image(systemName: "arrow.up.right").font(.caption).foregroundStyle(.tertiary)
-                                }
-                                Text(project.title).font(.system(size: 14, weight: .semibold))
-                                Text(project.kind.uppercased()).font(.system(size: 9, weight: .bold)).foregroundStyle(Color(nsColor: project.tint))
-                                Text(project.description).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(2).fixedSize(horizontal: false, vertical: true)
-                            }
-                            .frame(maxWidth: .infinity, minHeight: 145, alignment: .topLeading)
-                            .padding(15)
-                            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
-                            .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous).stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5))
-                        }
-                        .buttonStyle(.plain)
+                featuredCard(featured)
+                Text("More projects").font(.system(size: 18, weight: .bold, design: .rounded))
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: 14) {
+                    ForEach(gridProjects) { project in
+                        projectCard(project)
                     }
                 }
                 Link(destination: ProjectLinks.githubProfile) { Label("View all repositories on GitHub", systemImage: "arrow.up.right.square") }
                     .buttonStyle(.borderedProminent)
+                    .padding(.top, 6)
             }.padding(28)
         }
+    }
+
+    private func screenshotImage(_ name: String) -> NSImage? {
+        NSImage(contentsOf: URL(fileURLWithPath: Bundle.main.path(forResource: name, ofType: "png", inDirectory: "ProjectScreenshots") ?? ""))
+    }
+
+    private func featuredCard(_ project: Project) -> some View {
+        Link(destination: project.url) {
+            HStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 12) {
+                        ProjectIconView(name: project.iconAsset)
+                            .frame(width: 56, height: 56)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .shadow(color: .black.opacity(0.18), radius: 5, y: 2)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(project.title).font(.system(size: 24, weight: .bold, design: .rounded))
+                            Text(project.kind.uppercased()).font(.system(size: 10, weight: .bold)).foregroundStyle(Color(nsColor: project.tint))
+                        }
+                    }
+                    Text(project.description)
+                        .font(.system(size: 13)).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(3)
+                    Label("Star on GitHub", systemImage: "star.fill")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12).padding(.vertical, 7)
+                        .background(Color.accentColor, in: Capsule())
+                }
+                .padding(22)
+                .frame(maxWidth: 340, alignment: .topLeading)
+                if let image = screenshotImage(project.screenshot!) {
+                    GeometryReader { geo in
+                        Image(nsImage: image)
+                            .resizable().interpolation(.high)
+                            .scaledToFill()
+                            .frame(width: geo.size.width, height: geo.size.height)
+                            .clipped()
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .overlay(alignment: .leading) {
+                        LinearGradient(colors: [Color(nsColor: .controlBackgroundColor), .clear], startPoint: .leading, endPoint: .trailing)
+                            .frame(width: 60)
+                    }
+                }
+            }
+            .frame(height: 210)
+            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5))
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func projectCard(_ project: Project) -> some View {
+        Link(destination: project.url) {
+            VStack(alignment: .leading, spacing: 0) {
+                Group {
+                    if let shot = project.screenshot, let image = screenshotImage(shot) {
+                        Image(nsImage: image)
+                            .resizable().interpolation(.high)
+                            .scaledToFill()
+                            .frame(width: 300, height: 150)
+                            .clipped()
+                    } else {
+                        ZStack {
+                            LinearGradient(colors: [Color(nsColor: project.tint).opacity(0.75), Color(nsColor: project.tint).opacity(0.35)],
+                                           startPoint: .topLeading, endPoint: .bottomTrailing)
+                            ProjectIconView(name: project.iconAsset)
+                                .frame(width: 74, height: 74)
+                                .shadow(color: .black.opacity(0.25), radius: 8, y: 3)
+                        }
+                    }
+                }
+                .frame(height: 150)
+                .frame(maxWidth: .infinity)
+                .clipped()
+                .overlay(alignment: .topLeading) {
+                    Text(project.kind.uppercased())
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8).padding(.vertical, 4)
+                        .background(.ultraThinMaterial, in: Capsule())
+                        .padding(10)
+                }
+                HStack(alignment: .top, spacing: 10) {
+                    ProjectIconView(name: project.iconAsset)
+                        .frame(width: 30, height: 30)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(project.title).font(.system(size: 14, weight: .semibold))
+                        Text(project.description).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(2)
+                    }
+                    Spacer(minLength: 8)
+                    Image(systemName: "arrow.up.right").font(.caption).foregroundStyle(.tertiary)
+                }
+                .padding(14)
+            }
+            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 15, style: .continuous).stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5))
+            .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -1444,6 +1571,373 @@ extension NSColor {
             Int(round(c.blueComponent * 255)),
             Int(round(c.alphaComponent * 255))
         )
+    }
+}
+
+// MARK: - Menu Bar Items (Bartender-style)
+
+@MainActor
+final class MenuBarItemsManager: ObservableObject {
+    struct Detected: Identifiable {
+        let id: String
+        let appName: String
+        let title: String
+        let icon: NSImage?
+    }
+    struct Rendered: Identifiable {
+        let id: String
+        let appName: String
+        let image: NSImage
+    }
+    private struct Item {
+        let id: String
+        let element: AXUIElement
+        let appName: String
+        let title: String
+        let icon: NSImage?
+        let frame: CGRect
+        let pid: pid_t
+    }
+    private struct ClickSession {
+        let pid: pid_t
+        let home: CGPoint
+        var menuSeen = false
+        var closedStreak = 0
+    }
+
+    @Published private(set) var detected: [Detected] = []
+    @Published private(set) var rendered: [Rendered] = []
+    @Published private(set) var accessibilityTrusted = AXIsProcessTrusted()
+    @Published private(set) var screenCaptureTrusted = CGPreflightScreenCaptureAccess()
+
+    private let settings: AppSettings
+    private var elements: [String: AXUIElement] = [:]
+    private var originals: [String: CGPoint] = [:]
+    private var sessions: [String: ClickSession] = [:]
+
+    init(settings: AppSettings) { self.settings = settings }
+
+    func requestAccessibility() {
+        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+        accessibilityTrusted = AXIsProcessTrustedWithOptions(options)
+    }
+
+    func requestScreenCapture() {
+        _ = CGRequestScreenCaptureAccess()
+        screenCaptureTrusted = CGPreflightScreenCaptureAccess()
+    }
+
+    func applySelection() { tick() }
+
+    func tick() {
+        accessibilityTrusted = AXIsProcessTrusted()
+        screenCaptureTrusted = CGPreflightScreenCaptureAccess()
+        guard accessibilityTrusted else {
+            if !detected.isEmpty || !rendered.isEmpty || !originals.isEmpty {
+                restoreAll()
+                detected = []
+                rendered = []
+                elements = [:]
+            }
+            return
+        }
+        // ponytail: reenumeration AX complete toutes les 2 s (~1 IPC par app) ; passer a un AXObserver si profilage exigeant
+        let items = enumerateItems()
+        elements = Dictionary(items.map { ($0.id, $0.element) }, uniquingKeysWith: { first, _ in first })
+        detected = items.map { Detected(id: $0.id, appName: $0.appName, title: $0.title, icon: $0.icon) }
+
+        let selected = Set(settings.selectedMenuBarItems)
+        for id in originals.keys where !selected.contains(id) || elements[id] == nil { unpark(id) }
+        guard screenCaptureTrusted else { return }
+        var fresh: [Rendered] = []
+        for item in items where selected.contains(item.id) {
+            if sessions[item.id] == nil { park(item) }
+            if let image = captureImage(item: item) {
+                fresh.append(Rendered(id: item.id, appName: item.appName, image: image))
+            }
+        }
+        rendered = ordered(fresh)
+    }
+
+    func forwardClick(_ id: String) {
+        guard sessions[id] == nil, let element = elements[id], let home = originals[id], let frame = elementFrame(element) else { return }
+        var pid: pid_t = 0
+        AXUIElementGetPid(element, &pid)
+        sessions[id] = ClickSession(pid: pid, home: home)
+        setPoint(element, home)
+        schedulePollIfNeeded()
+        let center = CGPoint(x: home.x + frame.width / 2, y: home.y + frame.height / 2)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { Task { @MainActor in
+            Self.postMouseButton(.leftMouseDown, at: center)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { Task { @MainActor in
+                Self.postMouseButton(.leftMouseUp, at: center)
+            } }
+        } }
+    }
+
+    func restoreAll() {
+        for id in Array(originals.keys) { unpark(id) }
+        sessions.removeAll()
+    }
+
+    // MARK: Private
+
+    private func enumerateItems() -> [Item] {
+        var out: [Item] = []
+        let ownPID = ProcessInfo.processInfo.processIdentifier
+        for app in NSWorkspace.shared.runningApplications where app.processIdentifier != ownPID {
+            guard let bundleID = app.bundleIdentifier, let appName = app.localizedName else { continue }
+            let appElement = AXUIElementCreateApplication(app.processIdentifier)
+            var raw: CFTypeRef?
+            guard AXUIElementCopyAttributeValue(appElement, kAXExtrasMenuBarAttribute as CFString, &raw) == .success,
+                  let children = raw as? [AXUIElement], !children.isEmpty else { continue }
+            let icon = app.bundleURL.map { NSWorkspace.shared.icon(forFile: $0.path) }
+            icon?.size = NSSize(width: 18, height: 18)
+            for (index, element) in children.enumerated() {
+                guard let frame = elementFrame(element), frame.width > 1 else { continue }
+                let title = axString(element, kAXDescriptionAttribute) ?? axString(element, kAXTitleAttribute) ?? ""
+                let id = Self.stableID(bundle: bundleID, appName: appName, title: title, index: index, existing: out.map(\.id))
+                out.append(Item(id: id, element: element, appName: appName, title: title, icon: icon, frame: frame, pid: app.processIdentifier))
+            }
+        }
+        return out
+    }
+
+    private func park(_ item: Item) {
+        let home: CGPoint
+        if let saved = originals[item.id] {
+            home = saved
+        } else {
+            guard let position = axPoint(item.element, kAXPositionAttribute) else { return }
+            home = position
+            originals[item.id] = position
+        }
+        setPoint(item.element, CGPoint(x: -(item.frame.width + 60), y: home.y))
+    }
+
+    private func unpark(_ id: String) {
+        guard let element = elements[id] else { originals[id] = nil; return }
+        if let home = originals.removeValue(forKey: id) { setPoint(element, home) }
+    }
+
+    private func ordered(_ fresh: [Rendered]) -> [Rendered] {
+        let order = settings.menuBarItemOrderList
+        return fresh.enumerated().sorted { lhs, rhs in
+            let li = order.firstIndex(of: lhs.element.id) ?? .max
+            let ri = order.firstIndex(of: rhs.element.id) ?? .max
+            return li == ri ? lhs.offset < rhs.offset : li < ri
+        }.map(\.element)
+    }
+
+    private func schedulePollIfNeeded() {
+        guard !sessions.isEmpty else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { Task { @MainActor [weak self] in
+            guard let self else { return }
+            self.stepSessions()
+            if !self.sessions.isEmpty { self.schedulePollIfNeeded() }
+        } }
+    }
+
+    private func stepSessions() {
+        for (id, session) in sessions {
+            guard let element = elements[id] else { sessions[id] = nil; continue }
+            var session = session
+            if Self.pidHasOpenMenu(pid: session.pid) {
+                session.menuSeen = true
+                session.closedStreak = 0
+            } else {
+                session.closedStreak += 1
+            }
+            // ponytail: fermeture devinee via fenetres de menu (layer 101) ; AXObserver AXMenuClosed si cas limite
+            if (session.menuSeen && session.closedStreak >= 2) || session.closedStreak >= 6 {
+                let width = elementFrame(element)?.width ?? 30
+                setPoint(element, CGPoint(x: -(width + 60), y: session.home.y))
+                sessions[id] = nil
+            } else {
+                sessions[id] = session
+            }
+        }
+    }
+
+    private func captureImage(item: Item) -> NSImage? {
+        guard let window = Self.statusWindows().first(where: {
+            $0.pid == item.pid && abs($0.bounds.midX - item.frame.midX) < 4 && abs($0.bounds.width - item.frame.width) < 4
+        }) else { return nil }
+        return Self.captureWindowImage(window.number, pointsWidth: window.bounds.width)
+    }
+
+    nonisolated static func stableID(bundle: String, appName: String, title: String, index: Int, existing: [String]) -> String {
+        var base = "\(bundle)|\(title.isEmpty ? appName : title)"
+        if existing.contains(base) { base += "#\(index)" }
+        return base
+    }
+
+    nonisolated private static func postMouseButton(_ type: CGEventType, at point: CGPoint) {
+        guard let event = CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: point, mouseButton: .left) else { return }
+        event.post(tap: .cghidEventTap)
+    }
+
+    // ponytail: CGWindowListCreateImage deprecated macOS 14 (ScreenCaptureKit) ; garder le chemin simple tant que macOS 13 supporte
+    @available(macOS, deprecated: 14.0)
+    nonisolated private static func captureWindowImage(_ window: CGWindowID, pointsWidth: CGFloat) -> NSImage? {
+        guard let cgImage = CGWindowListCreateImage(.null, .optionIncludingWindow, window, [.bestResolution]) else { return nil }
+        let scale = pointsWidth > 0 ? CGFloat(cgImage.width) / pointsWidth : 2
+        var width = CGFloat(cgImage.width) / scale
+        var height = CGFloat(cgImage.height) / scale
+        let cap: CGFloat = 18
+        if height > cap { width *= cap / height; height = cap }
+        return NSImage(cgImage: cgImage, size: NSSize(width: width, height: height))
+    }
+
+    private struct StatusWindow {
+        let number: CGWindowID
+        let bounds: CGRect
+        let pid: pid_t
+    }
+
+    nonisolated private static func statusWindows() -> [StatusWindow] {
+        guard let list = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]] else { return [] }
+        return list.compactMap { info in
+            guard let layer = info[kCGWindowLayer as String] as? Int, (20...30).contains(layer),
+                  let pid = info[kCGWindowOwnerPID as String] as? Int,
+                  let bounds = info[kCGWindowBounds as String] as? [String: CGFloat],
+                  let number = info[kCGWindowNumber as String] as? Int else { return nil }
+            let rect = CGRect(x: bounds["X"] ?? 0, y: bounds["Y"] ?? 0, width: bounds["Width"] ?? 0, height: bounds["Height"] ?? 0)
+            return StatusWindow(number: CGWindowID(number), bounds: rect, pid: pid_t(pid))
+        }
+    }
+
+    nonisolated private static func pidHasOpenMenu(pid: pid_t) -> Bool {
+        guard let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] else { return false }
+        return list.contains { info in
+            info[kCGWindowOwnerPID as String] as? Int == Int(pid)
+                && info[kCGWindowLayer as String] as? Int == 101
+        }
+    }
+
+    nonisolated private func axString(_ element: AXUIElement, _ attribute: String) -> String? {
+        var raw: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, attribute as CFString, &raw) == .success else { return nil }
+        return raw as? String
+    }
+
+    nonisolated private func axPoint(_ element: AXUIElement, _ attribute: String) -> CGPoint? {
+        var raw: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, attribute as CFString, &raw) == .success,
+              let value = raw, CFGetTypeID(value) == AXValueGetTypeID() else { return nil }
+        var point = CGPoint.zero
+        AXValueGetValue(value as! AXValue, .cgPoint, &point)
+        return point
+    }
+
+    nonisolated private func axSize(_ element: AXUIElement, _ attribute: String) -> CGSize? {
+        var raw: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, attribute as CFString, &raw) == .success,
+              let value = raw, CFGetTypeID(value) == AXValueGetTypeID() else { return nil }
+        var size = CGSize.zero
+        AXValueGetValue(value as! AXValue, .cgSize, &size)
+        return size
+    }
+
+    nonisolated private func elementFrame(_ element: AXUIElement) -> CGRect? {
+        guard let origin = axPoint(element, kAXPositionAttribute), let size = axSize(element, kAXSizeAttribute) else { return nil }
+        return CGRect(origin: origin, size: size)
+    }
+
+    nonisolated private func setPoint(_ element: AXUIElement, _ point: CGPoint) {
+        var position = point
+        if let value = AXValueCreate(.cgPoint, &position) {
+            AXUIElementSetAttributeValue(element, kAXPositionAttribute as CFString, value)
+        }
+    }
+}
+
+struct MenuBarItemsSettingsView: View {
+    @ObservedObject var settings: AppSettings
+    @ObservedObject var manager: MenuBarItemsManager
+
+    private var rows: [MenuBarItemsManager.Detected] {
+        let order = settings.menuBarItemOrderList
+        let known = manager.detected
+        return order.compactMap { id in known.first { $0.id == id } } + known.filter { !order.contains($0.id) }
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                SettingsHeader(title: "Menu Bar Items", subtitle: "Lower other apps' menu bar icons into PKMonitor's second bar.", icon: "dock.rectangle")
+
+                if !manager.accessibilityTrusted {
+                    SettingsCard("Accessibility permission", icon: "lock.shield", subtitle: "PKMonitor must move the original icons off the menu bar on your behalf.") {
+                        Button("Grant Accessibility…") { manager.requestAccessibility() }
+                            .buttonStyle(.borderedProminent)
+                    }
+                } else if !manager.screenCaptureTrusted {
+                    SettingsCard("Screen Recording permission", icon: "video.slash", subtitle: "PKMonitor photographs each lowered icon so it can redraw it in the second bar.") {
+                        Button("Grant Screen Recording…") { manager.requestScreenCapture() }
+                            .buttonStyle(.borderedProminent)
+                    }
+                }
+
+                SettingsCard("Detected icons", icon: "list.bullet.rectangle", subtitle: "Check an icon to lower it into the second bar. Drag rows to set the order — top row is the leftmost icon.") {
+                    if manager.detected.isEmpty {
+                        Text(manager.accessibilityTrusted ? "Scanning the menu bar… nothing else found yet." : "Grant Accessibility to scan the menu bar.")
+                            .font(.system(size: 13)).foregroundStyle(.secondary)
+                    } else {
+                        List {
+                            ForEach(rows) { item in
+                                HStack(spacing: 12) {
+                                    Toggle("", isOn: selectionBinding(item.id))
+                                    if let icon = item.icon {
+                                        Image(nsImage: icon).resizable().frame(width: 18, height: 18)
+                                    }
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(item.appName).font(.system(size: 13, weight: .medium))
+                                        if !item.title.isEmpty { Text(item.title).font(.caption).foregroundStyle(.secondary) }
+                                    }
+                                    Spacer()
+                                    if settings.selectedMenuBarItems.contains(item.id) {
+                                        Text("In second bar").font(.caption).foregroundStyle(Color.accentColor)
+                                    }
+                                }
+                                .padding(.vertical, 2)
+                            }
+                            .onMove(perform: moveRows)
+                        }
+                        .listStyle(.plain)
+                        .frame(height: min(340, max(120, CGFloat(rows.count) * 38)))
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    }
+                }
+
+                Text("Lowered icons stay hidden while PKMonitor runs; they return to the menu bar when unchecked or when PKMonitor quits.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            .padding(28)
+        }
+    }
+
+    private func selectionBinding(_ id: String) -> Binding<Bool> {
+        Binding(
+            get: { settings.selectedMenuBarItems.contains(id) },
+            set: { on in
+                var ids = settings.selectedMenuBarItems
+                if on {
+                    if !ids.contains(id) { ids.append(id) }
+                } else {
+                    ids.removeAll { $0 == id }
+                }
+                settings.menuBarItemsSelected = ids.joined(separator: ",")
+                manager.applySelection()
+            }
+        )
+    }
+
+    private func moveRows(_ from: IndexSet, _ to: Int) {
+        var ids = rows.map(\.id)
+        ids.move(fromOffsets: from, toOffset: to)
+        settings.menuBarItemsOrder = ids.joined(separator: ",")
+        manager.applySelection()
     }
 }
 
@@ -1480,8 +1974,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var underBarIconView: UnderBarIconView?
     private var underBarTintView: UnderBarTintView?
     private var underBarBlurView: NSVisualEffectView?
+    private var externalItemViews: [String: UnderBarIconView] = [:]
     private var lastUnderBarTick = Date.distantPast
+    private var itemsTimer: Timer?
     private var locationCancellable: AnyCancellable?
+    private lazy var menuBarItemsManager = MenuBarItemsManager(settings: settings)
 
     override init() {
         let settings = AppSettings()
@@ -1511,7 +2008,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         RunLoop.main.add(hoverTimer, forMode: .common)
         self.hoverTimer = hoverTimer
+        let itemsTimer = Timer(timeInterval: 2.0, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                self.menuBarItemsManager.tick()
+                self.refreshUnderBarPresence()
+            }
+        }
+        RunLoop.main.add(itemsTimer, forMode: .common)
+        self.itemsTimer = itemsTimer
+        menuBarItemsManager.tick()
+        refreshUnderBarPresence()
         model.start { [weak self] in self?.refreshStatusItem() }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        menuBarItemsManager.restoreAll()
     }
 
     @objc private func statusClicked() {
@@ -1588,7 +2100,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             openActivityMonitor: { [weak self] in self?.openActivityMonitor(for: $0) },
             terminateProcess: { [weak self] in self?.confirmTermination(of: $0) },
             forceKillProcess: { [weak self] in self?.confirmForceKill(of: $0) },
-            activateApp: { [weak self] in self?.activateApp($0) }
+            activateApp: { [weak self] in self?.activateApp($0) },
+            openSettings: { [weak self] in self?.openSettings() }
         ))
         hosting.view.wantsLayer = true
         hosting.view.layer?.cornerRadius = 16
@@ -1642,15 +2155,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func applyIconLocation() {
         hideDetailPanel()
-        let under = settings.iconLocation == .underBar
-        statusItem.isVisible = !under
-        if under {
+        refreshUnderBarPresence()
+        refreshStatusItem()
+    }
+
+    private var underBarActive: Bool {
+        settings.iconLocation == .underBar || !menuBarItemsManager.rendered.isEmpty
+    }
+
+    private func refreshUnderBarPresence() {
+        statusItem.isVisible = settings.iconLocation == .menuBar
+        if underBarActive {
             if underBarPanel == nil { setupUnderBar() }
             updateUnderBarTick(force: true)
-        } else {
-            underBarPanel?.orderOut(nil)
+        } else if let panel = underBarPanel, panel.isVisible {
+            panel.orderOut(nil)
         }
-        refreshStatusItem()
     }
 
     private func setupUnderBar() {
@@ -1693,7 +2213,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func updateUnderBarTick(force: Bool = false) {
-        guard settings.iconLocation == .underBar, let panel = underBarPanel else { return }
+        guard underBarActive, let panel = underBarPanel else { return }
         guard force || Date().timeIntervalSince(lastUnderBarTick) >= 1 else { return }
         lastUnderBarTick = Date()
         if isAnyAppFullscreen() {
@@ -1705,7 +2225,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func updateUnderBarStyle() {
-        guard settings.iconLocation == .underBar, let blur = underBarBlurView, let tint = underBarTintView else { return }
+        guard underBarActive, let blur = underBarBlurView, let tint = underBarTintView else { return }
         let hovered = underBarPanel?.frame.contains(NSEvent.mouseLocation) == true
         switch settings.underBarBackground {
         case .transparent:
@@ -1772,26 +2292,66 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         if under {
-            if let view = underBarIconView, let panel = underBarPanel {
-                view.image = image
-                let top = CGFloat(settings.underBarPaddingTop)
-                let bottom = CGFloat(settings.underBarPaddingBottom)
-                let left = CGFloat(settings.underBarPaddingLeft)
-                let right = CGFloat(settings.underBarPaddingRight)
-                let height = image.size.height + top + bottom
-                let width = image.size.width + left + right
-                if panel.frame.size != NSSize(width: width, height: height), let screen = NSScreen.main {
-                    panel.setFrame(NSRect(x: screen.frame.maxX - width, y: screen.visibleFrame.maxY - height, width: width, height: height), display: false)
-                }
-                view.frame = NSRect(x: left, y: bottom, width: image.size.width, height: image.size.height)
-            }
+            underBarIconView?.image = image
             underBarTintView?.color = NSColor(hex: settings.underBarColorHex) ?? NSColor.black.withAlphaComponent(0.1)
         } else if let button = statusItem.button {
             button.image = image
         }
+        if underBarActive {
+            layoutUnderBar(pill: under ? image : nil)
+        }
         let prefix = model.selectedMetric == .auto ? "Auto · \(model.displayedMetric.rawValue)" : model.displayedMetric.rawValue
         statusItem.button?.title = ""
         statusItem.button?.setAccessibilityValue("\(prefix), \(model.format())")
+    }
+
+    private func layoutUnderBar(pill: NSImage?) {
+        guard let panel = underBarPanel, let container = panel.contentView else { return }
+        let top = CGFloat(settings.underBarPaddingTop)
+        let bottom = CGFloat(settings.underBarPaddingBottom)
+        let left = CGFloat(settings.underBarPaddingLeft)
+        let right = CGFloat(settings.underBarPaddingRight)
+        let ext = menuBarItemsManager.rendered
+
+        for (id, view) in externalItemViews where !ext.contains(where: { $0.id == id }) {
+            view.removeFromSuperview()
+            externalItemViews[id] = nil
+        }
+        for item in ext where externalItemViews[item.id] == nil {
+            let view = UnderBarIconView(frame: .zero)
+            view.toolTip = item.appName
+            view.setAccessibilityLabel("\(item.appName) menu bar item")
+            view.onLeft = { [weak self] in self?.menuBarItemsManager.forwardClick(item.id) }
+            view.onRight = view.onLeft
+            container.addSubview(view)
+            externalItemViews[item.id] = view
+        }
+        for item in ext { externalItemViews[item.id]?.image = item.image }
+
+        let gap: CGFloat = 5
+        let iconGap: CGFloat = 4
+        let pillW = pill?.size.width ?? 0
+        let pillH = pill?.size.height ?? 0
+        let extW = ext.reduce(0) { $0 + $1.image.size.width } + (ext.isEmpty ? 0 : CGFloat(ext.count - 1) * iconGap)
+        let contentH = max(pillH, ext.map(\.image.size.height).max() ?? 0)
+        let width = left + pillW + (extW > 0 ? gap + extW : 0) + right
+        let height = max(22, contentH + top + bottom)
+        if panel.frame.size != NSSize(width: width, height: height), let screen = NSScreen.main {
+            panel.setFrame(NSRect(x: screen.frame.maxX - width, y: screen.visibleFrame.maxY - height, width: width, height: height), display: false)
+        }
+        if let pillView = underBarIconView {
+            pillView.isHidden = pill == nil
+            if let pill {
+                pillView.frame = NSRect(x: width - right - pill.size.width, y: bottom, width: pill.size.width, height: pill.size.height)
+            }
+        }
+        var cursor = width - right - pillW - (extW > 0 ? gap : 0)
+        for item in ext.reversed() {
+            let w = item.image.size.width
+            let h = item.image.size.height
+            externalItemViews[item.id]?.frame = NSRect(x: cursor - w, y: (height - h) / 2, width: w, height: h)
+            cursor -= w + iconGap
+        }
     }
 
     private func makeMenu() -> NSMenu {
@@ -1942,7 +2502,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func openSettings() {
         if settingsWindow == nil {
-            let controller = NSHostingController(rootView: SettingsView(settings: settings))
+            let controller = NSHostingController(rootView: SettingsView(settings: settings, manager: menuBarItemsManager))
             let window = NSWindow(contentViewController: controller)
             window.title = "PKMonitor Settings"
             window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
@@ -2188,6 +2748,11 @@ struct PKMonitorApp {
             assert(abs(scaled[0] - 0.12) < 0.001 && abs(scaled[1] - 0.88) < 0.001)
             assert(IconLocation(rawValue: "Second Bar") == .underBar)
             assert(IconLocation(rawValue: "Menu Bar") == .menuBar)
+            assert(AppSettings.parseIDs("a|1,b|2,") == ["a|1", "b|2"])
+            assert(AppSettings.parseIDs("") == [])
+            let baseID = MenuBarItemsManager.stableID(bundle: "com.x.y", appName: "X", title: "Wi-Fi", index: 0, existing: [])
+            assert(baseID == "com.x.y|Wi-Fi")
+            assert(MenuBarItemsManager.stableID(bundle: "com.x.y", appName: "X", title: "Wi-Fi", index: 1, existing: [baseID]) != baseID)
             assert(NSColor(hex: "#FF000080")?.alphaComponent ?? 0 < 0.51)
             assert(NSColor(hex: "#FF000080")?.redComponent ?? 0 > 0.99)
             let apps = MonitorModel.topApps()

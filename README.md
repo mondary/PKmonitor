@@ -6,7 +6,11 @@
 
 Moniteur système macOS natif et discret dans la barre des menus.
 
-Version `2026.09.17` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
+Version `2026.09.19` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
+
+![La barre des menus et la seconde barre](store/screenshots/01-barre-et-seconde-barre.png)
+
+![Le panneau de détail au survol](store/screenshots/02-panneau-detail.png)
 
 ## ✅ Fonctionnalités
 
@@ -14,8 +18,9 @@ Version `2026.09.17` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 - CPU, GPU, RAM, réseau et espace disque
 - Module disque en deux lignes : capacité totale rouge, espace libre bleu
 - Segments activables individuellement, réordonnables et paramétrables
+- Icônes des autres applications descendues dans la seconde barre (à la Bartender)
 - Toggles d’affichage pour Sparkline, Gauges et Panel
-- Panneau détaillé au survol avec arrêt de processus
+- Panneau détaillé au survol avec arrêt de processus et bouton réglages
 - Navigation Settings catégorisée, recherche et bibliothèque de projets
 - Thème clair/sombre/système et lancement à la connexion
 
@@ -23,6 +28,7 @@ Version `2026.09.17` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
 - Survoler l’élément de la barre des menus pour ouvrir le détail
 - Cliquer sur un segment pour changer la métrique active
+- Cliquer sur une icône descendue pour ouvrir son menu d’origine
 - Clic droit pour ouvrir le menu et les réglages
 
 ## ⚙️ Réglages

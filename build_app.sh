@@ -12,6 +12,8 @@ cp "$ROOT/.build/release/PKMonitor" "$APP/Contents/MacOS/PKMonitor"
 mkdir -p "$APP/Contents/Resources/ProjectIcons"
 cp "$ROOT/icon.png" "$APP/Contents/Resources/icon.png"
 cp "$ROOT/ProjectIcons/"*.png "$APP/Contents/Resources/ProjectIcons/"
+mkdir -p "$APP/Contents/Resources/ProjectScreenshots"
+cp "$ROOT/ProjectScreenshots/"*.png "$APP/Contents/Resources/ProjectScreenshots/"
 
 cat > "$APP/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>

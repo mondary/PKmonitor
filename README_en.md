@@ -1,12 +1,12 @@
 # PKMonitor
 
-![Project icon](icon.png)
+![PKMonitor — CPU, GPU, RAM, network and disk in the menu bar](store/assets/banner-1544x500.png)
 
 [🇫🇷 FR](README.md) · [🇬🇧 EN](README_en.md)
 
 A native, focused macOS system monitor in the menu bar.
 
-Version `2026.09.19` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
+Version `2026.09.20` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
 ![The menu bar and the second bar](store/screenshots/01-barre-et-seconde-barre.png)
 

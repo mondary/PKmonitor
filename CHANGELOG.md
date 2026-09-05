@@ -6,7 +6,7 @@ Historique des évolutions de PKMonitor.
 
 ## TODO — Roadmap
 
-Statut : `2026.09.19` (prototype fonctionnel)
+Statut : `2026.09.20` (prototype fonctionnel)
 
 ### Prochaines étapes
 - [x] Mesures CPU, RAM et réseau locales
@@ -19,6 +19,15 @@ Statut : `2026.09.19` (prototype fonctionnel)
 ---
 
 ## Releases
+
+### [2026.09.20] - 2026-09-04
+#### Changed
+- Pages About et Help & Support refaites au style Vorssaint (PKwindowsManagement) : About centré avec lettre personnelle et pied de page liens/licence, Support avec carte café et liste de liens
+- Flag `--settings` au lancement pour ouvrir directement les réglages (captures et tests)
+
+#### Fixed
+- Énumération des icônes de la menu barre sur macOS récent : `AXExtrasMenuBar` renvoie un conteneur unique dont les enfants sont les items (la liste Menu Bar Items restait vide)
+- Store complet selon la convention : bannière `store/assets/banner-1544x500.png` en tête des README FR/EN, captures 02 et 04 en retina, laius store à jour (tags, FAQ)
 
 ### [2026.09.19] - 2026-09-04
 #### Added

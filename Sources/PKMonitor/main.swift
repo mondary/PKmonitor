@@ -739,6 +739,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
 
 private enum ProjectLinks {
     static let github = URL(string: "https://github.com/mondary/PKmonitor")!
+    static let issues = URL(string: "https://github.com/mondary/PKmonitor/issues")!
     static let githubProfile = URL(string: "https://github.com/mondary")!
     static let koFi = URL(string: "https://ko-fi.com/pouark")!
 }
@@ -1284,118 +1285,212 @@ struct AboutSettingsView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                ZStack {
-                    Circle().fill(Color.accentColor.opacity(0.14)).frame(width: 132, height: 132)
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(spacing: 0) {
                     Image(nsImage: AppIcon.image(side: 88))
-                        .resizable().interpolation(.high).scaledToFit()
+                        .resizable().interpolation(.high)
                         .frame(width: 88, height: 88)
                         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                        .shadow(color: .black.opacity(0.18), radius: 10, y: 4)
-                }
-                .padding(.top, 36)
-                .padding(.bottom, 18)
-                Text("PKMonitor").font(.system(size: 28, weight: .bold, design: .rounded))
-                Text("Version \(version)").font(.system(size: 13, design: .monospaced)).foregroundStyle(.secondary).padding(.top, 5)
-                Text("A quiet, precise readout for CPU, memory, GPU and network activity.")
-                    .font(.system(size: 14))
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 430)
-                    .padding(.top, 14)
+                        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
+                        .shadow(color: .black.opacity(0.3), radius: 12, y: 8)
+                        .padding(.top, 36)
+                        .padding(.bottom, 16)
 
-                HStack(spacing: 10) {
-                    aboutBadge("waveform.path.ecg", "Live metrics")
-                    aboutBadge("eye", "At a glance")
-                    aboutBadge("lock.shield", "Local only")
-                }
-                .padding(.top, 26)
-
-                SettingsCard("About PKMonitor", icon: "info.circle", subtitle: "Built for a focused desktop.") {
-                    Text("PKMonitor keeps the information you need close at hand without turning your desktop into a dashboard. Hover for detail, click a gauge to change the active metric, and tune the presentation to your workflow.")
+                    Text("PKMonitor").font(.system(size: 24, weight: .bold))
+                    Text("Version \(version)")
                         .font(.system(size: 13))
                         .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    HStack {
-                        Label("macOS 13 or later", systemImage: "apple.logo")
-                        Spacer()
-                        Text("Made by PK").foregroundStyle(.secondary)
-                    }
-                    .font(.caption)
+                        .padding(.top, 4)
+                    Text("By PK")
+                        .font(.system(size: 13))
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 2)
+                        .padding(.bottom, 32)
+
+                    aboutText
+                        .frame(maxWidth: 480)
+                        .padding(.bottom, 32)
                 }
-                .frame(maxWidth: 560)
-                .padding(.top, 30)
-                .padding(.bottom, 26)
+                .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: .infinity)
+
+            Divider()
+
+            footer
+                .padding(.horizontal, 24)
+                .padding(.vertical, 14)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var aboutText: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Hey friend,")
+                .italic()
+                .font(.system(size: 13))
+
+            Text("PKMonitor was born from a simple frustration: keeping an eye on your Mac without cluttering the screen or drowning in dashboards.")
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+
+            Text("One quiet line in the menu bar — CPU, GPU, memory, network and disk at a glance, with the apps behind the numbers one hover away. Native binary, zero dependencies, everything stays local.")
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+
+            Text("Built with care for the Mac community. Discreet when you don't need it, right there when you look.")
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+
+            Text("Thanks for being part of it.")
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+                .padding(.top, 8)
+
+            Text("— PK")
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
         }
     }
 
-    private func aboutBadge(_ icon: String, _ title: String) -> some View {
-        Label(title, systemImage: icon)
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .background(Color(nsColor: .controlBackgroundColor), in: Capsule())
+    private var footer: some View {
+        HStack(alignment: .center, spacing: 16) {
+            Link(destination: ProjectLinks.github) {
+                Label("GitHub", systemImage: "network")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Link(destination: ProjectLinks.issues) {
+                Label("Issues", systemImage: "exclamationmark.bubble")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Link(destination: ProjectLinks.koFi) {
+                Label("Buy Me a Coffee", systemImage: "cup.and.saucer")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+            Spacer()
+            Text("MIT License")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+            Text("·")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+            Text("macOS 13+")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
     }
 }
 
 struct SupportSettingsView: View {
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                SettingsHeader(title: "Help & Support", subtitle: "Support the project and stay connected.", icon: "heart.fill")
-                VStack(alignment: .leading, spacing: 18) {
-                    HStack(alignment: .top, spacing: 16) {
-                        Image(systemName: "cup.and.saucer.fill")
-                            .font(.system(size: 25, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .frame(width: 52, height: 52)
-                            .background(Color(nsColor: NSColor(hex: "#13C3FF")!), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text("Keep PKMonitor independent")
-                                .font(.system(size: 19, weight: .bold, design: .rounded))
-                            Text("A small coffee helps me keep polishing the app, adding modules and maintaining releases.")
-                                .font(.system(size: 13)).foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-                    Link(destination: ProjectLinks.koFi) {
-                        HStack(spacing: 10) {
-                            Image(systemName: "heart.fill")
-                            Text("Buy me a coffee on Ko-fi").fontWeight(.semibold)
-                            Spacer()
-                            Image(systemName: "arrow.up.right")
-                        }
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 16).padding(.vertical, 12)
-                        .background(Color(nsColor: NSColor(hex: "#13C3FF")!), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                    .shadow(color: Color(nsColor: NSColor(hex: "#13C3FF")!).opacity(0.25), radius: 10, y: 5)
-                }
-                .padding(20)
-                .background(
-                    LinearGradient(colors: [Color.accentColor.opacity(0.16), Color(nsColor: .controlBackgroundColor)], startPoint: .topLeading, endPoint: .bottomTrailing),
-                    in: RoundedRectangle(cornerRadius: 18, style: .continuous)
-                )
-                .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Color.accentColor.opacity(0.25), lineWidth: 1))
+            VStack(spacing: 0) {
+                header
+                    .padding(.top, 36)
+                    .padding(.bottom, 24)
 
-                SettingsCard("Follow the project", icon: "person.2.fill", subtitle: "Updates, source code and the rest of the project collection.") {
-                    HStack(spacing: 10) {
-                        Link(destination: ProjectLinks.github) { Label("PKMonitor", systemImage: "chevron.left.forwardslash.chevron.right") }
-                            .buttonStyle(.bordered)
-                        Link(destination: ProjectLinks.githubProfile) { Label("GitHub", systemImage: "person.crop.circle") }
-                            .buttonStyle(.bordered)
-                    }
+                VStack(spacing: 16) {
+                    coffeeCard
+                    linksCard
                 }
-                Text("Thank you for helping keep free tools alive.")
-                    .font(.system(size: 12, weight: .medium, design: .rounded)).foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-            }.padding(28)
+                .frame(maxWidth: 480)
+                .padding(.bottom, 32)
+            }
+            .frame(maxWidth: .infinity)
         }
+    }
+
+    private var header: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "heart.fill")
+                .font(.system(size: 36))
+                .foregroundStyle(.red)
+
+            Text("Support PKMonitor")
+                .font(.system(size: 20, weight: .bold))
+
+            Text("If you enjoy using this app, consider supporting its development.")
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+    }
+
+    private var coffeeCard: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "cup.and.saucer.fill")
+                .font(.system(size: 22))
+                .foregroundStyle(.orange)
+                .frame(width: 36)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Buy Me a Coffee")
+                    .font(.system(size: 14, weight: .semibold))
+                Text("Support the developer with a coffee")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Link(destination: ProjectLinks.koFi) {
+                Text("Donate")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 6)
+                    .background(Color.orange)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(16)
+        .background(Color(NSColor.controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private var linksCard: some View {
+        VStack(spacing: 0) {
+            linkRow(icon: "network", title: "GitHub", subtitle: "Source code and releases", url: ProjectLinks.github)
+            Divider().padding(.leading, 52)
+            linkRow(icon: "exclamationmark.bubble", title: "Report an Issue", subtitle: "Bugs, feature requests, feedback", url: ProjectLinks.issues)
+            Divider().padding(.leading, 52)
+            linkRow(icon: "person.crop.circle", title: "PK on GitHub", subtitle: "The rest of the project collection", url: ProjectLinks.githubProfile)
+        }
+        .background(Color(NSColor.controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private func linkRow(icon: String, title: String, subtitle: String, url: URL) -> some View {
+        Link(destination: url) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 16))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 36)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 13, weight: .medium))
+                    Text(subtitle)
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -1689,11 +1784,23 @@ final class MenuBarItemsManager: ObservableObject {
             guard let bundleID = app.bundleIdentifier, let appName = app.localizedName else { continue }
             let appElement = AXUIElementCreateApplication(app.processIdentifier)
             var raw: CFTypeRef?
-            guard AXUIElementCopyAttributeValue(appElement, kAXExtrasMenuBarAttribute as CFString, &raw) == .success,
-                  let children = raw as? [AXUIElement], !children.isEmpty else { continue }
+            guard AXUIElementCopyAttributeValue(appElement, kAXExtrasMenuBarAttribute as CFString, &raw) == .success, raw != nil else { continue }
+            // ponytail: macOS recent renvoie un conteneur unique (items dans AXChildren) ; l'ancien comportement etait un tableau direct
+            var children: [Any] = []
+            if let arr = raw as? [Any] {
+                children = arr
+            } else if CFGetTypeID(raw!) == AXUIElementGetTypeID() {
+                let container = raw! as! AXUIElement
+                var kids: CFTypeRef?
+                if AXUIElementCopyAttributeValue(container, kAXChildrenAttribute as CFString, &kids) == .success, let arr = kids as? [Any] {
+                    children = arr
+                }
+            }
+            let items = children.map { $0 as! AXUIElement }
+            guard !items.isEmpty else { continue }
             let icon = app.bundleURL.map { NSWorkspace.shared.icon(forFile: $0.path) }
             icon?.size = NSSize(width: 18, height: 18)
-            for (index, element) in children.enumerated() {
+            for (index, element) in items.enumerated() {
                 guard let frame = elementFrame(element), frame.width > 1 else { continue }
                 let title = axString(element, kAXDescriptionAttribute) ?? axString(element, kAXTitleAttribute) ?? ""
                 let id = Self.stableID(bundle: bundleID, appName: appName, title: title, index: index, existing: out.map(\.id))
@@ -2008,6 +2115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         RunLoop.main.add(hoverTimer, forMode: .common)
         self.hoverTimer = hoverTimer
+        if CommandLine.arguments.contains("--settings") { openSettings() }
         let itemsTimer = Timer(timeInterval: 2.0, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }

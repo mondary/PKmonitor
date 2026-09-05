@@ -6,7 +6,7 @@ Historique des évolutions de PKMonitor.
 
 ## TODO — Roadmap
 
-Statut : `2026.09.21` (prototype fonctionnel)
+Statut : `2026.09.22` (prototype fonctionnel)
 
 ### Prochaines étapes
 - [x] Mesures CPU, RAM et réseau locales
@@ -19,6 +19,10 @@ Statut : `2026.09.21` (prototype fonctionnel)
 ---
 
 ## Releases
+
+### [2026.09.22] - 2026-09-04
+#### Added
+- Réglage « Layout » du module disque : une ligne (`libre / total`) ou deux lignes empilées (total rouge au-dessus, libre bleu en dessous) ; la pilule s'agrandit automatiquement en mode deux lignes
 
 ### [2026.09.21] - 2026-09-04
 #### Added

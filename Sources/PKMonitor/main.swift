@@ -54,6 +54,13 @@ enum DiskValueMode: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+enum DiskLayout: String, CaseIterable, Identifiable {
+    case inline = "One line"
+    case stacked = "Two lines"
+
+    var id: String { rawValue }
+}
+
 enum UnderBarBackground: String, CaseIterable, Identifiable {
     case transparent = "None"
     case color = "Tint"
@@ -109,6 +116,7 @@ final class AppSettings: ObservableObject {
     @Published var showDiskModule: Bool { didSet { defaults.set(showDiskModule, forKey: "showDiskModule") } }
     @Published var diskPosition: ValuePosition { didSet { defaults.set(diskPosition.rawValue, forKey: "diskPosition") } }
     @Published var diskValueMode: DiskValueMode { didSet { defaults.set(diskValueMode.rawValue, forKey: "diskValueMode") } }
+    @Published var diskLayout: DiskLayout { didSet { defaults.set(diskLayout.rawValue, forKey: "diskLayout") } }
     @Published var showDiskTotal: Bool { didSet { defaults.set(showDiskTotal, forKey: "showDiskTotal") } }
     @Published var diskFontSize: Double { didSet { defaults.set(diskFontSize, forKey: "diskFontSize") } }
     @Published var warningThreshold: Double { didSet { defaults.set(warningThreshold, forKey: "warningThreshold") } }
@@ -153,6 +161,7 @@ final class AppSettings: ObservableObject {
         showDiskModule = defaults.object(forKey: "showDiskModule") as? Bool ?? true
         diskPosition = ValuePosition(rawValue: defaults.string(forKey: "diskPosition") ?? "") ?? .right
         diskValueMode = DiskValueMode(rawValue: defaults.string(forKey: "diskValueMode") ?? "") ?? .available
+        diskLayout = DiskLayout(rawValue: defaults.string(forKey: "diskLayout") ?? "") ?? .inline
         showDiskTotal = defaults.object(forKey: "showDiskTotal") as? Bool ?? true
         diskFontSize = defaults.object(forKey: "diskFontSize") as? Double ?? 11
         warningThreshold = defaults.object(forKey: "warningThreshold") as? Double ?? 80
@@ -208,6 +217,7 @@ final class AppSettings: ObservableObject {
         showDiskModule = true
         diskPosition = .right
         diskValueMode = .available
+        diskLayout = .inline
         showDiskTotal = true
         diskFontSize = 11
         warningThreshold = 80
@@ -1072,6 +1082,12 @@ struct GeneralSettingsView: View {
                         Picker("Value", selection: $settings.diskValueMode) {
                             Text("Available").tag(DiskValueMode.available)
                             Text("Free").tag(DiskValueMode.free)
+                        }
+                        .labelsHidden().pickerStyle(.segmented).frame(width: 220)
+                    }
+                    SettingLine("Layout") {
+                        Picker("Layout", selection: $settings.diskLayout) {
+                            ForEach(DiskLayout.allCases) { layout in Text(layout.rawValue).tag(layout) }
                         }
                         .labelsHidden().pickerStyle(.segmented).frame(width: 220)
                     }
@@ -2709,17 +2725,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let diskSepAttrs: [NSAttributedString.Key: Any] = [.font: diskFont, .foregroundColor: NSColor.tertiaryLabelColor]
         let diskFreeText = MonitorModel.formatBytes(Double(settings.diskValueMode == .free ? model.reading.pureFreeDisk : model.reading.freeDisk))
         let diskTotalText = MonitorModel.formatBytes(Double(model.reading.totalDisk))
+        let diskStacked = settings.showDiskModule && settings.diskLayout == .stacked
+        let diskFreeW = (diskFreeText as NSString).size(withAttributes: diskFreeAttrs).width
+        let diskTotalW = (diskTotalText as NSString).size(withAttributes: diskTotalAttrs).width
+        let diskSepW = (" / " as NSString).size(withAttributes: diskSepAttrs).width
         let diskW: CGFloat = {
             guard settings.showDiskModule else { return 0 }
-            var width = (diskFreeText as NSString).size(withAttributes: diskFreeAttrs).width
-            if settings.showDiskTotal {
-                width += (" / " as NSString).size(withAttributes: diskSepAttrs).width
-                width += (diskTotalText as NSString).size(withAttributes: diskTotalAttrs).width
-            }
-            return width + 8
+            if diskStacked { return max(diskFreeW, diskTotalW) + 8 }
+            return diskFreeW + (settings.showDiskTotal ? diskSepW + diskTotalW : 0) + 8
         }()
+        let pillHeight: CGFloat = diskStacked ? max(18, CGFloat(settings.diskFontSize) * 2 + 6) : 18
         let totalWidth = textW + labelW + graphW + gaugeW + diskW
-        let size = NSSize(width: totalWidth, height: 18)
+        let size = NSSize(width: totalWidth, height: pillHeight)
         let image = NSImage(size: size)
         image.lockFocus()
         defer { image.unlockFocus() }
@@ -2767,16 +2784,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         var moduleRects: [Metric: NSRect] = [:]
         if settings.showDiskModule, diskW > 0 {
-            let freeSize = (diskFreeText as NSString).size(withAttributes: diskFreeAttrs)
-            let sepSize = (" / " as NSString).size(withAttributes: diskSepAttrs)
-            var x = diskStartX + 4
-            let y = (size.height - freeSize.height) / 2
-            (diskFreeText as NSString).draw(at: NSPoint(x: x, y: y), withAttributes: diskFreeAttrs)
-            x += freeSize.width
-            if settings.showDiskTotal {
-                (" / " as NSString).draw(at: NSPoint(x: x, y: y), withAttributes: diskSepAttrs)
-                x += sepSize.width
-                (diskTotalText as NSString).draw(at: NSPoint(x: x, y: y), withAttributes: diskTotalAttrs)
+            let x = diskStartX + 4
+            if diskStacked, settings.showDiskTotal {
+                let freeSize = (diskFreeText as NSString).size(withAttributes: diskFreeAttrs)
+                let lineH = freeSize.height
+                let bottom = (size.height - lineH * 2 - 3) / 2
+                (diskTotalText as NSString).draw(at: NSPoint(x: x, y: bottom + lineH + 3), withAttributes: diskTotalAttrs)
+                (diskFreeText as NSString).draw(at: NSPoint(x: x, y: bottom), withAttributes: diskFreeAttrs)
+            } else {
+                let freeSize = (diskFreeText as NSString).size(withAttributes: diskFreeAttrs)
+                let sepSize = (" / " as NSString).size(withAttributes: diskSepAttrs)
+                var cx = x
+                let y = (size.height - freeSize.height) / 2
+                (diskFreeText as NSString).draw(at: NSPoint(x: cx, y: y), withAttributes: diskFreeAttrs)
+                cx += freeSize.width
+                if settings.showDiskTotal {
+                    (" / " as NSString).draw(at: NSPoint(x: cx, y: y), withAttributes: diskSepAttrs)
+                    cx += sepSize.width
+                    (diskTotalText as NSString).draw(at: NSPoint(x: cx, y: y), withAttributes: diskTotalAttrs)
+                }
             }
             moduleRects[.disk] = NSRect(x: diskStartX, y: 0, width: diskW, height: size.height)
         }
@@ -2944,6 +2970,8 @@ struct PKMonitorApp {
             assert(AppSettings.parseIDs("") == [])
             assert(DiskValueMode(rawValue: "Free") == .free)
             assert(DiskValueMode(rawValue: "Available") == .available)
+            assert(DiskLayout(rawValue: "Two lines") == .stacked)
+            assert(DiskLayout(rawValue: "One line") == .inline)
             let baseID = MenuBarItemsManager.stableID(bundle: "com.x.y", appName: "X", title: "Wi-Fi", index: 0, existing: [])
             assert(baseID == "com.x.y|Wi-Fi")
             assert(MenuBarItemsManager.stableID(bundle: "com.x.y", appName: "X", title: "Wi-Fi", index: 1, existing: [baseID]) != baseID)

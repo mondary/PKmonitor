@@ -15,6 +15,8 @@ cp "$ROOT/ProjectIcons/"*.png "$APP/Contents/Resources/ProjectIcons/"
 mkdir -p "$APP/Contents/Resources/ProjectScreenshots"
 cp "$ROOT/ProjectScreenshots/"*.png "$APP/Contents/Resources/ProjectScreenshots/"
 
+cp "$ROOT/icon.icns" "$APP/Contents/Resources/icon.icns"
+
 cat > "$APP/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -22,6 +24,7 @@ cat > "$APP/Contents/Info.plist" <<EOF
   <key>CFBundleExecutable</key><string>PKMonitor</string>
   <key>CFBundleIdentifier</key><string>com.mondary.pkmonitor</string>
   <key>CFBundleName</key><string>PKMonitor</string>
+  <key>CFBundleIconFile</key><string>icon</string>
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
   <key>CFBundleVersion</key><string>$VERSION</string>
   <key>LSMinimumSystemVersion</key><string>13.0</string>

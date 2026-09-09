@@ -48,11 +48,11 @@ swift run PKMonitor --self-test
 
 ## 📦 Build & Package
 
-`run.sh` construit `dist/PKMonitor.app` en mode production avec les outils de ligne de commande Xcode. Pour préparer l’archive distribuable, exécuter `./package_dmg.sh` : le DMG est créé dans `dist/PKMonitor.dmg` et peut être joint à une release GitHub.
+`run.sh` construit `dist/PKMonitor.app` en mode production avec les outils de ligne de commande Xcode. Pour préparer l’archive distribuable, exécuter `./package_dmg.sh` : le DMG versionné est créé dans `dist/PKMonitor-<version>.dmg` et peut être joint à une release GitHub.
 
 ## 🌐 Page promotionnelle
 
-La page de présentation est disponible dans [`store/index.html`](store/index.html). Elle est autonome, responsive et prête à être hébergée telle quelle. Ses boutons de téléchargement ciblent `https://github.com/mondary/PKmonitor/releases/latest/download/PKMonitor.dmg`.
+La page de présentation est disponible dans [`store/index.html`](store/index.html). Elle est autonome, responsive et prête à être hébergée telle quelle. Ses boutons récupèrent automatiquement le DMG de la dernière release GitHub.
 
 ## 🧪 Installation
 

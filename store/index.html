@@ -72,14 +72,14 @@
   <body>
     <header class="wrap nav">
       <a class="brand" href="#top"><img src="../icon.png" alt="">PKMonitor</a>
-      <nav class="nav-links" aria-label="Navigation principale"><a href="#features">Fonctionnalités</a><a href="#privacy">Confidentialité</a><a href="https://github.com/mondary/PKmonitor" target="_blank" rel="noreferrer">GitHub ↗</a><a class="nav-download" href="https://github.com/mondary/PKmonitor/releases/latest/download/PKMonitor.dmg">Télécharger</a></nav>
+      <nav class="nav-links" aria-label="Navigation principale"><a href="#features">Fonctionnalités</a><a href="#privacy">Confidentialité</a><a href="https://github.com/mondary/PKmonitor" target="_blank" rel="noreferrer">GitHub ↗</a><a class="nav-download download-link" href="https://github.com/mondary/PKmonitor/releases/latest">Télécharger</a></nav>
     </header>
     <main id="top">
       <section class="hero wrap">
         <div class="eyebrow"><i class="dot"></i> Gratuit et open source · macOS 13+</div>
         <h1>Votre Mac.<br><span>En un seul regard.</span></h1>
         <p class="lede">PKMonitor affiche ce qui compte dans votre barre des menus — sans vous distraire du reste.</p>
-        <div class="actions"><a class="button primary" href="https://github.com/mondary/PKmonitor/releases/latest/download/PKMonitor.dmg"><span aria-hidden="true"></span> Télécharger pour macOS</a><a class="button secondary" href="#features">Découvrir les fonctionnalités ↓</a></div>
+        <div class="actions"><a class="button primary download-link" href="https://github.com/mondary/PKmonitor/releases/latest"><span aria-hidden="true"></span> Télécharger pour macOS</a><a class="button secondary" href="#features">Découvrir les fonctionnalités ↓</a></div>
         <div class="fine">Mac Intel et Apple Silicon · Gratuit · Aucun compte requis</div>
         <div class="demo-frame"><video autoplay muted loop playsinline poster="assets/demo-poster.png" aria-label="Démonstration de PKMonitor"><source src="videos/demo.mp4" type="video/mp4"><img src="gifs/pkmonitor-demo.gif" alt="Démonstration animée de PKMonitor"></video></div>
       </section>
@@ -93,8 +93,17 @@
       </section>
       <section class="showcase"><div class="wrap showcase-grid"><div><div class="kicker">Démonstration animée</div><h2>Le contrôle sans interrompre votre travail.</h2><p class="section-intro">Un survol suffit pour savoir ce qui sollicite votre Mac. Rien à ouvrir. Rien à chercher.</p><ul class="points"><li>Panneau détaillé instantané</li><li>Processus gourmands identifiés</li><li>Icônes de menu bar réorganisées</li></ul></div><img class="gif" src="gifs/pkmonitor-demo.gif" alt="Animation de la barre des menus PKMonitor"></div></section>
       <section class="wrap" id="privacy"><div class="kicker">Pensé pour votre Mac</div><h2>Puissant, mais toujours à votre service.</h2><div class="split"><figure class="shot"><img src="screenshots/02-panneau-detail.png" alt="Panneau détaillé de PKMonitor affichant les processus actifs"><figcaption>Les détails utiles arrivent au survol.</figcaption></figure><figure class="shot"><img src="screenshots/04-reglages-menubaritems.png" alt="Réglages des icônes de barre des menus"><figcaption>Chaque élément est à sa place.</figcaption></figure></div><div class="privacy"><div class="privacy-icon">⌘</div><div><h3>Vos données restent les vôtres.</h3><p>PKMonitor fonctionne localement. Le conseiller IA est entièrement optionnel : aucune donnée n’est envoyée avant votre action explicite, et votre clé reste dans le Trousseau macOS.</p></div></div></section>
-      <section class="cta"><div class="wrap"><div class="kicker">Disponible maintenant</div><h2>Un Mac plus calme commence ici.</h2><p>Installez PKMonitor en quelques secondes. C’est gratuit, open source, et fait pour macOS.</p><a class="button primary" href="https://github.com/mondary/PKmonitor/releases/latest/download/PKMonitor.dmg"><span aria-hidden="true"></span> Télécharger PKMonitor (.dmg)</a><div class="fine" style="margin-top:16px"><a href="https://github.com/mondary/PKmonitor/releases" target="_blank" rel="noreferrer">Voir toutes les releases sur GitHub ↗</a></div></div></section>
+      <section class="cta"><div class="wrap"><div class="kicker">Disponible maintenant</div><h2>Un Mac plus calme commence ici.</h2><p>Installez PKMonitor en quelques secondes. C’est gratuit, open source, et fait pour macOS.</p><a class="button primary download-link" href="https://github.com/mondary/PKmonitor/releases/latest"><span aria-hidden="true"></span> Télécharger PKMonitor (.dmg)</a><div class="fine" style="margin-top:16px"><a href="https://github.com/mondary/PKmonitor/releases" target="_blank" rel="noreferrer">Voir toutes les releases sur GitHub ↗</a></div></div></section>
     </main>
     <footer><div class="wrap"><span>© 2026 PKMonitor · Fait pour macOS</span><span><a href="https://github.com/mondary/PKmonitor" target="_blank" rel="noreferrer">Code source</a> · <a href="https://ko-fi.com/pouark" target="_blank" rel="noreferrer">Soutenir le projet</a></span></div></footer>
+    <script>
+      fetch('https://api.github.com/repos/mondary/PKmonitor/releases/latest')
+        .then(response => response.ok ? response.json() : Promise.reject())
+        .then(release => {
+          const dmg = release.assets.find(asset => /^PKMonitor-.+\\.dmg$/i.test(asset.name));
+          if (dmg) document.querySelectorAll('.download-link').forEach(link => link.href = dmg.browser_download_url);
+        })
+        .catch(() => {});
+    </script>
   </body>
 </html>

@@ -5,7 +5,7 @@ ROOT=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 VERSION=$(tr -d '[:space:]' < "$ROOT/VERSION")
 APP="$ROOT/dist/PKMonitor.app"
 STAGE="$ROOT/dist/dmg-stage"
-DMG="$ROOT/dist/PKMonitor.dmg"
+DMG="$ROOT/dist/PKMonitor-$VERSION.dmg"
 
 "$ROOT/build_app.sh"
 rm -rf "$STAGE" "$DMG"

@@ -6,7 +6,7 @@
 
 Moniteur système macOS natif et discret dans la barre des menus.
 
-Version `2026.09.26` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
+Version `2026.09.27` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
 ![La barre des menus et la seconde barre](store/screenshots/01-barre-et-seconde-barre.png)
 
@@ -22,7 +22,7 @@ Version `2026.09.26` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 - Toggles d’affichage pour Sparkline, Gauges et Panel
 - Panneau détaillé au survol avec arrêt de processus et bouton réglages
 - Navigation Settings catégorisée, recherche et bibliothèque de projets
-- Conseiller IA : analyse des processus gourmands (CPU, RAM, GPU) et recommandations, via tout endpoint compatible OpenAI
+- Conseiller IA : tableau des processus gourmands (CPU, RAM, GPU), légitimité estimée, motifs des alertes et recommandations, via tout endpoint compatible OpenAI
 - Thème clair/sombre/système et lancement à la connexion
 
 ## 🧠 Utilisation
@@ -35,7 +35,7 @@ Version `2026.09.26` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
 ## ⚙️ Réglages
 
-La fenêtre Settings propose un tableau de bord système en direct (matériel et métriques), une sidebar par catégories, un champ de recherche et un onglet par module : sparkline, jauges, disque, panneau, icônes de la menu bar, conseiller IA. Elle contient également les pages Help & Support et Project Library.
+La fenêtre Settings propose un tableau de bord système en direct (matériel et métriques), une sidebar par catégories, un champ de recherche et un onglet par module : sparkline, jauges, disque, panneau, icônes de la menu bar, conseiller IA (endpoint compatible OpenAI, clé API dans le Keychain et analyse déclenchée volontairement). Elle contient également les pages Help & Support et Project Library.
 
 ## 🧾 Commandes
 

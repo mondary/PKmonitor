@@ -6,7 +6,7 @@ Historique des évolutions de PKMonitor.
 
 ## TODO — Roadmap
 
-Statut : `2026.09.26` (prototype fonctionnel)
+Statut : `2026.09.27` (prototype fonctionnel)
 
 ### Prochaines étapes
 - [x] Mesures CPU, RAM et réseau locales
@@ -19,6 +19,16 @@ Statut : `2026.09.26` (prototype fonctionnel)
 ---
 
 ## Releases
+
+### [2026.09.27] - 2026-09-09
+#### Fixed
+- Collage ⌘C/⌘V/⌘X dans tous les champs de réglages : les apps accessory n'ont pas de menu principal, un menu Edit caché restaure les raccourcis
+- Endpoint OpenCode Zen : en-têtes d'identification client (`User-Agent: opencode/…`, `x-opencode-client/session/project/request`) requis par le free tier
+- Modèles reasoning type `big-pickle` : réponse acceptée en blocs de contenu ou `reasoning_content`, limite de tokens retirée du test de connexion
+
+#### Changed
+- Rapport IA : tableau résumé puis zone de détail par processus (légitimité estimée, motif du verdict et action), métriques globales et recommandations dans des cartes lisibles ; fenêtre agrandie et redimensionnable
+- Snapshot IA : bundle identifiers et chemins d'app envoyés uniquement lors d'une analyse explicite ; texte de confidentialité mis à jour
 
 ### [2026.09.26] - 2026-09-09
 #### Added

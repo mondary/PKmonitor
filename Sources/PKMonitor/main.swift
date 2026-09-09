@@ -669,23 +669,44 @@ struct AIService {
         }
     }
 
+    private static let sessionID = UUID().uuidString
+
+    private static var userAgent: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
+        return "opencode/\(version)/cli"
+    }
+
     private static var systemPrompt: String {
         let french = Locale.preferredLanguages.first?.hasPrefix("fr") == true
         if french {
             return """
             Tu es l'assistant d'analyse de PKMonitor, un moniteur système macOS. \
-            On te fournit un instantané des métriques système et des processus les plus gourmands. \
-            Analyse la situation : ce qui est sain, ce qui est anormal, puis donne 2 à 4 recommandations concrètes et actionnables. \
-            Réponds en français, de façon concise, en texte simple avec des puces (pas de titres ni de tableaux). \
-            Ne recommande pas d'installer d'autres outils de monitoring.
+            On te fournit un instantané des métriques système et des processus les plus gourmands, avec leur bundle identifier et chemin d'app. \
+            Réponds en français en Markdown simple et respecte exactement cet ordre : \
+            1) un titre court avec `#` ; \
+            2) un tableau Markdown : Processus | CPU | RAM | Légitimité | État — État utilise ✅ sain, ⚠️ à surveiller ou 🔴 problématique ; \
+            3) `## Détail des processus`, suivi pour chaque ligne ⚠️ ou 🔴 d'un sous-titre `### **Nom** — verdict`, puis trois puces : `🛡️ **Légitimité :**`, `🔎 **Pourquoi :**`, `💡 **À faire :**` ; \
+            4) `## Métriques globales` ; \
+            5) `## Recommandations`. \
+            La légitimité est une estimation fondée uniquement sur le nom, le bundle identifier et le chemin : ne dis jamais qu'un processus est sûr ou malveillant ; indique « à vérifier » si ces éléments ne suffisent pas. \
+            Explique le verdict avec les chiffres reçus et distingue une charge instantanée d'une charge qui doit persister avant d'être problématique. \
+            Utilise du **gras** pour les noms de processus, des émojis dans chaque puce, aucun bloc de code. \
+            Ne recommande ni d'installer d'autres outils de monitoring ni de tuer un processus système.
             """
         }
         return """
         You are PKMonitor's performance assistant for macOS. \
-        You receive a snapshot of system metrics and the most demanding processes. \
-        Analyze the situation: what looks healthy, what does not, then give 2 to 4 concrete, actionable recommendations. \
-        Answer concisely in plain text with bullet points (no headings, no tables). \
-        Never recommend installing other monitoring tools.
+        You receive a snapshot of system metrics and the most demanding processes, including their bundle identifiers and app paths. \
+        Answer in simple Markdown and follow exactly this order: \
+        1) a short title with `#`; \
+        2) a Markdown table: Process | CPU | RAM | Legitimacy | Status — Status uses ✅ healthy, ⚠️ watch or 🔴 problematic; \
+        3) `## Process details`, followed for every ⚠️ or 🔴 row by a `### **Name** — verdict` subheading and three bullets: `🛡️ **Legitimacy:**`, `🔎 **Why:**`, `💡 **Action:**`; \
+        4) `## Global metrics`; \
+        5) `## Recommendations`. \
+        Legitimacy is an estimate based only on the name, bundle identifier and path: never call a process safe or malicious; say “verify” when this is insufficient. \
+        Explain each verdict using the supplied numbers and distinguish an instantaneous load from a load that must persist before it is problematic. \
+        Use **bold** for process names, an emoji in every bullet, and no code blocks. \
+        Never recommend installing other monitoring tools or killing a system process.
         """
     }
 
@@ -703,11 +724,17 @@ struct AIService {
         lines.append("Network: down \(MonitorModel.formatBytes(r.download))/s, up \(MonitorModel.formatBytes(r.upload))/s")
         lines.append("")
         lines.append("Top processes by CPU:")
-        lines.append(contentsOf: topCPU.map { "- \($0.name): \(String(format: "%.1f", $0.cpu))% CPU, \(MonitorModel.formatBytes($0.memory)) RAM" })
+        lines.append(contentsOf: topCPU.map { "- \($0.name): \(String(format: "%.1f", $0.cpu))% CPU, \(MonitorModel.formatBytes($0.memory)) RAM, \(appIdentity($0))" })
         lines.append("")
         lines.append("Top processes by memory:")
-        lines.append(contentsOf: topRAM.map { "- \($0.name): \(MonitorModel.formatBytes($0.memory)) RAM, \(String(format: "%.1f", $0.cpu))% CPU" })
+        lines.append(contentsOf: topRAM.map { "- \($0.name): \(MonitorModel.formatBytes($0.memory)) RAM, \(String(format: "%.1f", $0.cpu))% CPU, \(appIdentity($0))" })
         return lines.joined(separator: "\n")
+    }
+
+    private static func appIdentity(_ app: AppUsage) -> String {
+        let path = app.path.replacingOccurrences(of: NSHomeDirectory(), with: "~")
+        let identifier = Bundle(path: app.path)?.bundleIdentifier ?? "unknown bundle identifier"
+        return "bundle \(identifier) at \(path)"
     }
 
     private static var uptimeText: String {
@@ -736,6 +763,11 @@ struct AIService {
         request.httpMethod = "POST"
         request.timeoutInterval = 120
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
+        request.setValue("cli", forHTTPHeaderField: "x-opencode-client")
+        request.setValue(Self.sessionID, forHTTPHeaderField: "x-opencode-session")
+        request.setValue("pkmonitor", forHTTPHeaderField: "x-opencode-project")
+        request.setValue(UUID().uuidString, forHTTPHeaderField: "x-opencode-request")
         if !config.apiKey.isEmpty {
             request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
         }
@@ -757,11 +789,20 @@ struct AIService {
             throw AIError.requestFailed(status: http.statusCode, message: message)
         }
         guard let choices = json["choices"] as? [[String: Any]],
-              let message = choices.first?["message"] as? [String: Any],
-              let content = message["content"] as? String else {
+              let message = choices.first?["message"] as? [String: Any] else {
             throw AIError.missingCompletion
         }
-        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        let raw: String
+        if let text = message["content"] as? String, !text.isEmpty {
+            raw = text
+        } else if let blocks = message["content"] as? [[String: Any]] {
+            raw = blocks.compactMap { $0["text"] as? String }.joined(separator: "\n")
+        } else if let reasoning = message["reasoning_content"] as? String {
+            raw = reasoning
+        } else {
+            throw AIError.missingCompletion
+        }
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { throw AIError.missingCompletion }
         return trimmed
     }
@@ -775,7 +816,7 @@ struct AIService {
     }
 
     static func ping(config: Config) async throws {
-        let request = try request(config, messages: [["role": "user", "content": "Reply with the single word OK."]], maxTokens: 8)
+        let request = try request(config, messages: [["role": "user", "content": "Reply with the single word OK."]], maxTokens: nil)
         _ = try await send(request)
     }
 }
@@ -985,11 +1026,8 @@ struct AIAdvisorView: View {
                 }
             } else if let result {
                 ScrollView {
-                    Text(result)
-                        .font(.system(size: 13))
-                        .lineSpacing(4)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    AIMarkdownView(text: result)
+                        .padding(.vertical, 2)
                 }
             } else {
                 Text("Run an analysis to get advice about what is consuming CPU, RAM and GPU.")
@@ -1018,6 +1056,157 @@ struct AIAdvisorView: View {
                 errorMessage = error.localizedDescription
             }
         }
+    }
+}
+
+struct AIMarkdownView: View {
+    let text: String
+
+    private enum MDBlock {
+        case table([String])
+        case bullets([String])
+        case heading(String)
+        case paragraph([String])
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
+                blockView(block)
+            }
+        }
+        .textSelection(.enabled)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var blocks: [MDBlock] {
+        let lines = text.components(separatedBy: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
+        var blocks: [MDBlock] = []
+        var i = 0
+        while i < lines.count {
+            let line = lines[i]
+            if line.isEmpty { i += 1; continue }
+            if line.hasPrefix("|") {
+                var table: [String] = []
+                while i < lines.count, lines[i].hasPrefix("|") {
+                    table.append(lines[i]); i += 1
+                }
+                blocks.append(.table(table)); continue
+            }
+            if line.hasPrefix("- ") || line.hasPrefix("* ") || line.hasPrefix("• ") {
+                var bullets: [String] = []
+                while i < lines.count, lines[i].hasPrefix("- ") || lines[i].hasPrefix("* ") || lines[i].hasPrefix("• ") {
+                    bullets.append(String(lines[i].dropFirst(2))); i += 1
+                }
+                blocks.append(.bullets(bullets)); continue
+            }
+            if line.hasPrefix("#") {
+                blocks.append(.heading(line.drop(while: { $0 == "#" }).trimmingCharacters(in: .whitespaces)))
+                i += 1; continue
+            }
+            var paragraph: [String] = []
+            while i < lines.count, !lines[i].isEmpty, !lines[i].hasPrefix("|"),
+                  !lines[i].hasPrefix("- "), !lines[i].hasPrefix("* "), !lines[i].hasPrefix("#") {
+                paragraph.append(lines[i]); i += 1
+            }
+            blocks.append(.paragraph(paragraph))
+        }
+        return blocks
+    }
+
+    @ViewBuilder private func blockView(_ block: MDBlock) -> some View {
+        switch block {
+        case .table(let lines): tableView(lines)
+        case .bullets(let items):
+            VStack(alignment: .leading, spacing: 9) {
+                ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                    inline(item)
+                        .font(.system(size: 13))
+                        .lineSpacing(3)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding(14)
+            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(Color(nsColor: .separatorColor).opacity(0.45), lineWidth: 0.5))
+        case .heading(let title):
+            sectionHeading(title)
+        case .paragraph(let lines):
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+                    inline(line).font(.system(size: 13)).lineSpacing(3)
+                }
+            }
+        }
+    }
+
+    private func sectionHeading(_ title: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: sectionSymbol(for: title))
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Color.accentColor)
+            inline(title).font(.system(size: 15, weight: .semibold))
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color.accentColor.opacity(0.09), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func sectionSymbol(for title: String) -> String {
+        let normalized = title.folding(options: .diacriticInsensitive, locale: .current).lowercased()
+        if normalized.contains("detail") { return "magnifyingglass" }
+        if normalized.contains("metrique") || normalized.contains("metric") { return "chart.bar" }
+        if normalized.contains("recommand") { return "lightbulb" }
+        return "sparkles"
+    }
+
+    private func tableView(_ lines: [String]) -> some View {
+        let rows = lines.compactMap(parseRow)
+        return VStack(spacing: 0) {
+            if let header = rows.first {
+                HStack(spacing: 0) {
+                    ForEach(Array(header.enumerated()), id: \.offset) { _, cell in
+                        inline(cell)
+                            .font(.system(size: 12, weight: .semibold))
+                            .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
+                            .padding(.horizontal, 10)
+                    }
+                }
+                .background(Color.accentColor.opacity(0.09))
+            }
+            ForEach(Array(rows.dropFirst().enumerated()), id: \.offset) { index, row in
+                Divider()
+                HStack(spacing: 0) {
+                    ForEach(Array(row.enumerated()), id: \.offset) { _, cell in
+                        inline(cell)
+                            .font(.system(size: 12))
+                            .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+                            .padding(.horizontal, 10)
+                    }
+                }
+                .background(index % 2 == 1 ? Color(nsColor: .separatorColor).opacity(0.07) : .clear)
+            }
+        }
+        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(Color(nsColor: .separatorColor).opacity(0.45), lineWidth: 0.5))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func parseRow(_ line: String) -> [String]? {
+        let cells = line.dropFirst().split(separator: "|", omittingEmptySubsequences: false)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+        guard cells.count > 1 else { return nil }
+        if cells.allSatisfy({ !$0.isEmpty && Set($0).isSubset(of: ["-", ":"]) }) { return nil }
+        return cells
+    }
+
+    private func inline(_ source: String) -> Text {
+        if let attributed = try? AttributedString(
+            markdown: source,
+            options: AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+        ) {
+            return Text(attributed)
+        }
+        return Text(source)
     }
 }
 
@@ -1075,7 +1264,7 @@ struct AISettingsView: View {
                     }
                 }
                 SettingsCard("Privacy", icon: "lock.shield", subtitle: "What leaves this Mac when you run an analysis.") {
-                    Text("Process names with their CPU and memory usage, system metrics (CPU, RAM, GPU, disk, network), hardware model, macOS version and uptime. Nothing is sent until you run an analysis; the API key stays in the Keychain.")
+                    Text("Process names, app bundle identifiers and paths, their CPU and memory usage, system metrics (CPU, RAM, GPU, disk, network), hardware model, macOS version and uptime. Nothing is sent until you run an analysis; the API key stays in the Keychain.")
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                 }
@@ -2720,6 +2909,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        setupEditMenu()
         guard let button = statusItem.button else { return }
         button.target = self
         button.action = #selector(statusClicked)
@@ -2752,6 +2942,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menuBarItemsManager.tick()
         refreshUnderBarPresence()
         model.start { [weak self] in self?.refreshStatusItem() }
+    }
+
+    /// Accessory apps expose no menu bar, so Edit key equivalents (Cmd+C/V/X) never fire.
+    /// A hidden main menu restores them for all text fields.
+    private func setupEditMenu() {
+        let edit = NSMenu(title: "Edit")
+        edit.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+        edit.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
+        edit.addItem(.separator())
+        edit.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        let editItem = NSMenuItem()
+        editItem.submenu = edit
+        let mainMenu = NSMenu()
+        mainMenu.addItem(editItem)
+        NSApp.mainMenu = mainMenu
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -3265,9 +3473,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             ))
             let window = NSWindow(contentViewController: controller)
             window.title = "PKMonitor AI Advisor"
-            window.styleMask = [.titled, .closable, .miniaturizable]
-            window.setContentSize(NSSize(width: 540, height: 600))
-            window.minSize = NSSize(width: 460, height: 480)
+            window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
+            window.setContentSize(NSSize(width: 760, height: 800))
+            window.minSize = NSSize(width: 580, height: 520)
             window.center()
             window.isReleasedWhenClosed = false
             aiWindow = window

@@ -70,6 +70,15 @@ enum UnderBarBackground: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+enum AIPresentation: String, CaseIterable, Identifiable {
+    case rightPanel = "Right panel"
+    case leftPanel = "Left panel"
+    case bottomPanel = "Bottom panel"
+    case window = "Window"
+
+    var id: String { rawValue }
+}
+
 @MainActor
 final class AppSettings: ObservableObject {
     @Published var updateInterval: Double { didSet { defaults.set(updateInterval, forKey: "updateInterval") } }
@@ -122,6 +131,7 @@ final class AppSettings: ObservableObject {
     @Published var diskFontSize: Double { didSet { defaults.set(diskFontSize, forKey: "diskFontSize") } }
     @Published var aiEndpoint: String { didSet { defaults.set(aiEndpoint, forKey: "aiEndpoint") } }
     @Published var aiModel: String { didSet { defaults.set(aiModel, forKey: "aiModel") } }
+    @Published var aiPresentation: AIPresentation { didSet { defaults.set(aiPresentation.rawValue, forKey: "aiPresentation") } }
     @Published var warningThreshold: Double { didSet { defaults.set(warningThreshold, forKey: "warningThreshold") } }
     @Published var criticalThreshold: Double { didSet { defaults.set(criticalThreshold, forKey: "criticalThreshold") } }
     @Published private(set) var launchAtLogin = SMAppService.mainApp.status == .enabled
@@ -170,6 +180,7 @@ final class AppSettings: ObservableObject {
         diskFontSize = defaults.object(forKey: "diskFontSize") as? Double ?? 11
         aiEndpoint = defaults.string(forKey: "aiEndpoint") ?? "https://api.openai.com/v1"
         aiModel = defaults.string(forKey: "aiModel") ?? "gpt-4o-mini"
+        aiPresentation = AIPresentation(rawValue: defaults.string(forKey: "aiPresentation") ?? "") ?? .rightPanel
         warningThreshold = defaults.object(forKey: "warningThreshold") as? Double ?? 80
         criticalThreshold = defaults.object(forKey: "criticalThreshold") as? Double ?? 95
     }
@@ -228,6 +239,7 @@ final class AppSettings: ObservableObject {
         showDiskTotal = true
         aiEndpoint = "https://api.openai.com/v1"
         aiModel = "gpt-4o-mini"
+        aiPresentation = .rightPanel
         diskFontSize = 11
         warningThreshold = 80
         criticalThreshold = 95
@@ -964,7 +976,9 @@ struct DetailView: View {
 struct AIAdvisorView: View {
     @ObservedObject var model: MonitorModel
     @ObservedObject var settings: AppSettings
+    var embedded = false
     let openSettings: () -> Void
+    var close: (() -> Void)? = nil
     @State private var result: String?
     @State private var running = false
     @State private var errorMessage: String?
@@ -996,6 +1010,15 @@ struct AIAdvisorView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(running)
                 .controlSize(.large)
+                if let close {
+                    Button { close() } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 15, weight: .medium))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .help("Close AI Advisor")
+                }
             }
             .padding(.bottom, 4)
 
@@ -1036,6 +1059,7 @@ struct AIAdvisorView: View {
             }
         }
         .padding(28)
+        .background(embedded ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(Color.clear))
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task {
             if result == nil, errorMessage == nil, !running, config.isComplete { run() }
@@ -1222,6 +1246,14 @@ struct AISettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 SettingsHeader(title: "AI Advisor", subtitle: "Resource and process advice from any OpenAI-compatible endpoint.", icon: "sparkles")
+                SettingsCard("Appearance", icon: "rectangle.righthalf.inset.filled", subtitle: "How the AI Advisor appears on screen.") {
+                    SettingLine("Placement", detail: "Side panels slide in like Apple widgets") {
+                        Picker("Placement", selection: $settings.aiPresentation) {
+                            ForEach(AIPresentation.allCases) { Text($0.rawValue).tag($0) }
+                        }
+                        .labelsHidden().pickerStyle(.segmented).frame(width: 360)
+                    }
+                }
                 SettingsCard("Connection", icon: "link", subtitle: "Works with OpenAI, Ollama, LM Studio, OpenRouter and any OpenAI-compatible server.") {
                     SettingLine("Endpoint", detail: "Base URL; /chat/completions is appended automatically") {
                         TextField("https://api.openai.com/v1", text: $settings.aiEndpoint)
@@ -2887,6 +2919,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var detailPanel: NSPanel?
     private var settingsWindow: NSWindow?
     private var aiWindow: NSWindow?
+    private var aiPanel: NSPanel?
+    private var aiPanelMode: AIPresentation?
+    private var aiPanelMonitors: [Any] = []
     private var hoverTimer: Timer?
     private var lastPointerInside = Date.distantPast
     private var hoverSuppressed = false
@@ -2930,6 +2965,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         RunLoop.main.add(hoverTimer, forMode: .common)
         self.hoverTimer = hoverTimer
         if CommandLine.arguments.contains("--settings") { openSettings() }
+        if CommandLine.arguments.contains("--ai") { openAIAdvisor() }
         let itemsTimer = Timer(timeInterval: 2.0, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }
@@ -3465,6 +3501,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func openAIAdvisor() {
+        if settings.aiPresentation == .window {
+            openAIAdvisorWindow()
+        } else {
+            toggleAIPanel()
+        }
+    }
+
+    private func openAIAdvisorWindow() {
+        if aiPanel?.isVisible == true { hideAIPanel(animated: false) }
         if aiWindow == nil {
             let controller = NSHostingController(rootView: AIAdvisorView(
                 model: model,
@@ -3482,6 +3527,137 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         aiWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func toggleAIPanel() {
+        if let panel = aiPanel, aiPanelMode == settings.aiPresentation {
+            if panel.isVisible { hideAIPanel(animated: true) } else { showAIPanel(animated: true) }
+        } else {
+            buildAIPanel()
+            showAIPanel(animated: true)
+        }
+    }
+
+    private func buildAIPanel() {
+        if let existing = aiPanel {
+            existing.orderOut(nil)
+            aiPanelMonitors.forEach { NSEvent.removeMonitor($0) }
+            aiPanelMonitors = []
+        }
+        let mode = settings.aiPresentation
+        let controller = NSHostingController(rootView: AIAdvisorView(
+            model: model,
+            settings: settings,
+            embedded: true,
+            openSettings: { [weak self] in self?.openSettings() },
+            close: { [weak self] in self?.hideAIPanel(animated: true) }
+        ))
+        controller.view.wantsLayer = true
+        let panel = NSPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = true
+        panel.level = .floating
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        panel.hidesOnDeactivate = false
+        panel.contentViewController = controller
+        applyPanelCorners(controller.view.layer, mode: mode)
+        aiPanel = panel
+        aiPanelMode = mode
+        installAIPanelMonitors()
+    }
+
+    private func applyPanelCorners(_ layer: CALayer?, mode: AIPresentation) {
+        guard let layer else { return }
+        layer.cornerRadius = 14
+        layer.masksToBounds = true
+        switch mode {
+        case .rightPanel: layer.maskedCorners = [.layerMinXMinYCorner, .layerMinXMaxYCorner]
+        case .leftPanel: layer.maskedCorners = [.layerMaxXMinYCorner, .layerMaxXMaxYCorner]
+        case .bottomPanel: layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+        case .window: layer.maskedCorners = []
+        }
+    }
+
+    private func targetAIPanelFrame(for mode: AIPresentation) -> NSRect {
+        let screen = NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? NSScreen.main
+        let visible = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        switch mode {
+        case .rightPanel:
+            let width: CGFloat = 420
+            return NSRect(x: (screen?.frame.maxX ?? 1440) - width, y: visible.minY, width: width, height: visible.height)
+        case .leftPanel:
+            let width: CGFloat = 420
+            return NSRect(x: screen?.frame.minX ?? 0, y: visible.minY, width: width, height: visible.height)
+        case .bottomPanel:
+            let width = visible.width * 0.7
+            let height = min(700, visible.height * 0.62)
+            return NSRect(x: visible.midX - width / 2, y: visible.minY, width: width, height: height)
+        case .window:
+            return .zero
+        }
+    }
+
+    private func showAIPanel(animated: Bool) {
+        guard let panel = aiPanel, let mode = aiPanelMode else { return }
+        let target = targetAIPanelFrame(for: mode)
+        let offscreen: NSRect
+        switch mode {
+        case .rightPanel: offscreen = target.offsetBy(dx: target.width + 12, dy: 0)
+        case .leftPanel: offscreen = target.offsetBy(dx: -(target.width + 12), dy: 0)
+        case .bottomPanel: offscreen = target.offsetBy(dx: 0, dy: -(target.height + 12))
+        case .window: offscreen = target
+        }
+        panel.setFrame(offscreen, display: false)
+        panel.orderFrontRegardless()
+        if animated {
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.28
+                context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                panel.animator().setFrame(target, display: true)
+            }
+        } else {
+            panel.setFrame(target, display: true)
+        }
+    }
+
+    private func hideAIPanel(animated: Bool) {
+        guard let panel = aiPanel, panel.isVisible else { return }
+        let mode = aiPanelMode ?? .rightPanel
+        guard animated else { panel.orderOut(nil); return }
+        let current = panel.frame
+        let away: NSRect
+        switch mode {
+        case .rightPanel: away = current.offsetBy(dx: current.width + 12, dy: 0)
+        case .leftPanel: away = current.offsetBy(dx: -(current.width + 12), dy: 0)
+        case .bottomPanel: away = current.offsetBy(dx: 0, dy: -(current.height + 12))
+        case .window: away = current
+        }
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.22
+            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            panel.animator().setFrame(away, display: true)
+        }, completionHandler: { panel.orderOut(nil) })
+    }
+
+    private func installAIPanelMonitors() {
+        let local = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
+            self?.dismissAIPanelIfOutside()
+            return event
+        }
+        let global = NSEvent.addGlobalMonitorForEvents(matching: .leftMouseDown) { [weak self] _ in
+            self?.dismissAIPanelIfOutside()
+        }
+        aiPanelMonitors = [local as Any, global].compactMap { $0 }
+    }
+
+    private func dismissAIPanelIfOutside() {
+        guard let panel = aiPanel, panel.isVisible else { return }
+        let location = NSEvent.mouseLocation
+        if panel.frame.contains(location) { return }
+        if statusButtonFrame?.contains(location) == true { return }
+        if detailPanel?.isVisible == true, detailPanel?.frame.contains(location) == true { return }
+        hideAIPanel(animated: true)
     }
 
     @objc private func showAbout() {

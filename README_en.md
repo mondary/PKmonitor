@@ -6,7 +6,7 @@
 
 A native, focused macOS system monitor in the menu bar.
 
-Version `2026.09.27` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
+Version `2026.09.28` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
 ![The menu bar and the second bar](store/screenshots/01-barre-et-seconde-barre.png)
 
@@ -22,7 +22,7 @@ Version `2026.09.27` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 - Display toggles for Sparkline, Gauges and Panel
 - Hover detail panel with process termination controls and a settings button
 - Categorized Settings navigation, search and project library
-- AI Advisor: table of heavy processes (CPU, RAM, GPU), estimated legitimacy, alert rationale and recommendations, via any OpenAI-compatible endpoint
+- AI Advisor as a side panel (right, left or bottom): table of heavy processes, estimated legitimacy, alert rationale and recommendations, via any OpenAI-compatible endpoint
 - Light/dark/system theme and launch at login
 
 ## 🧠 Usage
@@ -35,7 +35,7 @@ Version `2026.09.27` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
 ## ⚙️ Settings
 
-The Settings window provides a live system dashboard (hardware and metrics), a categorized sidebar, search and one tab per module: sparkline, gauges, disk, panel, menu bar icons and the AI advisor (OpenAI-compatible endpoint, Keychain API key and user-triggered analysis). It also includes Help & Support and Project Library sections.
+The Settings window provides a live system dashboard (hardware and metrics), a categorized sidebar, search and one tab per module: sparkline, gauges, disk, panel, menu bar icons and the AI advisor (OpenAI-compatible endpoint, panel or window placement, Keychain API key and user-triggered analysis). It also includes Help & Support and Project Library sections.
 
 ## 🧾 Commands
 

@@ -6,7 +6,7 @@ Historique des évolutions de PKMonitor.
 
 ## TODO — Roadmap
 
-Statut : `2026.09.27` (prototype fonctionnel)
+Statut : `2026.09.28` (prototype fonctionnel)
 
 ### Prochaines étapes
 - [x] Mesures CPU, RAM et réseau locales
@@ -19,6 +19,11 @@ Statut : `2026.09.27` (prototype fonctionnel)
 ---
 
 ## Releases
+
+### [2026.09.28] - 2026-09-09
+#### Added
+- AI Advisor en panneau latéral façon widgets Apple : glisse du bord droit (par défaut), bord gauche ou bas centré (70 % de la largeur) ; réglage « Appearance › Placement » pour choisir, fenêtre flottante toujours disponible
+- Fermeture au clic extérieur, bouton ✕ et re-clic sur le bouton IA du popover ; coins arrondis côté écran et fond vibré
 
 ### [2026.09.27] - 2026-09-09
 #### Fixed

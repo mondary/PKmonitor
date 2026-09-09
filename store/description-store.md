@@ -29,3 +29,16 @@ macOS, menu bar, second bar, bartender, system monitor, CPU, GPU, RAM, disk, net
 - **Les données quittent-elles le Mac ?** Non, toutes les mesures restent locales.
 - **Descendre des icônes tierces ?** Oui — Settings › Menu Bar Items : cochez les icônes à descendre, réordonnez-les, et PKMonitor les restaure au décochage ou à la fermeture.
 - **Permissions nécessaires ?** Accessibilité (déplacer les icônes d'origine) et Enregistrement d'écran (redessiner les icônes descendues), demandées uniquement pour cette fonctionnalité.
+
+## Offre
+
+- **Modèle** : Open Source
+- **Prix** : Gratuit
+
+## Plateformes
+
+- GitHub Releases : https://github.com/mondary/PKmonitor
+
+## Liens
+
+- **Repo** : https://github.com/mondary/PKmonitor

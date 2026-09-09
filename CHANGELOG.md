@@ -6,7 +6,7 @@ Historique des évolutions de PKMonitor.
 
 ## TODO — Roadmap
 
-Statut : `2026.09.28` (prototype fonctionnel)
+Statut : `2026.09.29` (prototype fonctionnel)
 
 ### Prochaines étapes
 - [x] Mesures CPU, RAM et réseau locales
@@ -19,6 +19,13 @@ Statut : `2026.09.28` (prototype fonctionnel)
 ---
 
 ## Releases
+
+### [2026.09.29] - 2026-09-09
+#### Added
+- Panneau AI Advisor redimensionnable (bords actifs, chrome masqué) : largeur latérale et hauteur basse mémorisées entre les ouvertures
+
+#### Fixed
+- Espace fantôme entre le label vertical et le graphe : largeur du label mesurée réellement (30 px fixes → ~9 px) et marges internes du tracé réduites (8 → 3 px)
 
 ### [2026.09.28] - 2026-09-09
 #### Added

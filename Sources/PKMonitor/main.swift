@@ -2922,6 +2922,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var aiPanel: NSPanel?
     private var aiPanelMode: AIPresentation?
     private var aiPanelMonitors: [Any] = []
+    private var aiPanelObservers: [NSObjectProtocol] = []
     private var hoverTimer: Timer?
     private var lastPointerInside = Date.distantPast
     private var hoverSuppressed = false
@@ -3553,48 +3554,56 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             close: { [weak self] in self?.hideAIPanel(animated: true) }
         ))
         controller.view.wantsLayer = true
-        let panel = NSPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        let panel = NSPanel(contentRect: .zero, styleMask: [.titled, .fullSizeContentView, .resizable, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
         panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.hidesOnDeactivate = false
+        panel.titleVisibility = .hidden
+        panel.titlebarAppearsTransparent = true
+        panel.standardWindowButton(.closeButton)?.isHidden = true
+        panel.standardWindowButton(.miniaturizeButton)?.isHidden = true
+        panel.standardWindowButton(.zoomButton)?.isHidden = true
         panel.contentViewController = controller
-        applyPanelCorners(controller.view.layer, mode: mode)
         aiPanel = panel
         aiPanelMode = mode
         installAIPanelMonitors()
-    }
-
-    private func applyPanelCorners(_ layer: CALayer?, mode: AIPresentation) {
-        guard let layer else { return }
-        layer.cornerRadius = 14
-        layer.masksToBounds = true
-        switch mode {
-        case .rightPanel: layer.maskedCorners = [.layerMinXMinYCorner, .layerMinXMaxYCorner]
-        case .leftPanel: layer.maskedCorners = [.layerMaxXMinYCorner, .layerMaxXMaxYCorner]
-        case .bottomPanel: layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
-        case .window: layer.maskedCorners = []
-        }
+        aiPanelObservers.append(NotificationCenter.default.addObserver(
+            forName: NSWindow.didEndLiveResizeNotification, object: panel, queue: .main
+        ) { [weak self] _ in Task { @MainActor in self?.persistAIPanelSize() } })
     }
 
     private func targetAIPanelFrame(for mode: AIPresentation) -> NSRect {
         let screen = NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? NSScreen.main
         let visible = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        let defaults = UserDefaults.standard
         switch mode {
-        case .rightPanel:
-            let width: CGFloat = 420
-            return NSRect(x: (screen?.frame.maxX ?? 1440) - width, y: visible.minY, width: width, height: visible.height)
-        case .leftPanel:
-            let width: CGFloat = 420
+        case .rightPanel, .leftPanel:
+            let saved = defaults.double(forKey: "aiPanelSideWidth")
+            let width = min(max(saved >= 360 ? saved : 560, 360), visible.width - 160)
+            if mode == .rightPanel {
+                return NSRect(x: (screen?.frame.maxX ?? visible.maxX) - width, y: visible.minY, width: width, height: visible.height)
+            }
             return NSRect(x: screen?.frame.minX ?? 0, y: visible.minY, width: width, height: visible.height)
         case .bottomPanel:
             let width = visible.width * 0.7
-            let height = min(700, visible.height * 0.62)
+            let saved = defaults.double(forKey: "aiPanelBottomHeight")
+            let height = min(max(saved >= 320 ? saved : 700, 320), visible.height - 160)
             return NSRect(x: visible.midX - width / 2, y: visible.minY, width: width, height: height)
         case .window:
             return .zero
+        }
+    }
+
+    private func persistAIPanelSize() {
+        guard let panel = aiPanel, let mode = aiPanelMode else { return }
+        let defaults = UserDefaults.standard
+        switch mode {
+        case .rightPanel, .leftPanel: defaults.set(panel.frame.width, forKey: "aiPanelSideWidth")
+        case .bottomPanel: defaults.set(panel.frame.height, forKey: "aiPanelBottomHeight")
+        case .window: break
         }
     }
 
@@ -3624,7 +3633,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func hideAIPanel(animated: Bool) {
         guard let panel = aiPanel, panel.isVisible else { return }
         let mode = aiPanelMode ?? .rightPanel
-        guard animated else { panel.orderOut(nil); return }
+        persistAIPanelSize()
         let current = panel.frame
         let away: NSRect
         switch mode {
@@ -3685,11 +3694,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func sparklineImage(_ values: [Double], markers: [String?], metric: Metric, value: String) -> NSImage {
         let gap = CGFloat(settings.elementSpacing)
         let valueFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)
+        let labelFont = NSFont.systemFont(ofSize: 6, weight: .heavy)
+        let labelAttrs: [NSAttributedString.Key: Any] = [.font: labelFont, .foregroundColor: NSColor.labelColor]
+        let labelCharSize = ("M" as NSString).size(withAttributes: labelAttrs)
         let valueColor = settings.colorForValue(model.reading.value(for: metric))
         let valueAttrs: [NSAttributedString.Key: Any] = [.font: valueFont, .foregroundColor: valueColor]
         let valueSize = (value as NSString).size(withAttributes: valueAttrs)
         let textW = valueSize.width + gap * 2
-        let labelW: CGFloat = settings.showSparkline && settings.showLabel ? 30 : 0
+        let labelW: CGFloat = settings.showSparkline && settings.showLabel ? labelCharSize.width + 4 : 0
         let gaugeW: CGFloat = settings.showGauges ? CGFloat(settings.enabledGaugeMetrics.count) * (CGFloat(settings.gaugeWidth) + 2) + 2 : 0
         let graphW = settings.showSparkline ? settings.sparklineWidth : 0
         let diskFont = NSFont.monospacedDigitSystemFont(ofSize: CGFloat(settings.diskFontSize), weight: .semibold)
@@ -3715,9 +3727,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         defer { image.unlockFocus() }
 
         let label = metric == .network ? "NET" : metric.rawValue.uppercased()
-        let labelFont = NSFont.systemFont(ofSize: 6, weight: .heavy)
-        let labelAttrs: [NSAttributedString.Key: Any] = [.font: labelFont, .foregroundColor: NSColor.labelColor]
-        let labelCharSize = ("M" as NSString).size(withAttributes: labelAttrs)
         let lineH: CGFloat = 5
 
         let gaugesOnLeft = settings.gaugePosition == .left
@@ -3785,7 +3794,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard values.count > 1 else { return image }
 
         let rect = NSRect(origin: .zero, size: size)
-        let sparkMargin: CGFloat = 8
+        let sparkMargin: CGFloat = 3
         let drawGraphW = graphW - sparkMargin * 2
         let capacity = max(2, Int(settings.historySeconds / settings.updateInterval))
         let scaledValues = MonitorModel.scaledHistory(values)

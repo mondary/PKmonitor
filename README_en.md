@@ -6,7 +6,7 @@
 
 A native, focused macOS system monitor in the menu bar.
 
-Version `2026.09.28` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
+Version `2026.09.29` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
 ![The menu bar and the second bar](store/screenshots/01-barre-et-seconde-barre.png)
 
@@ -22,7 +22,7 @@ Version `2026.09.28` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 - Display toggles for Sparkline, Gauges and Panel
 - Hover detail panel with process termination controls and a settings button
 - Categorized Settings navigation, search and project library
-- AI Advisor as a side panel (right, left or bottom): table of heavy processes, estimated legitimacy, alert rationale and recommendations, via any OpenAI-compatible endpoint
+- AI Advisor as a resizable side panel (right, left or bottom): table of heavy processes, estimated legitimacy, alert rationale and recommendations, via any OpenAI-compatible endpoint
 - Light/dark/system theme and launch at login
 
 ## 🧠 Usage

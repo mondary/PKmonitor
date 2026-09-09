@@ -6,7 +6,7 @@
 
 Moniteur système macOS natif et discret dans la barre des menus.
 
-Version `2026.09.28` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
+Version `2026.09.29` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
 ![La barre des menus et la seconde barre](store/screenshots/01-barre-et-seconde-barre.png)
 
@@ -22,7 +22,7 @@ Version `2026.09.28` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 - Toggles d’affichage pour Sparkline, Gauges et Panel
 - Panneau détaillé au survol avec arrêt de processus et bouton réglages
 - Navigation Settings catégorisée, recherche et bibliothèque de projets
-- Conseiller IA en panneau latéral (droite, gauche ou bas) : tableau des processus gourmands, légitimité estimée, motifs des alertes et recommandations, via tout endpoint compatible OpenAI
+- Conseiller IA en panneau latéral redimensionnable (droite, gauche ou bas) : tableau des processus gourmands, légitimité estimée, motifs des alertes et recommandations, via tout endpoint compatible OpenAI
 - Thème clair/sombre/système et lancement à la connexion
 
 ## 🧠 Utilisation

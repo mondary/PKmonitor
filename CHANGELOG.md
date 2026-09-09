@@ -6,7 +6,7 @@ Historique des évolutions de PKMonitor.
 
 ## TODO — Roadmap
 
-Statut : `2026.09.24` (prototype fonctionnel)
+Statut : `2026.09.25` (prototype fonctionnel)
 
 ### Prochaines étapes
 - [x] Mesures CPU, RAM et réseau locales
@@ -19,6 +19,17 @@ Statut : `2026.09.24` (prototype fonctionnel)
 ---
 
 ## Releases
+
+### [2026.09.25] - 2026-09-09
+#### Added
+- Icône de bundle (`icon.icns`) embarquée dans le paquet `.app` : copie dans les Resources et clé `CFBundleIconFile`
+- Carte store 1200×675 et vidéo de démo dans `store/`
+
+#### Fixed
+- Détection plein écran : seules les fenêtres d'applications régulières (PIDs `NSWorkspace`) couvrant un écran déclenchent le masquage de la seconde barre
+
+#### Changed
+- Bannière store recompressée (3,1 Mo → 182 Ko) ; laius store complété (offre, plateformes, liens)
 
 ### [2026.09.24] - 2026-09-04
 #### Added

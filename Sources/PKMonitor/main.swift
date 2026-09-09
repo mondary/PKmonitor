@@ -2603,8 +2603,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // ponytail: heuristique plein écran via CGWindowList (fenêtre couvrant un écran) ; revoir si un cas manque
     private func isAnyAppFullscreen() -> Bool {
         guard let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] else { return false }
+        let regularPIDs: Set<Int32> = {
+            Set(NSWorkspace.shared.runningApplications
+                .filter { $0.activationPolicy == .regular }
+                .map(\.processIdentifier))
+        }()
         for info in list {
             guard info[kCGWindowLayer as String] as? Int == 0,
+                  let pid = info[kCGWindowOwnerPID as String] as? Int32,
+                  regularPIDs.contains(pid),
                   let bounds = info[kCGWindowBounds as String] as? [String: CGFloat] else { continue }
             let width = bounds["Width"] ?? 0
             let height = bounds["Height"] ?? 0

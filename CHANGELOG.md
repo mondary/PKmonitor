@@ -6,7 +6,7 @@ Historique des évolutions de PKMonitor.
 
 ## TODO — Roadmap
 
-Statut : `2026.09.31` (prototype fonctionnel)
+Statut : `2026.09.32` (prototype fonctionnel)
 
 ### Prochaines étapes
 - [x] Mesures CPU, RAM et réseau locales
@@ -19,6 +19,10 @@ Statut : `2026.09.31` (prototype fonctionnel)
 ---
 
 ## Releases
+
+### [2026.09.32] - 2026-09-09
+#### Changed
+- Texte « Audit » affiché à côté du bouton IA du panneau de survol, entre Settings et le numéro de version
 
 ### [2026.09.31] - 2026-09-09
 #### Changed

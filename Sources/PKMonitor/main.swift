@@ -1030,8 +1030,12 @@ struct DetailView: View {
                 .foregroundStyle(.secondary)
                 .help("Open Settings")
                 Button { openAIAdvisor() } label: {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 13, weight: .medium))
+                    HStack(spacing: 4) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 13, weight: .medium))
+                        Text("Audit")
+                            .font(.system(size: 11, weight: .medium))
+                    }
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)

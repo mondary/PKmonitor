@@ -6,7 +6,7 @@ Historique des évolutions de PKMonitor.
 
 ## TODO — Roadmap
 
-Statut : `2026.09.30` (prototype fonctionnel)
+Statut : `2026.09.31` (prototype fonctionnel)
 
 ### Prochaines étapes
 - [x] Mesures CPU, RAM et réseau locales
@@ -19,6 +19,10 @@ Statut : `2026.09.30` (prototype fonctionnel)
 ---
 
 ## Releases
+
+### [2026.09.31] - 2026-09-09
+#### Changed
+- Badge « AUDIT » discret à côté du titre AI Advisor (fenêtre et panneau)
 
 ### [2026.09.30] - 2026-09-09
 #### Added

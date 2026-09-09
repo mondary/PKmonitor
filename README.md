@@ -10,6 +10,8 @@ Version `2026.09.30` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
 ![La barre des menus et la seconde barre](store/screenshots/01-barre-et-seconde-barre.png)
 
+![Démonstration animée de PKMonitor](store/gifs/pkmonitor-demo.gif)
+
 ![Le panneau de détail au survol](store/screenshots/02-panneau-detail.png)
 
 ## ✅ Fonctionnalités
@@ -46,7 +48,11 @@ swift run PKMonitor --self-test
 
 ## 📦 Build & Package
 
-`run.sh` construit `dist/PKMonitor.app` en mode production avec les outils de ligne de commande Xcode.
+`run.sh` construit `dist/PKMonitor.app` en mode production avec les outils de ligne de commande Xcode. Pour préparer l’archive distribuable, exécuter `./package_dmg.sh` : le DMG est créé dans `dist/PKMonitor.dmg` et peut être joint à une release GitHub.
+
+## 🌐 Page promotionnelle
+
+La page de présentation est disponible dans [`store/index.html`](store/index.html). Elle est autonome, responsive et prête à être hébergée telle quelle. Ses boutons de téléchargement ciblent `https://github.com/mondary/PKmonitor/releases/latest/download/PKMonitor.dmg`.
 
 ## 🧪 Installation
 

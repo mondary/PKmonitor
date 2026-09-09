@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="PKMonitor : les métriques essentielles de votre Mac, au bon endroit — dans la barre des menus.">
+    <meta name="theme-color" content="#090a0c">
+    <meta property="og:title" content="PKMonitor — Gardez un œil sur votre Mac.">
+    <meta property="og:description" content="Un moniteur macOS gratuit, discret et configurable dans la barre des menus.">
+    <meta property="og:image" content="assets/card-1200x675.png">
+    <title>PKMonitor — Gardez un œil sur votre Mac.</title>
+    <link rel="icon" href="../icon.png">
+    <link rel="preload" as="image" href="assets/demo-poster.png">
+    <style>
+      :root { --ink:#f5f5f0; --muted:#a1a39d; --line:rgba(255,255,255,.12); --lime:#b9ff31; --blue:#3c8cff; --gold:#ffb526; --page:#090a0c; --surface:#121418; }
+      * { box-sizing:border-box; }
+      html { scroll-behavior:smooth; }
+      body { margin:0; color:var(--ink); background:var(--page); font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",sans-serif; letter-spacing:-.018em; }
+      a { color:inherit; text-decoration:none; }
+      .wrap { width:min(1160px, calc(100% - 40px)); margin:auto; }
+      .nav { height:76px; display:flex; align-items:center; justify-content:space-between; position:relative; z-index:4; }
+      .brand { display:flex; align-items:center; gap:10px; font-weight:700; font-size:18px; }
+      .brand img { width:32px; height:32px; border-radius:9px; }
+      .nav-links { display:flex; align-items:center; gap:25px; color:var(--muted); font-size:14px; }
+      .nav-links a:hover { color:var(--ink); }
+      .nav-download { padding:10px 15px; border:1px solid var(--line); border-radius:9px; color:var(--ink)!important; }
+      .hero { padding:74px 0 22px; text-align:center; overflow:hidden; position:relative; }
+      .hero:before { content:""; position:absolute; width:900px; height:500px; left:50%; top:-260px; transform:translateX(-50%); pointer-events:none; background:radial-gradient(ellipse,rgba(103,132,42,.28),rgba(11,12,14,0) 66%); }
+      .eyebrow { display:inline-flex; gap:8px; align-items:center; color:#d5ff77; font-size:13px; font-weight:650; letter-spacing:.02em; padding:7px 11px; border:1px solid rgba(185,255,49,.25); background:rgba(185,255,49,.08); border-radius:999px; }
+      .dot { width:7px; height:7px; border-radius:50%; background:var(--lime); box-shadow:0 0 13px var(--lime); }
+      h1 { max-width:900px; margin:22px auto 20px; font-size:clamp(47px,7vw,86px); line-height:.98; letter-spacing:-.065em; font-weight:720; }
+      h1 span { color:var(--lime); }
+      .lede { max-width:580px; margin:0 auto; font-size:clamp(17px,2vw,20px); color:var(--muted); line-height:1.45; }
+      .actions { display:flex; justify-content:center; gap:12px; margin:31px 0 15px; }
+      .button { display:inline-flex; align-items:center; justify-content:center; gap:9px; padding:15px 20px; font-size:15px; font-weight:700; border-radius:11px; transition:transform .2s,background .2s; }
+      .button:hover { transform:translateY(-2px); }
+      .primary { color:#101500; background:var(--lime); box-shadow:0 10px 30px rgba(185,255,49,.15); }
+      .secondary { color:var(--ink); border:1px solid var(--line); background:rgba(255,255,255,.035); }
+      .fine { color:#777a75; font-size:12px; }
+      .demo-frame { width:min(1040px,100%); position:relative; margin:62px auto 0; padding:9px; border:1px solid rgba(255,255,255,.14); border-radius:19px; background:linear-gradient(135deg,#25272a,#0c0e10 18%,#101215); box-shadow:0 45px 100px rgba(0,0,0,.55); }
+      .demo-frame:before { content:""; position:absolute; z-index:2; top:16px; left:18px; width:8px; height:8px; border-radius:50%; background:#ff5d57; box-shadow:14px 0 #ffbd2e,28px 0 #28c840; }
+      .demo-frame video { display:block; width:100%; border-radius:12px; background:#0c0d0e; }
+      section { padding:126px 0; }
+      .kicker { color:var(--lime); font-size:13px; font-weight:750; letter-spacing:.09em; text-transform:uppercase; }
+      h2 { margin:13px 0 16px; max-width:650px; font-size:clamp(34px,5vw,58px); line-height:1.04; letter-spacing:-.052em; }
+      .section-intro { color:var(--muted); max-width:550px; font-size:18px; line-height:1.5; }
+      .metrics { margin-top:45px; display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+      .metric { min-height:222px; padding:24px; border:1px solid var(--line); border-radius:15px; background:linear-gradient(140deg,rgba(255,255,255,.07),rgba(255,255,255,.018)); }
+      .metric-icon { height:35px; font-size:25px; }
+      .metric h3 { margin:35px 0 8px; font-size:21px; letter-spacing:-.04em; }
+      .metric p { margin:0; color:var(--muted); line-height:1.42; font-size:15px; }
+      .showcase { background:#0e1013; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+      .showcase-grid { display:grid; grid-template-columns:1fr 1.05fr; gap:65px; align-items:center; }
+      .gif { display:block; width:100%; border-radius:15px; border:1px solid rgba(255,255,255,.14); box-shadow:0 26px 55px rgba(0,0,0,.3); }
+      .points { padding:0; margin:30px 0 0; list-style:none; }
+      .points li { padding:13px 0; border-top:1px solid var(--line); color:#d5d7d2; font-size:16px; }
+      .points li:before { content:"✓"; color:var(--lime); margin-right:10px; font-weight:800; }
+      .split { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:44px; }
+      .shot { overflow:hidden; border:1px solid var(--line); border-radius:16px; background:#15171a; }
+      .shot img { display:block; width:100%; transition:transform .45s ease; }
+      .shot:hover img { transform:scale(1.025); }
+      .shot figcaption { padding:16px 18px 18px; color:var(--muted); font-size:14px; }
+      .privacy { display:grid; grid-template-columns:64px 1fr; gap:22px; align-items:start; margin-top:38px; padding:29px; border-radius:17px; background:linear-gradient(110deg,rgba(60,140,255,.16),rgba(60,140,255,.035)); border:1px solid rgba(60,140,255,.28); }
+      .privacy-icon { width:52px; height:52px; display:grid; place-items:center; border-radius:14px; color:#b8d5ff; background:rgba(60,140,255,.18); font-size:24px; }
+      .privacy h3 { margin:1px 0 9px; font-size:20px; }.privacy p { margin:0; color:#bbc5d1; line-height:1.45; }
+      .cta { padding:105px 0; text-align:center; border-top:1px solid var(--line); background:radial-gradient(ellipse at center,rgba(185,255,49,.12),transparent 58%); }
+      .cta h2 { margin:0 auto 16px; }.cta p { color:var(--muted); font-size:18px; margin:0 auto 28px; }
+      footer { border-top:1px solid var(--line); padding:27px 0 39px; color:#848681; font-size:13px; } footer .wrap { display:flex; justify-content:space-between; gap:20px; } footer a { color:#c4c7c0; }
+      @media (max-width:700px) { .nav-links > a:not(.nav-download) { display:none; }.hero { padding-top:42px; }.metrics,.showcase-grid,.split { grid-template-columns:1fr; }.metrics { gap:10px; }.metric { min-height:0; }.metric h3 { margin-top:23px; }.showcase-grid { gap:38px; }.demo-frame { margin-top:42px; }.actions { flex-direction:column; padding:0 20px; }.button { width:100%; } section { padding:80px 0; }.privacy { grid-template-columns:1fr; gap:13px; } footer .wrap { flex-direction:column; } }
+    </style>
+  </head>
+  <body>
+    <header class="wrap nav">
+      <a class="brand" href="#top"><img src="../icon.png" alt="">PKMonitor</a>
+      <nav class="nav-links" aria-label="Navigation principale"><a href="#features">Fonctionnalités</a><a href="#privacy">Confidentialité</a><a href="https://github.com/mondary/PKmonitor" target="_blank" rel="noreferrer">GitHub ↗</a><a class="nav-download" href="https://github.com/mondary/PKmonitor/releases/latest/download/PKMonitor.dmg">Télécharger</a></nav>
+    </header>
+    <main id="top">
+      <section class="hero wrap">
+        <div class="eyebrow"><i class="dot"></i> Gratuit et open source · macOS 13+</div>
+        <h1>Votre Mac.<br><span>En un seul regard.</span></h1>
+        <p class="lede">PKMonitor affiche ce qui compte dans votre barre des menus — sans vous distraire du reste.</p>
+        <div class="actions"><a class="button primary" href="https://github.com/mondary/PKmonitor/releases/latest/download/PKMonitor.dmg"><span aria-hidden="true"></span> Télécharger pour macOS</a><a class="button secondary" href="#features">Découvrir les fonctionnalités ↓</a></div>
+        <div class="fine">Mac Intel et Apple Silicon · Gratuit · Aucun compte requis</div>
+        <div class="demo-frame"><video autoplay muted loop playsinline poster="assets/demo-poster.png" aria-label="Démonstration de PKMonitor"><source src="videos/demo.mp4" type="video/mp4"><img src="gifs/pkmonitor-demo.gif" alt="Démonstration animée de PKMonitor"></video></div>
+      </section>
+      <section class="wrap" id="features">
+        <div class="kicker">Tout ce dont vous avez besoin</div><h2>Les signaux importants, pas le bruit.</h2><p class="section-intro">Composez une barre des menus qui vous ressemble. PKMonitor reste compact au repos et se révèle au bon moment.</p>
+        <div class="metrics">
+          <article class="metric"><div class="metric-icon">〽</div><h3>Un Mac lisible</h3><p>CPU, GPU, RAM, disque et réseau en temps réel, avec des jauges que vous placez et colorez à votre goût.</p></article>
+          <article class="metric"><div class="metric-icon">⌁</div><h3>Les apps qui comptent</h3><p>La sparkline identifie les processus dominants. Au survol, retrouvez l’essentiel et quittez une app qui s’emballe.</p></article>
+          <article class="metric"><div class="metric-icon">▦</div><h3>Une barre plus nette</h3><p>Rangez les icônes secondaires dans une seconde barre, façon Bartender. Vous gardez l’accès, sans l’encombrement.</p></article>
+        </div>
+      </section>
+      <section class="showcase"><div class="wrap showcase-grid"><div><div class="kicker">Démonstration animée</div><h2>Le contrôle sans interrompre votre travail.</h2><p class="section-intro">Un survol suffit pour savoir ce qui sollicite votre Mac. Rien à ouvrir. Rien à chercher.</p><ul class="points"><li>Panneau détaillé instantané</li><li>Processus gourmands identifiés</li><li>Icônes de menu bar réorganisées</li></ul></div><img class="gif" src="gifs/pkmonitor-demo.gif" alt="Animation de la barre des menus PKMonitor"></div></section>
+      <section class="wrap" id="privacy"><div class="kicker">Pensé pour votre Mac</div><h2>Puissant, mais toujours à votre service.</h2><div class="split"><figure class="shot"><img src="screenshots/02-panneau-detail.png" alt="Panneau détaillé de PKMonitor affichant les processus actifs"><figcaption>Les détails utiles arrivent au survol.</figcaption></figure><figure class="shot"><img src="screenshots/04-reglages-menubaritems.png" alt="Réglages des icônes de barre des menus"><figcaption>Chaque élément est à sa place.</figcaption></figure></div><div class="privacy"><div class="privacy-icon">⌘</div><div><h3>Vos données restent les vôtres.</h3><p>PKMonitor fonctionne localement. Le conseiller IA est entièrement optionnel : aucune donnée n’est envoyée avant votre action explicite, et votre clé reste dans le Trousseau macOS.</p></div></div></section>
+      <section class="cta"><div class="wrap"><div class="kicker">Disponible maintenant</div><h2>Un Mac plus calme commence ici.</h2><p>Installez PKMonitor en quelques secondes. C’est gratuit, open source, et fait pour macOS.</p><a class="button primary" href="https://github.com/mondary/PKmonitor/releases/latest/download/PKMonitor.dmg"><span aria-hidden="true"></span> Télécharger PKMonitor (.dmg)</a><div class="fine" style="margin-top:16px"><a href="https://github.com/mondary/PKmonitor/releases" target="_blank" rel="noreferrer">Voir toutes les releases sur GitHub ↗</a></div></div></section>
+    </main>
+    <footer><div class="wrap"><span>© 2026 PKMonitor · Fait pour macOS</span><span><a href="https://github.com/mondary/PKmonitor" target="_blank" rel="noreferrer">Code source</a> · <a href="https://ko-fi.com/pouark" target="_blank" rel="noreferrer">Soutenir le projet</a></span></div></footer>
+  </body>
+</html>

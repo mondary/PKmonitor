@@ -120,6 +120,8 @@ final class AppSettings: ObservableObject {
     @Published var diskLineSpacing: Double { didSet { defaults.set(diskLineSpacing, forKey: "diskLineSpacing") } }
     @Published var showDiskTotal: Bool { didSet { defaults.set(showDiskTotal, forKey: "showDiskTotal") } }
     @Published var diskFontSize: Double { didSet { defaults.set(diskFontSize, forKey: "diskFontSize") } }
+    @Published var aiEndpoint: String { didSet { defaults.set(aiEndpoint, forKey: "aiEndpoint") } }
+    @Published var aiModel: String { didSet { defaults.set(aiModel, forKey: "aiModel") } }
     @Published var warningThreshold: Double { didSet { defaults.set(warningThreshold, forKey: "warningThreshold") } }
     @Published var criticalThreshold: Double { didSet { defaults.set(criticalThreshold, forKey: "criticalThreshold") } }
     @Published private(set) var launchAtLogin = SMAppService.mainApp.status == .enabled
@@ -166,6 +168,8 @@ final class AppSettings: ObservableObject {
         diskLineSpacing = defaults.object(forKey: "diskLineSpacing") as? Double ?? 3
         showDiskTotal = defaults.object(forKey: "showDiskTotal") as? Bool ?? true
         diskFontSize = defaults.object(forKey: "diskFontSize") as? Double ?? 11
+        aiEndpoint = defaults.string(forKey: "aiEndpoint") ?? "https://api.openai.com/v1"
+        aiModel = defaults.string(forKey: "aiModel") ?? "gpt-4o-mini"
         warningThreshold = defaults.object(forKey: "warningThreshold") as? Double ?? 80
         criticalThreshold = defaults.object(forKey: "criticalThreshold") as? Double ?? 95
     }
@@ -222,6 +226,8 @@ final class AppSettings: ObservableObject {
         diskLayout = .inline
         diskLineSpacing = 3
         showDiskTotal = true
+        aiEndpoint = "https://api.openai.com/v1"
+        aiModel = "gpt-4o-mini"
         diskFontSize = 11
         warningThreshold = 80
         criticalThreshold = 95
@@ -596,6 +602,184 @@ final class MonitorModel: ObservableObject {
     }
 }
 
+// MARK: - AI Advisor
+
+enum AIKeychain {
+    private static let service = "com.mondary.pkmonitor"
+
+    static func read(account: String) -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        var item: CFTypeRef?
+        guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess,
+              let data = item as? Data else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    static func write(_ secret: String, account: String) {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account
+        ]
+        guard !secret.isEmpty else {
+            SecItemDelete(query as CFDictionary)
+            return
+        }
+        let data = Data(secret.utf8)
+        let status = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+        if status == errSecItemNotFound {
+            var attributes = query
+            attributes[kSecValueData as String] = data
+            SecItemAdd(attributes as CFDictionary, nil)
+        }
+    }
+}
+
+struct AIService {
+    struct Config {
+        let endpoint: String
+        let model: String
+        let apiKey: String
+
+        var isComplete: Bool {
+            !endpoint.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                && !model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+    }
+
+    enum AIError: LocalizedError {
+        case badEndpoint
+        case invalidResponse
+        case missingCompletion
+        case requestFailed(status: Int, message: String)
+
+        var errorDescription: String? {
+            switch self {
+            case .badEndpoint: return "Invalid endpoint URL."
+            case .invalidResponse: return "The endpoint did not return an HTTP response."
+            case .missingCompletion: return "The response did not contain any completion."
+            case .requestFailed(let status, let message): return "HTTP \(status): \(message)"
+            }
+        }
+    }
+
+    private static var systemPrompt: String {
+        let french = Locale.preferredLanguages.first?.hasPrefix("fr") == true
+        if french {
+            return """
+            Tu es l'assistant d'analyse de PKMonitor, un moniteur système macOS. \
+            On te fournit un instantané des métriques système et des processus les plus gourmands. \
+            Analyse la situation : ce qui est sain, ce qui est anormal, puis donne 2 à 4 recommandations concrètes et actionnables. \
+            Réponds en français, de façon concise, en texte simple avec des puces (pas de titres ni de tableaux). \
+            Ne recommande pas d'installer d'autres outils de monitoring.
+            """
+        }
+        return """
+        You are PKMonitor's performance assistant for macOS. \
+        You receive a snapshot of system metrics and the most demanding processes. \
+        Analyze the situation: what looks healthy, what does not, then give 2 to 4 concrete, actionable recommendations. \
+        Answer concisely in plain text with bullet points (no headings, no tables). \
+        Never recommend installing other monitoring tools.
+        """
+    }
+
+    static func snapshot(reading: Reading) -> String {
+        let r = reading
+        let topCPU = r.apps.sorted { $0.cpu > $1.cpu }.prefix(8)
+        let topRAM = r.apps.sorted { $0.memory > $1.memory }.prefix(8)
+        var lines: [String] = []
+        lines.append("Hardware: \(SystemInfo.chip) (\(SystemInfo.modelIdentifier))")
+        lines.append("OS: \(SystemInfo.macOSVersion), uptime \(uptimeText)")
+        lines.append("CPU: \(Int(r.cpu.rounded()))% (\(r.cpuCores) cores)")
+        lines.append("RAM: \(Int(r.ram.rounded()))% used (\(MonitorModel.formatBytes(r.usedRAM)) / \(MonitorModel.formatBytes(r.totalRAM)))")
+        lines.append("GPU: \(Int(r.gpu.rounded()))%")
+        lines.append("Disk: \(Int(r.disk.rounded()))% used (\(MonitorModel.formatBytes(Double(r.freeDisk))) free / \(MonitorModel.formatBytes(Double(r.totalDisk))))")
+        lines.append("Network: down \(MonitorModel.formatBytes(r.download))/s, up \(MonitorModel.formatBytes(r.upload))/s")
+        lines.append("")
+        lines.append("Top processes by CPU:")
+        lines.append(contentsOf: topCPU.map { "- \($0.name): \(String(format: "%.1f", $0.cpu))% CPU, \(MonitorModel.formatBytes($0.memory)) RAM" })
+        lines.append("")
+        lines.append("Top processes by memory:")
+        lines.append(contentsOf: topRAM.map { "- \($0.name): \(MonitorModel.formatBytes($0.memory)) RAM, \(String(format: "%.1f", $0.cpu))% CPU" })
+        return lines.joined(separator: "\n")
+    }
+
+    private static var uptimeText: String {
+        let total = Int(SystemInfo.uptime)
+        let days = total / 86400
+        let hours = total % 86400 / 3600
+        let minutes = total % 3600 / 60
+        if days > 0 { return "\(days) d \(hours) h \(minutes) min" }
+        if hours > 0 { return "\(hours) h \(minutes) min" }
+        return "\(minutes) min"
+    }
+
+    static func completionsURL(_ endpoint: String) -> URL? {
+        var trimmed = endpoint.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        while trimmed.hasSuffix("/") { trimmed.removeLast() }
+        if trimmed.hasSuffix("/chat/completions") { return URL(string: trimmed) }
+        return URL(string: trimmed + "/chat/completions")
+    }
+
+    private static func request(_ config: Config, messages: [[String: String]], maxTokens: Int?) throws -> URLRequest {
+        guard let url = completionsURL(config.endpoint) else { throw AIError.badEndpoint }
+        var payload: [String: Any] = ["model": config.model, "messages": messages, "temperature": 0.3, "stream": false]
+        if let maxTokens { payload["max_tokens"] = maxTokens }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 120
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if !config.apiKey.isEmpty {
+            request.setValue("Bearer \(config.apiKey)", forHTTPHeaderField: "Authorization")
+        }
+        request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+        return request
+    }
+
+    private static func send(_ request: URLRequest) async throws -> String {
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw AIError.invalidResponse }
+        guard let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
+            throw AIError.requestFailed(status: http.statusCode, message: String(data: data.prefix(400), encoding: .utf8) ?? "unreadable response")
+        }
+        if http.statusCode != 200 {
+            let message = ((json["error"] as? [String: Any])?["message"] as? String)
+                ?? (json["message"] as? String)
+                ?? String(data: data.prefix(400), encoding: .utf8)
+                ?? "HTTP \(http.statusCode)"
+            throw AIError.requestFailed(status: http.statusCode, message: message)
+        }
+        guard let choices = json["choices"] as? [[String: Any]],
+              let message = choices.first?["message"] as? [String: Any],
+              let content = message["content"] as? String else {
+            throw AIError.missingCompletion
+        }
+        let trimmed = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { throw AIError.missingCompletion }
+        return trimmed
+    }
+
+    static func analyze(config: Config, reading: Reading) async throws -> String {
+        let request = try request(config, messages: [
+            ["role": "system", "content": systemPrompt],
+            ["role": "user", "content": snapshot(reading: reading)]
+        ], maxTokens: nil)
+        return try await send(request)
+    }
+
+    static func ping(config: Config) async throws {
+        let request = try request(config, messages: [["role": "user", "content": "Reply with the single word OK."]], maxTokens: 8)
+        _ = try await send(request)
+    }
+}
+
 struct DetailView: View {
     @ObservedObject var model: MonitorModel
     @ObservedObject var settings: AppSettings
@@ -604,6 +788,7 @@ struct DetailView: View {
     let forceKillProcess: (AppUsage) -> Void
     let activateApp: (AppUsage) -> Void
     let openSettings: () -> Void
+    let openAIAdvisor: () -> Void
     @State private var hoveredApp: String?
 
     private var absoluteDetail: String {
@@ -710,6 +895,13 @@ struct DetailView: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
                 .help("Open Settings")
+                Button { openAIAdvisor() } label: {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 13, weight: .medium))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .help("AI Advisor")
                 Spacer()
                 Text("PKMonitor v\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev")")
                     .font(.system(size: 9, design: .monospaced))
@@ -726,6 +918,190 @@ struct DetailView: View {
         .preferredColorScheme(settings.appearance.colorScheme)
     }
 
+}
+
+struct AIAdvisorView: View {
+    @ObservedObject var model: MonitorModel
+    @ObservedObject var settings: AppSettings
+    let openSettings: () -> Void
+    @State private var result: String?
+    @State private var running = false
+    @State private var errorMessage: String?
+
+    private var config: AIService.Config {
+        AIService.Config(endpoint: settings.aiEndpoint, model: settings.aiModel, apiKey: AIKeychain.read(account: "aiApiKey") ?? "")
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Color.accentColor)
+                            .frame(width: 34, height: 34)
+                            .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                        Text("AI Advisor").font(.system(size: 28, weight: .bold, design: .rounded))
+                    }
+                    Text("Snapshot of CPU, RAM, GPU, disk and top processes, analyzed by your own endpoint.")
+                        .font(.system(size: 13)).foregroundStyle(.secondary)
+                        .padding(.leading, 44)
+                }
+                Spacer(minLength: 0)
+                Button { run() } label: {
+                    Label(result == nil ? "Analyze" : "Re-analyze", systemImage: "sparkles")
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(running)
+                .controlSize(.large)
+            }
+            .padding(.bottom, 4)
+
+            if !config.isComplete {
+                VStack(spacing: 14) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 28)).foregroundStyle(.tertiary)
+                    Text("Configure an endpoint and a model in Settings to enable the AI Advisor.")
+                        .font(.system(size: 13)).foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                    Button("Open Settings") { openSettings() }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if running {
+                VStack(spacing: 12) {
+                    ProgressView().controlSize(.regular)
+                    Text("Analyzing a snapshot of this Mac…")
+                        .font(.system(size: 13)).foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let errorMessage {
+                ScrollView {
+                    Text(errorMessage)
+                        .font(.system(size: 13))
+                        .foregroundStyle(.red)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else if let result {
+                ScrollView {
+                    Text(result)
+                        .font(.system(size: 13))
+                        .lineSpacing(4)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            } else {
+                Text("Run an analysis to get advice about what is consuming CPU, RAM and GPU.")
+                    .font(.system(size: 13)).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            }
+        }
+        .padding(28)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .task {
+            if result == nil, errorMessage == nil, !running, config.isComplete { run() }
+        }
+        .preferredColorScheme(settings.appearance.colorScheme)
+    }
+
+    @MainActor private func run() {
+        running = true
+        errorMessage = nil
+        let snapshotConfig = config
+        let reading = model.reading
+        Task {
+            defer { running = false }
+            do {
+                result = try await AIService.analyze(config: snapshotConfig, reading: reading)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+}
+
+struct AISettingsView: View {
+    @ObservedObject var settings: AppSettings
+    @State private var apiKey = ""
+    @State private var keySaved = false
+    @State private var testing = false
+    @State private var testResult: String?
+    @State private var testPassed = false
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                SettingsHeader(title: "AI Advisor", subtitle: "Resource and process advice from any OpenAI-compatible endpoint.", icon: "sparkles")
+                SettingsCard("Connection", icon: "link", subtitle: "Works with OpenAI, Ollama, LM Studio, OpenRouter and any OpenAI-compatible server.") {
+                    SettingLine("Endpoint", detail: "Base URL; /chat/completions is appended automatically") {
+                        TextField("https://api.openai.com/v1", text: $settings.aiEndpoint)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 280)
+                    }
+                    SettingLine("Model", detail: "Any model served by the endpoint") {
+                        TextField("gpt-4o-mini", text: $settings.aiModel)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 280)
+                    }
+                    SettingLine("API key", detail: "Stored in the Keychain, never in the preferences") {
+                        HStack(spacing: 8) {
+                            SecureField("sk-…", text: $apiKey)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 190)
+                            Button("Save") {
+                                AIKeychain.write(apiKey, account: "aiApiKey")
+                                keySaved = true
+                            }
+                            .disabled(apiKey.isEmpty)
+                            if keySaved {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(.green)
+                                    .help("Key saved to the Keychain")
+                            }
+                        }
+                    }
+                    SettingLine("Test", detail: "Sends a minimal request to verify the endpoint") {
+                        HStack(spacing: 8) {
+                            Button("Test connection") { test() }.disabled(testing)
+                            if testing { ProgressView().controlSize(.small) }
+                        }
+                    }
+                    if let testResult {
+                        Text(testResult)
+                            .font(.system(size: 12))
+                            .foregroundStyle(testPassed ? Color.green : Color.red)
+                            .textSelection(.enabled)
+                    }
+                }
+                SettingsCard("Privacy", icon: "lock.shield", subtitle: "What leaves this Mac when you run an analysis.") {
+                    Text("Process names with their CPU and memory usage, system metrics (CPU, RAM, GPU, disk, network), hardware model, macOS version and uptime. Nothing is sent until you run an analysis; the API key stays in the Keychain.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(28)
+        }
+        .onAppear { apiKey = AIKeychain.read(account: "aiApiKey") ?? "" }
+        .onChange(of: apiKey) { _ in keySaved = false }
+    }
+
+    @MainActor private func test() {
+        testing = true
+        testResult = nil
+        let testConfig = AIService.Config(endpoint: settings.aiEndpoint, model: settings.aiModel, apiKey: AIKeychain.read(account: "aiApiKey") ?? "")
+        Task {
+            do {
+                try await AIService.ping(config: testConfig)
+                testPassed = true
+                testResult = "Connection OK — the endpoint answered."
+            } catch {
+                testPassed = false
+                testResult = error.localizedDescription
+            }
+            testing = false
+        }
+    }
 }
 
 struct SparklineShape: Shape {
@@ -753,6 +1129,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     case gauges = "Gauges"
     case disk = "Disk"
     case panel = "Panel"
+    case ai = "AI Advisor"
     case about = "About"
     case support = "Help & Support"
     case library = "Project Library"
@@ -767,6 +1144,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .gauges: "barometer"
         case .disk: "internaldrive"
         case .panel: "rectangle.on.rectangle"
+        case .ai: "sparkles"
         case .about: "info.circle"
         case .support: "heart"
         case .library: "square.grid.2x2"
@@ -774,7 +1152,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     }
     var category: String {
         switch self {
-        case .dashboard, .general, .menuBarItems, .sparkline, .gauges, .disk, .panel: "MONITORING"
+        case .dashboard, .general, .menuBarItems, .sparkline, .gauges, .disk, .panel, .ai: "MONITORING"
         case .about, .support, .library: "PK PROJECTS"
         }
     }
@@ -784,6 +1162,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .dashboard: extra = "tableau de bord overview stats system info"
         case .disk: extra = "disque espace libre disponible internaldrive"
         case .menuBarItems: extra = "bartender hidden icons second bar"
+        case .ai: extra = "ai assistant openai ollama lm studio openrouter api endpoint key advisor"
         default: extra = ""
         }
         return "\(rawValue) \(category) \(extra)".lowercased()
@@ -934,6 +1313,7 @@ struct SettingsView: View {
                 case .gauges: GaugesSettingsView(settings: settings)
                 case .disk: DiskSettingsView(settings: settings)
                 case .panel: PanelSettingsView(settings: settings)
+                case .ai: AISettingsView(settings: settings)
                 case .about: AboutSettingsView()
                 case .support: SupportSettingsView()
                 case .library: ProjectLibraryView()
@@ -2317,6 +2697,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private var detailPanel: NSPanel?
     private var settingsWindow: NSWindow?
+    private var aiWindow: NSWindow?
     private var hoverTimer: Timer?
     private var lastPointerInside = Date.distantPast
     private var hoverSuppressed = false
@@ -2452,7 +2833,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             terminateProcess: { [weak self] in self?.confirmTermination(of: $0) },
             forceKillProcess: { [weak self] in self?.confirmForceKill(of: $0) },
             activateApp: { [weak self] in self?.activateApp($0) },
-            openSettings: { [weak self] in self?.openSettings() }
+            openSettings: { [weak self] in self?.openSettings() },
+            openAIAdvisor: { [weak self] in self?.openAIAdvisor() }
         ))
         hosting.view.wantsLayer = true
         hosting.view.layer?.cornerRadius = 16
@@ -2871,6 +3253,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             settingsWindow = window
         }
         settingsWindow?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func openAIAdvisor() {
+        if aiWindow == nil {
+            let controller = NSHostingController(rootView: AIAdvisorView(
+                model: model,
+                settings: settings,
+                openSettings: { [weak self] in self?.openSettings() }
+            ))
+            let window = NSWindow(contentViewController: controller)
+            window.title = "PKMonitor AI Advisor"
+            window.styleMask = [.titled, .closable, .miniaturizable]
+            window.setContentSize(NSSize(width: 540, height: 600))
+            window.minSize = NSSize(width: 460, height: 480)
+            window.center()
+            window.isReleasedWhenClosed = false
+            aiWindow = window
+        }
+        aiWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 

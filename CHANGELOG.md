@@ -6,7 +6,7 @@ Historique des évolutions de PKMonitor.
 
 ## TODO — Roadmap
 
-Statut : `2026.09.25` (prototype fonctionnel)
+Statut : `2026.09.26` (prototype fonctionnel)
 
 ### Prochaines étapes
 - [x] Mesures CPU, RAM et réseau locales
@@ -19,6 +19,11 @@ Statut : `2026.09.25` (prototype fonctionnel)
 ---
 
 ## Releases
+
+### [2026.09.26] - 2026-09-09
+#### Added
+- Conseiller IA : bouton dans le panneau de détail qui analyse CPU, RAM, GPU, disque, réseau et les processus les plus gourmands via un endpoint compatible OpenAI (OpenAI, Ollama, LM Studio, OpenRouter…), avec conseils sur ce qui va et ce qui ne va pas
+- Onglet AI Advisor dans les réglages : endpoint, modèle, clé API stockée dans le Keychain, test de connexion et note de confidentialité
 
 ### [2026.09.25] - 2026-09-09
 #### Added

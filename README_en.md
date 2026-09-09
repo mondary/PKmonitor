@@ -6,7 +6,7 @@
 
 A native, focused macOS system monitor in the menu bar.
 
-Version `2026.09.25` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
+Version `2026.09.26` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
 ![The menu bar and the second bar](store/screenshots/01-barre-et-seconde-barre.png)
 
@@ -22,6 +22,7 @@ Version `2026.09.25` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 - Display toggles for Sparkline, Gauges and Panel
 - Hover detail panel with process termination controls and a settings button
 - Categorized Settings navigation, search and project library
+- AI Advisor: analyzes heavy processes (CPU, RAM, GPU) with recommendations, via any OpenAI-compatible endpoint
 - Light/dark/system theme and launch at login
 
 ## 🧠 Usage
@@ -30,10 +31,11 @@ Version `2026.09.25` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 - Click a segment to change the active metric
 - Click a lowered icon to open its original menu
 - Right-click to open the menu and Settings
+- Click the AI button in the detail panel to analyze what is consuming resources and get advice
 
 ## ⚙️ Settings
 
-The Settings window provides a live system dashboard (hardware and metrics), a categorized sidebar, search and one tab per module: sparkline, gauges, disk, panel, menu bar icons. It also includes Help & Support and Project Library sections.
+The Settings window provides a live system dashboard (hardware and metrics), a categorized sidebar, search and one tab per module: sparkline, gauges, disk, panel, menu bar icons and the AI advisor. It also includes Help & Support and Project Library sections.
 
 ## 🧾 Commands
 

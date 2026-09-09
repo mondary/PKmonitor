@@ -6,7 +6,7 @@ Historique des évolutions de PKMonitor.
 
 ## TODO — Roadmap
 
-Statut : `2026.09.29` (prototype fonctionnel)
+Statut : `2026.09.30` (prototype fonctionnel)
 
 ### Prochaines étapes
 - [x] Mesures CPU, RAM et réseau locales
@@ -19,6 +19,10 @@ Statut : `2026.09.29` (prototype fonctionnel)
 ---
 
 ## Releases
+
+### [2026.09.30] - 2026-09-09
+#### Added
+- Couleurs personnalisées par jauge dans Settings › Gauges : couleur de base et couleur critique pour CPU, GPU, RAM, disque et réseau (ColorPicker, « Reset to defaults », aperçu live dans l'onglet et le Dashboard) ; la couleur par défaut remplace le noir, la critique remplace le rouge au-delà du seuil
 
 ### [2026.09.29] - 2026-09-09
 #### Added

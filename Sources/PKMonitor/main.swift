@@ -134,6 +134,16 @@ final class AppSettings: ObservableObject {
     @Published var aiPresentation: AIPresentation { didSet { defaults.set(aiPresentation.rawValue, forKey: "aiPresentation") } }
     @Published var warningThreshold: Double { didSet { defaults.set(warningThreshold, forKey: "warningThreshold") } }
     @Published var criticalThreshold: Double { didSet { defaults.set(criticalThreshold, forKey: "criticalThreshold") } }
+    @Published var cpuColor: String { didSet { defaults.set(cpuColor, forKey: "cpuColor") } }
+    @Published var cpuCriticalColor: String { didSet { defaults.set(cpuCriticalColor, forKey: "cpuCriticalColor") } }
+    @Published var gpuColor: String { didSet { defaults.set(gpuColor, forKey: "gpuColor") } }
+    @Published var gpuCriticalColor: String { didSet { defaults.set(gpuCriticalColor, forKey: "gpuCriticalColor") } }
+    @Published var ramColor: String { didSet { defaults.set(ramColor, forKey: "ramColor") } }
+    @Published var ramCriticalColor: String { didSet { defaults.set(ramCriticalColor, forKey: "ramCriticalColor") } }
+    @Published var diskColor: String { didSet { defaults.set(diskColor, forKey: "diskColor") } }
+    @Published var diskCriticalColor: String { didSet { defaults.set(diskCriticalColor, forKey: "diskCriticalColor") } }
+    @Published var networkColor: String { didSet { defaults.set(networkColor, forKey: "networkColor") } }
+    @Published var networkCriticalColor: String { didSet { defaults.set(networkCriticalColor, forKey: "networkCriticalColor") } }
     @Published private(set) var launchAtLogin = SMAppService.mainApp.status == .enabled
 
     private let defaults = UserDefaults.standard
@@ -183,6 +193,16 @@ final class AppSettings: ObservableObject {
         aiPresentation = AIPresentation(rawValue: defaults.string(forKey: "aiPresentation") ?? "") ?? .rightPanel
         warningThreshold = defaults.object(forKey: "warningThreshold") as? Double ?? 80
         criticalThreshold = defaults.object(forKey: "criticalThreshold") as? Double ?? 95
+        cpuColor = defaults.string(forKey: "cpuColor") ?? ""
+        cpuCriticalColor = defaults.string(forKey: "cpuCriticalColor") ?? ""
+        gpuColor = defaults.string(forKey: "gpuColor") ?? ""
+        gpuCriticalColor = defaults.string(forKey: "gpuCriticalColor") ?? ""
+        ramColor = defaults.string(forKey: "ramColor") ?? ""
+        ramCriticalColor = defaults.string(forKey: "ramCriticalColor") ?? ""
+        diskColor = defaults.string(forKey: "diskColor") ?? ""
+        diskCriticalColor = defaults.string(forKey: "diskCriticalColor") ?? ""
+        networkColor = defaults.string(forKey: "networkColor") ?? ""
+        networkCriticalColor = defaults.string(forKey: "networkCriticalColor") ?? ""
     }
 
     var selectedMenuBarItems: [String] { Self.parseIDs(menuBarItemsSelected) }
@@ -243,12 +263,73 @@ final class AppSettings: ObservableObject {
         diskFontSize = 11
         warningThreshold = 80
         criticalThreshold = 95
+        cpuColor = ""
+        cpuCriticalColor = ""
+        gpuColor = ""
+        gpuCriticalColor = ""
+        ramColor = ""
+        ramCriticalColor = ""
+        diskColor = ""
+        diskCriticalColor = ""
+        networkColor = ""
+        networkCriticalColor = ""
     }
 
-    func colorForValue(_ value: Double) -> NSColor {
-        if value >= criticalThreshold { return .systemRed }
+    func colorForValue(_ value: Double, for metric: Metric) -> NSColor {
+        if value >= criticalThreshold { return gaugeCriticalColor(metric) }
         if value >= warningThreshold { return .systemOrange }
-        return .labelColor
+        return gaugeBaseColor(metric)
+    }
+
+    func gaugeBaseColor(_ metric: Metric) -> NSColor {
+        switch metric {
+        case .cpu: return NSColor(hex: cpuColor) ?? .labelColor
+        case .gpu: return NSColor(hex: gpuColor) ?? .labelColor
+        case .ram: return NSColor(hex: ramColor) ?? .labelColor
+        case .disk: return NSColor(hex: diskColor) ?? .labelColor
+        case .network: return NSColor(hex: networkColor) ?? .labelColor
+        case .auto: return .labelColor
+        }
+    }
+
+    func gaugeCriticalColor(_ metric: Metric) -> NSColor {
+        switch metric {
+        case .cpu: return NSColor(hex: cpuCriticalColor) ?? .systemRed
+        case .gpu: return NSColor(hex: gpuCriticalColor) ?? .systemRed
+        case .ram: return NSColor(hex: ramCriticalColor) ?? .systemRed
+        case .disk: return NSColor(hex: diskCriticalColor) ?? .systemRed
+        case .network: return NSColor(hex: networkCriticalColor) ?? .systemRed
+        case .auto: return .systemRed
+        }
+    }
+
+    func gaugeColor(_ metric: Metric, critical: Bool) -> NSColor {
+        critical ? gaugeCriticalColor(metric) : gaugeBaseColor(metric)
+    }
+
+    func setGaugeColor(_ metric: Metric, critical: Bool, color: NSColor) {
+        let hex = color.hex
+        switch (metric, critical) {
+        case (.cpu, false): cpuColor = hex
+        case (.cpu, true): cpuCriticalColor = hex
+        case (.gpu, false): gpuColor = hex
+        case (.gpu, true): gpuCriticalColor = hex
+        case (.ram, false): ramColor = hex
+        case (.ram, true): ramCriticalColor = hex
+        case (.disk, false): diskColor = hex
+        case (.disk, true): diskCriticalColor = hex
+        case (.network, false): networkColor = hex
+        case (.network, true): networkCriticalColor = hex
+        case (.auto, _): break
+        }
+    }
+
+    func resetGaugeColors() {
+        cpuColor = ""; cpuCriticalColor = ""
+        gpuColor = ""; gpuCriticalColor = ""
+        ramColor = ""; ramCriticalColor = ""
+        diskColor = ""; diskCriticalColor = ""
+        networkColor = ""; networkCriticalColor = ""
     }
 }
 
@@ -888,7 +969,7 @@ struct DetailView: View {
                     VStack(alignment: .trailing, spacing: 2) {
                         Text("\(Int(model.reading.value(for: model.displayedMetric).rounded()))%")
                             .font(.title2.monospacedDigit().weight(.semibold))
-                            .foregroundColor(Color(nsColor: settings.colorForValue(model.reading.value(for: model.displayedMetric))))
+                            .foregroundColor(Color(nsColor: settings.colorForValue(model.reading.value(for: model.displayedMetric), for: model.displayedMetric)))
                         if settings.showAbsoluteValues {
                             Text(absoluteDetail)
                                 .font(.system(size: 11)).monospacedDigit()
@@ -1804,6 +1885,13 @@ struct SparklineSettingsView: View {
 struct GaugesSettingsView: View {
     @ObservedObject var settings: AppSettings
 
+
+    private func colorBinding(_ metric: Metric, critical: Bool) -> Binding<Color> {
+        Binding<Color>(
+            get: { Color(nsColor: settings.gaugeColor(metric, critical: critical)) },
+            set: { settings.setGaugeColor(metric, critical: critical, color: NSColor($0)) }
+        )
+    }
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
@@ -1834,6 +1922,21 @@ struct GaugesSettingsView: View {
                         .frame(width: 220)
                     }
                 }
+                SettingsCard("Gauge Colors", icon: "paintpalette", subtitle: "Base and critical color for each gauge; the critical color applies past the critical threshold.") {
+                    ForEach([Metric.cpu, .gpu, .ram, .disk, .network], id: \.self) { metric in
+                        SettingLine(metric == .network ? "Network" : metric.rawValue, detail: "Base, then critical") {
+                            HStack(spacing: 10) {
+                                ColorPicker("", selection: colorBinding(metric, critical: false), supportsOpacity: false)
+                                    .labelsHidden().frame(width: 40, height: 22)
+                                Image(systemName: "arrow.right").font(.system(size: 9, weight: .bold)).foregroundStyle(.secondary)
+                                ColorPicker("", selection: colorBinding(metric, critical: true), supportsOpacity: false)
+                                    .labelsHidden().frame(width: 40, height: 22)
+                            }
+                        }
+                    }
+                    Button("Reset to defaults") { settings.resetGaugeColors() }
+                        .controlSize(.small)
+                }
                 SettingsCard("Gauge Order", icon: "arrow.up.arrow.down", subtitle: "Drag to reorder the four gauges from left to right.") {
                     GaugeOrderList(gaugeOrder: Binding(
                         get: { settings.gaugeMetrics },
@@ -1845,8 +1948,8 @@ struct GaugesSettingsView: View {
                         ForEach(settings.gaugeMetrics, id: \.self) { metric in
                             VStack(spacing: 5) {
                                 Text(metric == .network ? "NET" : metric.rawValue).font(.system(size: 9, weight: .bold))
-                                RoundedRectangle(cornerRadius: 4).fill(Color.accentColor.opacity(0.28)).frame(width: 24, height: 56)
-                                    .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.accentColor.opacity(0.8), lineWidth: 1))
+                                RoundedRectangle(cornerRadius: 4).fill(Color(nsColor: settings.gaugeBaseColor(metric)).opacity(0.28)).frame(width: 24, height: 56)
+                                    .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color(nsColor: settings.gaugeCriticalColor(metric)).opacity(0.8), lineWidth: 1))
                             }
                         }
                     }
@@ -2016,14 +2119,14 @@ struct DashboardView: View {
         SettingsCard("Memory", icon: "memorychip", subtitle: "Physical memory usage.") {
             infoRow("Total", MonitorModel.formatBytes(model.reading.totalRAM))
             infoRow("Used", MonitorModel.formatBytes(model.reading.usedRAM))
-            gaugeRow("Usage", model.reading.ram)
+            gaugeRow("Usage", model.reading.ram, .ram)
         }
     }
 
     private var graphicsCard: some View {
         SettingsCard("Graphics", icon: "display", subtitle: SystemInfo.chip) {
             infoRow("GPU", SystemInfo.chip)
-            gaugeRow("Usage", model.reading.gpu)
+            gaugeRow("Usage", model.reading.gpu, .gpu)
         }
     }
 
@@ -2032,7 +2135,7 @@ struct DashboardView: View {
             let free = settings.diskValueMode == .free ? model.reading.pureFreeDisk : model.reading.freeDisk
             infoRow(settings.diskValueMode.rawValue, MonitorModel.formatBytes(Double(free)))
             infoRow("Total", MonitorModel.formatBytes(Double(model.reading.totalDisk)))
-            gaugeRow("Used", model.reading.disk)
+            gaugeRow("Used", model.reading.disk, .disk)
         }
     }
 
@@ -2060,13 +2163,13 @@ struct DashboardView: View {
         }
     }
 
-    private func gaugeRow(_ title: String, _ value: Double) -> some View {
+    private func gaugeRow(_ title: String, _ value: Double, _ metric: Metric) -> some View {
         HStack {
             Text(title).font(.system(size: 13)).foregroundStyle(.secondary)
             Spacer()
             Text("\(Int(value.rounded()))%")
                 .font(.system(size: 13, weight: .semibold).monospacedDigit())
-                .foregroundColor(Color(nsColor: settings.colorForValue(value)))
+                .foregroundColor(Color(nsColor: settings.colorForValue(value, for: metric)))
         }
     }
 
@@ -3697,7 +3800,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let labelFont = NSFont.systemFont(ofSize: 6, weight: .heavy)
         let labelAttrs: [NSAttributedString.Key: Any] = [.font: labelFont, .foregroundColor: NSColor.labelColor]
         let labelCharSize = ("M" as NSString).size(withAttributes: labelAttrs)
-        let valueColor = settings.colorForValue(model.reading.value(for: metric))
+        let valueColor = settings.colorForValue(model.reading.value(for: metric), for: metric)
         let valueAttrs: [NSAttributedString.Key: Any] = [.font: valueFont, .foregroundColor: valueColor]
         let valueSize = (value as NSString).size(withAttributes: valueAttrs)
         let textW = valueSize.width + gap * 2
@@ -3896,7 +3999,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     let fill = CGFloat(max(0, min(1, model.reading.value(for: m) / 100)))
                     let fillH = bg.height * fill
                     let fillR = NSRect(x: bg.minX, y: bg.minY, width: bg.width, height: fillH)
-                    let gColor = settings.colorForValue(model.reading.value(for: m))
+                    let gColor = settings.colorForValue(model.reading.value(for: m), for: m)
                     gColor.setFill()
                     NSBezierPath(roundedRect: fillR, xRadius: 2, yRadius: 2).fill()
 

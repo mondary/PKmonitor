@@ -6,7 +6,7 @@
 
 A native, focused macOS system monitor in the menu bar.
 
-Version `2026.09.29` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
+Version `2026.09.30` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
 ![The menu bar and the second bar](store/screenshots/01-barre-et-seconde-barre.png)
 
@@ -15,7 +15,7 @@ Version `2026.09.29` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 ## ✅ Features
 
 - Real-time sparkline with dominant application icons
-- CPU, GPU, RAM, network and disk space
+- CPU, GPU, RAM, network and disk space, with a customizable base and critical color for each gauge
 - Configurable disk module: red total and blue free/available space, one or two lines with adjustable line spacing, adjustable position and size
 - Individually enabled, reorderable and configurable segments
 - Other apps' menu bar icons lowered into the second bar (Bartender-style)

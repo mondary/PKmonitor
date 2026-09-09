@@ -6,7 +6,7 @@
 
 Moniteur système macOS natif et discret dans la barre des menus.
 
-Version `2026.09.29` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
+Version `2026.09.30` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
 ![La barre des menus et la seconde barre](store/screenshots/01-barre-et-seconde-barre.png)
 
@@ -15,9 +15,8 @@ Version `2026.09.29` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 ## ✅ Fonctionnalités
 
 - Sparkline temps réel avec icônes des applications dominantes
-- CPU, GPU, RAM, réseau et espace disque
 - Module disque paramétrable : total rouge et espace libre/disponible bleu, une ou deux lignes avec interlignage réglable, position et taille réglables
-- Segments activables individuellement, réordonnables et paramétrables
+- CPU, GPU, RAM, réseau et espace disque, avec couleur de base et couleur critique réglables pour chaque jauge
 - Icônes des autres applications descendues dans la seconde barre (à la Bartender)
 - Toggles d’affichage pour Sparkline, Gauges et Panel
 - Panneau détaillé au survol avec arrêt de processus et bouton réglages

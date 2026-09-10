@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080">
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #000;
+      }
+      body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif; }
+      .stage { position:absolute; inset:0; overflow:hidden; background:radial-gradient(circle at 50% 42%,#1b2421 0%,#0c0e10 42%,#060708 100%); }
+      .grain { position:absolute; inset:0; opacity:.16; background-image:radial-gradient(rgba(255,255,255,.18) .7px,transparent .8px); background-size:6px 6px; mix-blend-mode:soft-light; }
+      .clip { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+      .copy { position:absolute; z-index:15; left:112px; bottom:106px; font-size:78px; line-height:1; font-weight:720; letter-spacing:-.06em; color:#f6f7f3; opacity:0; }
+      .copy .accent { color:#b9ff31; }
+      .eyebrow { position:absolute; z-index:16; left:116px; top:84px; color:#b9ff31; font-family:"SF Mono",monospace; font-size:18px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; opacity:0; }
+      .graph-card { position:absolute; width:1480px; height:620px; border:1px solid rgba(255,255,255,.16); border-radius:32px; overflow:hidden; opacity:0; background:linear-gradient(145deg,rgba(35,42,43,.96),rgba(12,15,16,.98)); box-shadow:0 42px 120px rgba(0,0,0,.6); }
+      .graph-head { height:128px; padding:34px 44px 0; display:flex; align-items:flex-start; border-bottom:1px solid rgba(255,255,255,.1); }.graph-metric { font-size:23px; color:#9ba49d; font-weight:650; }.graph-value { margin-left:auto; color:#f6f7f3; font-size:54px; font-weight:720; letter-spacing:-.06em; }.graph-value span { color:#b9ff31; }.graph-sub { margin-top:11px; color:#aeb8b0; font-size:17px; }.graph-canvas { position:absolute; left:116px; top:190px; width:1248px; height:318px; }.graph-grid { position:absolute; inset:0; background:repeating-linear-gradient(to bottom,transparent 0,transparent 78px,rgba(255,255,255,.07) 79px,transparent 80px); }.graph-svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }.graph-area { fill:url(#areaFill); opacity:0; }.graph-line { fill:none; stroke:#f4f7f1; stroke-width:5; stroke-linecap:round; stroke-linejoin:round; filter:drop-shadow(0 0 7px rgba(185,255,49,.25)); }.cursor { position:absolute; left:0; top:-12px; width:2px; height:342px; opacity:0; background:#b9ff31; box-shadow:0 0 18px #b9ff31; }.app-marker { position:absolute; display:flex; align-items:center; gap:10px; opacity:0; transform:scale(.72); transform-origin:center; }.app-dot { width:48px; height:48px; border:3px solid #e6f6bd; border-radius:15px; display:grid; place-items:center; color:#10150d; background:linear-gradient(135deg,#e4ff9a,#8fca20); box-shadow:0 0 0 7px rgba(185,255,49,.12),0 0 28px rgba(185,255,49,.3); font-size:13px; font-weight:800; }.app-name { padding:8px 11px; color:#dfe7dc; border:1px solid rgba(255,255,255,.13); border-radius:10px; background:rgba(9,12,11,.78); font-size:15px; font-weight:650; }.app-one { left:255px; top:62px; }.app-two { left:636px; top:148px; }.app-three { left:989px; top:15px; }.graph-note { position:absolute; left:46px; bottom:34px; color:#aeb8ad; font-size:17px; }.graph-note b { color:#dfff8f; font-weight:650; }
+      .detail-stage { position:absolute; width:1580px; height:800px; display:flex; align-items:center; justify-content:center; }
+      .detail-halo { position:absolute; width:930px; height:930px; border-radius:50%; background:radial-gradient(circle,rgba(185,255,49,.18),rgba(185,255,49,0) 66%); }
+      .detail-card { position:relative; width:670px; border-radius:44px; overflow:hidden; box-shadow:0 45px 120px rgba(0,0,0,.55); }
+      .detail-card img { width:100%; display:block; }.detail-card:after { content:""; position:absolute; inset:0; border:1px solid rgba(255,255,255,.35); border-radius:44px; pointer-events:none; }
+      .focus-ring { position:absolute; width:530px; height:150px; border:2px solid rgba(185,255,49,.85); border-radius:22px; box-shadow:0 0 0 9px rgba(185,255,49,.11),0 0 32px rgba(185,255,49,.32); opacity:0; }
+      .ai-wrap { position:absolute; width:1210px; height:690px; border:1px solid rgba(255,255,255,.15); border-radius:30px; overflow:hidden; background:linear-gradient(135deg,rgba(38,46,47,.98),rgba(14,17,19,.98)); box-shadow:0 55px 130px rgba(0,0,0,.6); }
+      .ai-top { height:118px; display:flex; align-items:center; padding:0 44px; gap:18px; border-bottom:1px solid rgba(255,255,255,.1); }.ai-orb { width:42px; height:42px; border-radius:14px; background:radial-gradient(circle at 35% 30%,#dcff83,#6e9d1d 45%,#25370d 75%); box-shadow:0 0 34px rgba(185,255,49,.45); }.ai-title { color:#f7f9f3; font-size:31px; font-weight:720; letter-spacing:-.04em; }.ai-state { margin-left:auto; color:#d5ff80; font-family:"SF Mono",monospace; font-size:15px; }
+      .ai-body { padding:34px 44px; }.ai-summary { color:#aeb6af; font-size:20px; margin-bottom:27px; }.ai-summary strong { color:#f4f7ef; font-weight:650; }
+      .ai-row { display:grid; grid-template-columns:1.7fr .6fr .7fr 1.25fr; align-items:center; height:86px; padding:0 21px; border-top:1px solid rgba(255,255,255,.1); color:#e8ece6; font-size:19px; }.ai-row.header { height:47px; color:#aeb7af; text-transform:uppercase; font-size:13px; font-weight:700; letter-spacing:.09em; }.badge { justify-self:start; padding:7px 11px; border-radius:999px; color:#d7ff83; background:rgba(185,255,49,.11); border:1px solid rgba(185,255,49,.25); font-size:14px; }.badge.watch { color:#ffd27a; background:rgba(255,181,38,.1); border-color:rgba(255,181,38,.25); }.recommend { color:#c7d0c8; font-size:16px; }
+      .brand-lockup { position:absolute; display:flex; align-items:center; gap:22px; opacity:0; }.brand-lockup img { width:86px; height:86px; border-radius:22px; box-shadow:0 22px 60px rgba(0,0,0,.4); }.brand-name { color:#f6f7f3; font-size:58px; font-weight:720; letter-spacing:-.055em; }.brand-sub { margin-top:8px; color:#b9ff31; font-size:24px; letter-spacing:-.02em; }
+      code,
+      pre,
+      .monospace {
+        font-family: "JetBrains Mono", monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <div data-hf-id="hf-kbh8" id="root" data-composition-id="main" data-start="0" data-duration="15" data-width="1920" data-height="1080">
+      <div data-hf-id="hf-tan6" class="stage"><div data-hf-id="hf-h60x" class="grain"></div></div>
+      
+      <div data-hf-id="hf-kiln" id="detail-scene" class="clip" data-start="5.3" data-duration="5" data-track-index="2"><div data-hf-id="hf-ndde" id="detail-stage" class="detail-stage"><div data-hf-id="hf-i8p2" class="detail-halo"></div><div data-hf-id="hf-tecq" id="detail-card" class="detail-card"><img data-hf-id="hf-v9o8" src="assets/detail-panel.png" alt="Panneau détaillé PKMonitor"></div><div data-hf-id="hf-zdci" id="focus-ring" class="focus-ring"></div></div><div data-hf-id="hf-en2j" id="detail-copy" class="copy">Comprenez <span data-hf-id="hf-98hk" class="accent">en un instant.</span></div></div>
+      <div data-hf-id="hf-4xq6" id="ai-scene" class="clip" data-start="9.8" data-duration="3.8" data-track-index="3"><div data-hf-id="hf-6ifc" id="ai-wrap" class="ai-wrap"><div data-hf-id="hf-drw0" class="ai-top"><div data-hf-id="hf-py62" class="ai-orb"></div><div data-hf-id="hf-fqtf" class="ai-title">Conseiller IA</div><div data-hf-id="hf-3k6y" class="ai-state">ANALYSE TERMINÉE</div></div><div data-hf-id="hf-6w4b" class="ai-body"><div data-hf-id="hf-4gdt" class="ai-summary"><strong data-hf-id="hf-jseu">3 processus</strong> méritent votre attention.</div><div data-hf-id="hf-mx4o" class="ai-row header"><span data-hf-id="hf-3y52">Processus</span><span data-hf-id="hf-pesj">Impact</span><span data-hf-id="hf-1s65">Signal</span><span data-hf-id="hf-atg6">Recommandation</span></div><div data-hf-id="hf-229h" class="ai-row"><span data-hf-id="hf-dgjo">Google Chrome</span><span data-hf-id="hf-b52g">3,4 Go</span><span data-hf-id="hf-56si" class="badge watch">À surveiller</span><span data-hf-id="hf-ype9" class="recommend">Fermer les onglets inactifs</span></div><div data-hf-id="hf-oqax" class="ai-row"><span data-hf-id="hf-1io5">GoogleDriveSync</span><span data-hf-id="hf-naev">279 Mo</span><span data-hf-id="hf-2gvl" class="badge">Normal</span><span data-hf-id="hf-vxmo" class="recommend">Synchronisation active</span></div><div data-hf-id="hf-px80" class="ai-row"><span data-hf-id="hf-6o7d">TypeWhisper</span><span data-hf-id="hf-q2lp">242 Mo</span><span data-hf-id="hf-xyat" class="badge">Normal</span><span data-hf-id="hf-ie0q" class="recommend">Aucune action requise</span></div></div></div><div data-hf-id="hf-ndjm" id="ai-copy" class="copy">Analysez <span data-hf-id="hf-9vzw" class="accent">quand il le faut.</span></div></div>
+      <div data-hf-id="hf-jqfr" id="outro-scene" class="clip" data-start="13.3" data-duration="1.7" data-track-index="4"><div data-hf-id="hf-deqa" id="brand-lockup" class="brand-lockup"><img data-hf-id="hf-2rc0" src="assets/icon.png" alt=""><div data-hf-id="hf-yeow"><div data-hf-id="hf-z87q" class="brand-name">PKMonitor</div><div data-hf-id="hf-bol7" class="brand-sub">Votre Mac. En un seul regard.</div></div></div></div>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      const graphPath = document.getElementById('graph-line');
+      const graphArea = document.getElementById('graph-area');
+      const graphLength = graphPath.getTotalLength();
+      gsap.set(graphPath, { strokeDasharray: graphLength, strokeDashoffset: graphLength });
+            tl
+        .fromTo('#detail-card', { scale: .66, x: 450, y: 30, autoAlpha: 0 }, { scale: 1.04, x: 0, y: 0, autoAlpha: 1, duration: 1.15, ease: 'power3.out', immediateRender: false }, 5.35)
+        .fromTo('#focus-ring', { scale: .6, x: 0, y: 35, autoAlpha: 0 }, { scale: 1, x: 0, y: 35, autoAlpha: 1, duration: .6, ease: 'power2.out', immediateRender: false }, 6.65)
+        .to('#detail-card', { scale: 1.23, x: -60, y: 0, duration: 1.2, ease: 'power2.inOut' }, 7.35)
+        .to('#focus-ring', { scale: 1.18, x: -65, y: 35, duration: 1.2, ease: 'power2.inOut' }, 7.35)
+        .to('#detail-copy', { autoAlpha: 1, y: 0, duration: .45, ease: 'power2.out' }, 7.65)
+        .to('#detail-stage', { autoAlpha: 0, duration: .38, ease: 'power2.in' }, 9.72)
+        .to('#detail-copy', { autoAlpha: 0, duration: .25, ease: 'power2.in' }, 9.72)
+        .fromTo('#ai-wrap', { scale: .82, y: 95, autoAlpha: 0 }, { scale: 1, y: 0, autoAlpha: 1, duration: .72, ease: 'power3.out', immediateRender: false }, 9.8)
+        .to('#ai-copy', { autoAlpha: 1, y: 0, duration: .46, ease: 'power2.out' }, 11.55)
+        .to('#ai-wrap', { autoAlpha: 0, duration: .32, ease: 'power2.in' }, 13.2)
+        .to('#ai-copy', { autoAlpha: 0, duration: .22, ease: 'power2.in' }, 13.2)
+        .fromTo('#brand-lockup', { scale: .82, y: 26, autoAlpha: 0 }, { scale: 1, y: 0, autoAlpha: 1, duration: .58, ease: 'power3.out', immediateRender: false }, 13.35);
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

@@ -6,7 +6,7 @@
 
 Moniteur système macOS natif et discret dans la barre des menus.
 
-Version `2026.09.30` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
+Version `2026.09.33` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
 ![La barre des menus et la seconde barre](store/screenshots/01-barre-et-seconde-barre.png)
 

@@ -45,6 +45,8 @@ enum IconLocation: String, CaseIterable, Identifiable {
     case underBar = "Second Bar"
 
     var id: String { rawValue }
+
+    var toggled: IconLocation { self == .menuBar ? .underBar : .menuBar }
 }
 
 enum DiskValueMode: String, CaseIterable, Identifiable {
@@ -1040,6 +1042,19 @@ struct DetailView: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
                 .help("AI Advisor")
+                Button {
+                    settings.iconLocation = settings.iconLocation.toggled
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: settings.iconLocation == .menuBar ? "dock.rectangle" : "menubar.rectangle")
+                            .font(.system(size: 13, weight: .medium))
+                        Text(settings.iconLocation == .menuBar ? "Second Bar" : "Menu Bar")
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .help(settings.iconLocation == .menuBar ? "Move PKMonitor to the second bar" : "Move PKMonitor to the menu bar")
                 Spacer()
                 Text("PKMonitor v\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev")")
                     .font(.system(size: 9, design: .monospaced))
@@ -4064,6 +4079,8 @@ struct PKMonitorApp {
             assert(abs(scaled[0] - 0.12) < 0.001 && abs(scaled[1] - 0.88) < 0.001)
             assert(IconLocation(rawValue: "Second Bar") == .underBar)
             assert(IconLocation(rawValue: "Menu Bar") == .menuBar)
+            assert(IconLocation.menuBar.toggled == .underBar)
+            assert(IconLocation.underBar.toggled == .menuBar)
             assert(AppSettings.parseIDs("a|1,b|2,") == ["a|1", "b|2"])
             assert(AppSettings.parseIDs("") == [])
             assert(DiskValueMode(rawValue: "Free") == .free)

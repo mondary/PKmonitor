@@ -20,6 +20,10 @@ Statut : `2026.09.32` (prototype fonctionnel)
 
 ## Releases
 
+### [2026.09.33] - 2026-09-10
+#### Added
+- Bascule rapide Menu Bar ⇄ Second Bar dans le panneau de survol : un clic à côté du bouton Audit déplace le module d'une barre à l'autre sans passer par les réglages
+
 ### [2026.09.32] - 2026-09-09
 #### Changed
 - Texte « Audit » affiché à côté du bouton IA du panneau de survol, entre Settings et le numéro de version

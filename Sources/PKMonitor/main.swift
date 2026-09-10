@@ -916,6 +916,114 @@ struct AIService {
     }
 }
 
+/// A full-screen, privacy-safe presentation of the live monitoring engine.
+/// Kept behind `--promo-capture`; it is never shown during normal use.
+struct PromoCaptureView: View {
+    @ObservedObject var model: MonitorModel
+    @ObservedObject var settings: AppSettings
+    @State private var showDetail = false
+    @State private var showAI = false
+
+    private var history: [Double] { MonitorModel.scaledHistory(model.samples) }
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [Color(red: 0.035, green: 0.04, blue: 0.09), Color(red: 0.07, green: 0.08, blue: 0.16)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ).ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                HStack(spacing: 12) {
+                    Image(nsImage: NSApp.applicationIconImage)
+                        .resizable().frame(width: 28, height: 28)
+                    Text("PKMonitor").font(.system(size: 17, weight: .bold, design: .rounded))
+                    Text("LIVE").font(.system(size: 10, weight: .black, design: .monospaced))
+                        .foregroundStyle(.black).padding(.horizontal, 7).padding(.vertical, 4)
+                        .background(.mint, in: Capsule())
+                    Spacer()
+                    Text("CPU \(Int(model.reading.cpu.rounded()))%")
+                        .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(model.reading.cpu > 80 ? .red : .white)
+                }
+                .padding(.horizontal, 42).frame(height: 70)
+                .background(.black.opacity(0.36))
+
+                Spacer()
+
+                VStack(alignment: .leading, spacing: 20) {
+                    HStack(alignment: .firstTextBaseline) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Activity, made visible.")
+                                .font(.system(size: 46, weight: .bold, design: .rounded))
+                            Text("The live sparkline tracks pressure as it happens — with the apps behind each peak.")
+                                .font(.system(size: 19)).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button(showDetail ? "Hide detail" : "Inspect activity") { withAnimation(.spring(response: 0.45)) { showDetail.toggle() } }
+                            .buttonStyle(.borderedProminent).controlSize(.large)
+                    }
+
+                    ZStack(alignment: .bottomLeading) {
+                        RoundedRectangle(cornerRadius: 28, style: .continuous)
+                            .fill(.black.opacity(0.35))
+                            .overlay(RoundedRectangle(cornerRadius: 28).stroke(.white.opacity(0.12)))
+                        GeometryReader { proxy in
+                            let points = history
+                            Path { path in
+                                guard points.count > 1 else { return }
+                                for (index, value) in points.enumerated() {
+                                    let x = proxy.size.width * CGFloat(index) / CGFloat(max(1, points.count - 1))
+                                    let y = proxy.size.height - 34 - CGFloat(value) * (proxy.size.height - 68)
+                                    index == 0 ? path.move(to: CGPoint(x: x, y: y)) : path.addLine(to: CGPoint(x: x, y: y))
+                                }
+                            }
+                            .stroke(LinearGradient(colors: [.cyan, .mint, .yellow, .red], startPoint: .leading, endPoint: .trailing), style: StrokeStyle(lineWidth: 7, lineCap: .round, lineJoin: .round))
+                            .shadow(color: .cyan.opacity(0.45), radius: 16)
+                        }
+                        .padding(.horizontal, 28).padding(.vertical, 22)
+                        HStack(spacing: 9) {
+                            ForEach(model.displayedApps.prefix(4)) { app in
+                                Image(nsImage: NSWorkspace.shared.icon(forFile: app.path))
+                                    .resizable().frame(width: 34, height: 34)
+                                    .background(.black.opacity(0.55), in: RoundedRectangle(cornerRadius: 9))
+                            }
+                        }
+                        .padding(22)
+                    }
+                    .frame(height: 310)
+
+                    HStack(spacing: 14) {
+                        Label("Live 0.2 s sampling", systemImage: "waveform.path.ecg")
+                        Label("App markers", systemImage: "app.dashed")
+                        Label("Hover for details", systemImage: "cursorarrow.rays")
+                    }
+                    .font(.system(size: 14, weight: .medium)).foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 96)
+
+                Spacer()
+            }
+
+            if showDetail {
+                Color.black.opacity(0.32).ignoresSafeArea().transition(.opacity)
+                HStack(spacing: 28) {
+                    DetailView(model: model, settings: settings, openActivityMonitor: { _ in }, terminateProcess: { _ in }, forceKillProcess: { _ in }, activateApp: { _ in }, openSettings: {}, openAIAdvisor: { withAnimation(.spring(response: 0.45)) { showAI = true } })
+                    if showAI {
+                        AIAdvisorView(model: model, settings: settings, openSettings: {}, close: { withAnimation(.spring(response: 0.45)) { showAI = false } })
+                            .frame(width: 430, height: 540)
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                            .transition(.move(edge: .trailing).combined(with: .opacity))
+                    }
+                }
+                .transition(.scale(scale: 0.94).combined(with: .opacity))
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+}
+
 struct DetailView: View {
     @ObservedObject var model: MonitorModel
     @ObservedObject var settings: AppSettings
@@ -3053,6 +3161,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var aiPanelMode: AIPresentation?
     private var aiPanelMonitors: [Any] = []
     private var aiPanelObservers: [NSObjectProtocol] = []
+    private var promoCaptureWindow: NSWindow?
     private var hoverTimer: Timer?
     private var lastPointerInside = Date.distantPast
     private var hoverSuppressed = false
@@ -3097,6 +3206,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         self.hoverTimer = hoverTimer
         if CommandLine.arguments.contains("--settings") { openSettings() }
         if CommandLine.arguments.contains("--ai") { openAIAdvisor() }
+        if CommandLine.arguments.contains("--promo-capture") { openPromoCapture() }
         let itemsTimer = Timer(timeInterval: 2.0, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }
@@ -3127,6 +3237,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let mainMenu = NSMenu()
         mainMenu.addItem(editItem)
         NSApp.mainMenu = mainMenu
+    }
+
+    /// Internal recording surface. It deliberately runs full-screen so promotional
+    /// captures never expose the user's desktop or other applications.
+    private func openPromoCapture() {
+        if let window = promoCaptureWindow {
+            window.makeKeyAndOrderFront(nil)
+            return
+        }
+        // Accessory (menu-bar) apps do not become foreground apps on every macOS
+        // configuration. The recording surface is deliberately a regular app so
+        // its full-screen window receives its own Space.
+        NSApp.setActivationPolicy(.regular)
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 1440, height: 900),
+            styleMask: [.titled, .closable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "PKMonitor — Capture Studio"
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.isMovableByWindowBackground = true
+        window.collectionBehavior = [.fullScreenPrimary]
+        window.isReleasedWhenClosed = false
+        window.contentViewController = NSHostingController(rootView: PromoCaptureView(model: model, settings: settings))
+        window.makeKeyAndOrderFront(nil)
+        window.center()
+        promoCaptureWindow = window
+        NSApp.activate(ignoringOtherApps: true)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            window.toggleFullScreen(nil)
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {

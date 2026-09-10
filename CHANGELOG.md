@@ -20,6 +20,10 @@ Statut : `2026.09.32` (prototype fonctionnel)
 
 ## Releases
 
+### [2026.09.34] - 2026-09-10
+#### Changed
+- Libellé « Settings » affiché à côté du bouton réglages du panneau de survol, même style que « Audit »
+
 ### [2026.09.33] - 2026-09-10
 #### Added
 - Bascule rapide Menu Bar ⇄ Second Bar dans le panneau de survol : un clic à côté du bouton Audit déplace le module d'une barre à l'autre sans passer par les réglages

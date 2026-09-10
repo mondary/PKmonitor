@@ -1133,8 +1133,12 @@ struct DetailView: View {
             }
             HStack {
                 Button { openSettings() } label: {
-                    Image(systemName: "gearshape")
-                        .font(.system(size: 13, weight: .medium))
+                    HStack(spacing: 4) {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 13, weight: .medium))
+                        Text("Settings")
+                            .font(.system(size: 11, weight: .medium))
+                    }
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)

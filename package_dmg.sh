@@ -14,10 +14,17 @@ mkdir -p "$STAGE"
 cp -R "$APP" "$STAGE/PKMonitor.app"
 
 # Contrat dmgly (create-dmg) : fenêtre stylée, fond animé, app -> Applications.
-if command -v create-dmg >/dev/null 2>&1 && [ -f "$BACKGROUND" ]; then
-  if ! create-dmg \
+# create-dmg vendorisé d'abord (standalone), sinon brew, sinon repli hdiutil.
+CDMG=""
+if [ -x "$ROOT/packaging/vendor/create-dmg/create-dmg" ]; then
+  CDMG="$ROOT/packaging/vendor/create-dmg/create-dmg"
+elif command -v create-dmg >/dev/null 2>&1; then
+  CDMG="create-dmg"
+fi
+if [ -n "$CDMG" ] && [ -f "$BACKGROUND" ]; then
+  if ! "$CDMG" \
       --volname "PKMonitor $VERSION" \
-      --window-size 660 400 \
+      --window-size 660 494 \
       --icon-size 128 \
       --icon "PKMonitor.app" 180 170 \
       --app-drop-link 480 170 \

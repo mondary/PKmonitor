@@ -1,0 +1,1123 @@
+<!doctype html>
+<html lang="fr" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="PKMonitor — CPU, GPU, RAM, réseau et disque dans votre barre des menus macOS. Gratuit, open source, 100 % local.">
+<meta name="theme-color" content="#f2f3ef">
+<meta property="og:title" content="PKMonitor — L’instrumentation de votre Mac, dans la barre des menus.">
+<meta property="og:description" content="Sparkline temps réel, panneau de détail, seconde barre à la Bartender et conseiller IA optionnel. Gratuit et open source.">
+<meta property="og:image" content="assets/screenshots/cleanshot-2026-09-14-wide.png">
+<title>PKMonitor — L’instrumentation de votre Mac, dans la barre des menus.</title>
+<link rel="icon" href="../icon.png">
+<style>
+  :root{
+    --paper:#f2f3ef; --paper-2:#fbfbf8; --card:#ffffff;
+    --ink:#13151a; --ink-2:#2b2f36; --muted:#63676e; --faint:#8b9096;
+    --line:#d7dad2; --line-2:#e8eae4;
+    --grid:rgba(19,21,26,.05);
+    --accent:#2b56ff; --accent-2:#0f3bdb; --accent-soft:rgba(43,86,255,.09);
+    --amber:#e07f00; --red:#d94a45; --green:#0f7f57;
+    --trace:#2b56ff;
+    --bar-bg:rgba(255,255,255,.88); --bar-ink:#1a1c20; --bar-line:rgba(0,0,0,.10); --bar-soft:rgba(0,0,0,.06);
+    --shadow:0 20px 44px rgba(19,21,26,.10); --shadow-sm:0 8px 20px rgba(19,21,26,.07);
+    --font:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",Arial,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;
+    --r:16px;
+  }
+  html[data-theme="dark"]{
+    --paper:#0e1013; --paper-2:#14171b; --card:#171a1f;
+    --ink:#f1f2ee; --ink-2:#d6d8d3; --muted:#989ea5; --faint:#767c83;
+    --line:#282c33; --line-2:#20242a;
+    --grid:rgba(255,255,255,.045);
+    --accent:#7d9bff; --accent-2:#a9bdff; --accent-soft:rgba(125,155,255,.13);
+    --amber:#ffab3d; --red:#ff6b64; --green:#4ecb8f;
+    --trace:#7d9bff;
+    --bar-bg:rgba(24,27,32,.9); --bar-ink:#eef0f2; --bar-line:rgba(255,255,255,.12); --bar-soft:rgba(255,255,255,.09);
+    --shadow:0 24px 50px rgba(0,0,0,.5); --shadow-sm:0 10px 26px rgba(0,0,0,.4);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;color:var(--ink);background-color:var(--paper);font-family:var(--font);letter-spacing:-.014em;
+    -webkit-font-smoothing:antialiased;overflow-x:hidden;
+    background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:34px 34px;
+  }
+  a{color:inherit;text-decoration:none}
+  img,video{display:block;max-width:100%}
+  code{font-family:var(--mono)}
+  .wrap{width:min(1180px,calc(100% - 40px));margin:auto}
+  .mono{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase}
+
+  /* reveal */
+  .rv{opacity:0;transform:translateY(24px);transition:opacity .75s cubic-bezier(.2,.7,.2,1),transform .75s cubic-bezier(.2,.7,.2,1)}
+  .rv.in{opacity:1;transform:none}
+  .rv.d1{transition-delay:.07s}.rv.d2{transition-delay:.14s}.rv.d3{transition-delay:.21s}.rv.d4{transition-delay:.28s}
+
+  /* progress + topbar */
+  #progress{position:fixed;top:0;left:0;height:2px;width:0;background:var(--accent);z-index:90;transition:width .12s linear}
+  header{position:sticky;top:0;z-index:60;background:var(--paper);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+  .nav{height:66px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17.5px}
+  .brand img{width:30px;height:30px;border-radius:8px;border:1px solid var(--line)}
+  .brand small{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--faint);letter-spacing:.08em;text-transform:uppercase;padding:3px 6px;border:1px solid var(--line);border-radius:5px}
+  .nav-links{display:flex;align-items:center;gap:24px;font-size:14px;color:var(--muted)}
+  .nav-links a{transition:color .2s}
+  .nav-links a:hover{color:var(--ink)}
+  .nav-tools{display:flex;align-items:center;gap:10px}
+  .icon-btn{width:36px;height:36px;display:grid;place-items:center;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);cursor:pointer;font-size:15px;transition:border-color .2s,transform .2s}
+  .icon-btn:hover{border-color:var(--accent);transform:translateY(-1px)}
+
+  /* buttons */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:13px 19px;border-radius:12px;font-size:15px;font-weight:700;border:1px solid transparent;cursor:pointer;transition:transform .2s,box-shadow .25s,background .2s,border-color .2s,color .2s}
+  .btn:hover{transform:translateY(-2px)}
+  .btn:active{transform:translateY(0) scale(.985)}
+  .btn img{width:18px;height:18px;border-radius:5px}
+  .btn-solid{background:var(--accent);color:#fff;box-shadow:0 10px 26px rgba(43,86,255,.26)}
+  .btn-solid:hover{background:var(--accent-2);color:#fff}
+  html[data-theme="dark"] .btn-solid{color:#0d1017}
+  html[data-theme="dark"] .btn-solid:hover{color:#0d1017}
+  .btn-ink{background:var(--ink);color:var(--paper-2)}
+  .btn-outline{border-color:var(--line);background:var(--card);color:var(--ink)}
+  .btn-outline:hover{border-color:var(--accent)}
+
+  /* section shells */
+  section{padding:96px 0;position:relative}
+  .band{background:var(--paper-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .kicker{display:inline-flex;align-items:center;gap:8px;color:var(--accent);font-family:var(--mono);font-size:11.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+  .kicker:before{content:"";width:14px;height:1.5px;background:var(--accent)}
+  h2{margin:14px 0;font-size:clamp(30px,4vw,46px);line-height:1.05;letter-spacing:-.04em;font-weight:800;max-width:640px}
+  h3{letter-spacing:-.03em}
+  .shead{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);gap:44px;align-items:end;margin-bottom:50px}
+  .shead p{margin:0;color:var(--muted);font-size:17px;line-height:1.55;max-width:440px}
+  .fine{color:var(--faint);font-size:12.5px;line-height:1.5}
+/* ---------- hero ---------- */
+  .hero{padding:68px 0 84px}
+  .hero-grid{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);gap:56px;align-items:center}
+  .badge{display:inline-flex;align-items:center;gap:9px;padding:7px 12px;border:1px solid var(--line);border-radius:999px;background:var(--card);font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .badge i{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px rgba(15,127,87,.16);font-style:normal}
+  h1{margin:22px 0 18px;font-size:clamp(40px,5.6vw,68px);line-height:.99;letter-spacing:-.055em;font-weight:800}
+  h1 em{font-style:normal;background:var(--accent-soft);box-shadow:0 0 0 4px var(--accent-soft);border-radius:4px}
+  .lede{margin:0;max-width:520px;color:var(--muted);font-size:17.5px;line-height:1.55}
+  .lede b{color:var(--ink);font-weight:650}
+  .hero-cta{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:30px 0 16px}
+  .specs{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+  .spec{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--paper-2);font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+  .spec b{color:var(--ink)}
+  .spec:before{content:"";width:5px;height:5px;background:var(--accent);border-radius:1px}
+
+  /* ---------- simulator ---------- */
+  .lab{position:relative;border:1px solid var(--line);border-radius:22px;background:var(--paper-2);box-shadow:var(--shadow);padding:16px 16px 14px}
+  .lab:before{content:"";position:absolute;inset:0;border-radius:inherit;background-image:radial-gradient(circle at 78% -12%,var(--accent-soft),transparent 62%);pointer-events:none}
+  .lab-head{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 6px 12px;border-bottom:1px dashed var(--line)}
+  .lab-head .mono{color:var(--faint)}
+  .lab-tag{padding:3px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+  .desk{position:relative;margin-top:14px;border-radius:14px;padding:14px;background:linear-gradient(160deg,var(--card),var(--paper));border:1px solid var(--line-2);display:flex;flex-direction:column;min-height:428px}
+  .desk-space{flex:1;min-height:130px}
+  .desk-hint{display:flex;justify-content:space-between;gap:10px;margin-top:12px;padding:0 4px}
+.mb{position:relative;z-index:3;display:flex;align-items:center;gap:12px;height:36px;padding:0 12px;border-radius:10px;background:var(--bar-bg);border:1px solid var(--bar-line);color:var(--bar-ink);box-shadow:var(--shadow-sm);font-size:11.5px;flex-wrap:nowrap;min-width:0}
+  .mb-apple{width:13px;height:13px;border-radius:50%;background:linear-gradient(135deg,var(--bar-ink),transparent 72%);border:1.4px solid var(--bar-ink);opacity:.85;flex:none}
+  .mb-menu{color:var(--bar-ink);opacity:.6}
+  .mb-spacer{flex:1;min-width:8px}
+  .mb-right{display:flex;align-items:center;gap:10px;opacity:.7;font-variant-numeric:tabular-nums}
+  .mb-right .wifi{width:14px;height:10px;border:1.8px solid currentColor;border-left-color:transparent;border-bottom-color:transparent;border-radius:100% 0 0 0;transform:rotate(45deg);opacity:.8}
+  .mb-right .batt{width:18px;height:9px;border:1.4px solid currentColor;border-radius:3px;position:relative;opacity:.8}
+  .mb-right .batt:after{content:"";position:absolute;top:1.6px;bottom:1.6px;left:1.6px;right:6px;background:currentColor;border-radius:1px}
+
+  .module{position:relative;display:flex;align-items:center;gap:3px;padding:2px 6px 2px 4px;border-radius:7px;background:var(--bar-soft);cursor:pointer;flex:none}
+  .module.pin{outline:1px solid var(--accent);outline-offset:1px}
+  .mseg{border:0;background:transparent;color:var(--bar-ink);opacity:.55;font:700 9px/1 var(--mono);letter-spacing:0;padding:4px 4px;border-radius:5px;cursor:pointer;transition:opacity .2s,background .2s,color .2s}
+  .mseg:hover{opacity:.85}
+  .mseg[aria-pressed="true"]{opacity:1;background:var(--accent);color:#fff}
+  html[data-theme="dark"] .mseg[aria-pressed="true"]{color:#0d1017}
+  .mval{font:700 10px/1 var(--mono);min-width:44px;text-align:right;font-variant-numeric:tabular-nums;opacity:.9}
+  .trace{width:96px;height:22px;overflow:visible}
+  .trace path.line{fill:none;stroke:var(--trace);stroke-width:1.5;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+  .trace path.area{fill:var(--accent-soft);stroke:none}
+
+  .pop{position:absolute;z-index:8;top:calc(100% + 12px);right:-6px;width:min(318px,78vw);opacity:0;pointer-events:none;transform:translateY(-6px) scale(.985);transition:opacity .22s,transform .22s;border:1px solid var(--line);border-radius:14px;background:var(--card);box-shadow:var(--shadow);color:var(--ink);text-align:left;font-size:12.5px;padding:14px}
+  .module.pin .pop,.module:hover .pop,.module:focus-within .pop{opacity:1;transform:translateY(0) scale(1);pointer-events:auto}
+  .pop-head{display:flex;align-items:center;gap:10px;padding-bottom:10px;border-bottom:1px solid var(--line-2)}
+  .pop-head img{width:26px;height:26px;border-radius:7px;border:1px solid var(--line)}
+  .pop-head b{display:block;font-size:13px}
+  .pop-head span{color:var(--faint);font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase}
+  .pop-metric{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:13px 0 6px}
+  .pop-metric b{font-size:26px;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+  .pop-metric span{color:var(--muted);font-size:11.5px}
+  .pop-sub{color:var(--faint);font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;margin:12px 0 2px}
+  .prow{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;margin-top:9px}
+  .prow span:first-child{color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .prow span:last-child{font-family:var(--mono);font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .pbar{grid-column:1/-1;height:4px;border-radius:999px;background:var(--line-2);overflow:hidden}
+  .pbar i{display:block;height:100%;border-radius:999px;background:var(--accent);transition:width .5s cubic-bezier(.2,.7,.2,1)}
+  .pop-actions{display:flex;gap:8px;margin-top:14px}
+  .pop-actions button{flex:1;padding:8px 10px;border-radius:9px;border:1px solid var(--line);background:var(--paper-2);color:var(--ink);font:700 11px var(--font);cursor:pointer;transition:border-color .2s,background .2s}
+  .pop-actions button:hover{border-color:var(--accent);background:var(--accent-soft)}
+  .pop-actions button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  html[data-theme="dark"] .pop-actions button.primary{color:#0d1017}
+
+  /* seconde barre */
+  .sbar{position:relative;z-index:2;display:flex;align-items:center;gap:10px;margin-top:12px;min-height:40px;padding:6px 10px;border:1px dashed var(--line);border-radius:10px;background:var(--bar-soft);transition:border-color .25s,background .25s}
+  .sbar.over{border-color:var(--accent);background:var(--accent-soft)}
+  .sbar-label{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);flex:none}
+  .chips{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .chips.in-bar{flex-wrap:nowrap;min-width:0;overflow:hidden;justify-content:flex-end;gap:6px}
+  #sbar-chips:empty:after{content:"Glissez une icône ici";color:var(--faint);font-size:11.5px}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:4px;border-radius:8px;border:1px solid var(--bar-line);background:var(--bar-bg);color:var(--bar-ink);font-size:11px;cursor:grab;transition:transform .2s,box-shadow .2s,opacity .2s}
+  .chip:hover{transform:translateY(-2px);box-shadow:var(--shadow-sm)}
+  .chip img{width:18px;height:18px;border-radius:5px;pointer-events:none}
+  .chip .glyph{width:18px;height:18px;display:grid;place-items:center;border-radius:5px;background:var(--bar-soft);font-size:11px;font-weight:700}
+  .chip.dragging{opacity:.45}
+  .chip:active{cursor:grabbing}
+/* ---------- bento ---------- */
+  .bento{display:grid;grid-template-columns:repeat(6,1fr);gap:16px}
+  .cell{position:relative;grid-column:span 2;padding:22px;border:1px solid var(--line);border-radius:var(--r);background:var(--card);transition:transform .3s cubic-bezier(.2,.7,.2,1),box-shadow .3s,border-color .3s}
+  .cell:hover{transform:translateY(-4px);box-shadow:var(--shadow);border-color:var(--accent)}
+  .cell.w3{grid-column:span 3}
+  .cell.w4{grid-column:span 4}
+  .cell h3{margin:0 0 8px;font-size:19px;display:flex;align-items:center;gap:9px}
+  .cell h3 span{font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:.08em}
+  .cell p{margin:0;color:var(--muted);font-size:14.5px;line-height:1.5}
+  .cell .num{position:absolute;top:16px;right:18px;font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.08em}
+  .cell.demo{padding:0;overflow:hidden;display:flex;flex-direction:column}
+  .cell.demo .cell-body{padding:22px 22px 0}
+  .cell.demo .cell-stage{padding:16px 22px 22px;margin-top:auto}
+  .mini{border:1px solid var(--line-2);border-radius:10px;background:var(--paper-2);padding:11px}
+  .mini-row{display:flex;align-items:center;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+  .mini-row + .mini-row{margin-top:9px}
+  .mini-row b{color:var(--ink);font-size:11px}
+  .disc{position:relative;height:26px;border-radius:7px;background:var(--line-2);overflow:hidden;display:flex}
+  .disc i{display:block;height:100%}
+  .disc .used{background:var(--red);width:73%}
+  .disc .free{background:var(--accent);width:27%}
+  .disc-legend{display:flex;justify-content:space-between;margin-top:7px;font-family:var(--mono);font-size:10px;color:var(--muted)}
+
+  /* bandeau défilant */
+  .strip{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--paper-2);padding:14px 0;overflow:hidden}
+  .strip-track{display:flex;gap:38px;width:max-content;animation:slide 34s linear infinite}
+  .strip:hover .strip-track{animation-play-state:paused}
+  @keyframes slide{to{transform:translateX(-50%)}}
+  .strip span{display:inline-flex;align-items:center;gap:9px;font-family:var(--mono);font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);white-space:nowrap}
+  .strip b{color:var(--ink)}
+  .strip em{width:5px;height:5px;background:var(--accent);border-radius:1px;font-style:normal}
+
+  /* captures annotées */
+  .shots{display:grid;gap:22px}
+  .shot{position:relative;padding:12px;border:1px solid var(--line);border-radius:var(--r);background:var(--card);box-shadow:var(--shadow-sm)}
+  .shot:before,.shot:after{content:"";position:absolute;width:14px;height:14px;border:1.5px solid var(--accent);opacity:.55}
+  .shot:before{top:-1px;left:-1px;border-right:0;border-bottom:0;border-radius:4px 0 0 0}
+  .shot:after{bottom:-1px;right:-1px;border-left:0;border-top:0;border-radius:0 0 4px 0}
+  .shot img{border-radius:9px;border:1px solid var(--line-2);width:100%}
+  .shot-foot{display:grid;grid-template-columns:1.45fr 1fr;gap:24px;align-items:start;padding:14px 4px 2px}
+  .shot-cap b{display:block;font-size:14.5px}
+  .shot-cap p{margin:4px 0 0;color:var(--muted);font-size:13.5px;line-height:1.5}
+  .call{position:absolute;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font:700 11px var(--mono);box-shadow:0 6px 18px rgba(43,86,255,.4);border:2px solid var(--card)}
+  html[data-theme="dark"] .call{color:#0d1017}
+  .call-list{margin:0;padding:0;list-style:none;display:grid;gap:9px}
+  .call-list li{display:flex;gap:9px;align-items:flex-start;color:var(--muted);font-size:13.5px;line-height:1.45}
+  .call-list b{width:20px;height:20px;flex:none;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font:700 10.5px var(--mono)}
+/* ---------- audit ---------- */
+  .audit-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,.6fr);gap:20px;align-items:start}
+  .audit-card{border:1px solid var(--line);border-radius:var(--r);background:var(--card);overflow:hidden;box-shadow:var(--shadow-sm)}
+  .audit-top{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:15px 18px}
+  .audit-top .state{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .audit-top .state i{width:8px;height:8px;border-radius:50%;background:var(--faint);font-style:normal;transition:background .3s,box-shadow .3s}
+  .audit-card.busy .state i{background:var(--amber);box-shadow:0 0 0 4px rgba(224,127,0,.18);animation:pulse 1s ease-in-out infinite}
+  .audit-card.done .state i{background:var(--green);box-shadow:0 0 0 4px rgba(15,127,87,.16)}
+  @keyframes pulse{50%{opacity:.35}}
+  .audit-prog{height:3px;background:var(--line-2);overflow:hidden}
+  .audit-prog i{display:block;height:100%;width:0;background:var(--accent);transition:width 1.5s cubic-bezier(.3,.6,.2,1)}
+  .scroll-x{overflow-x:auto}
+  table.at{width:100%;border-collapse:collapse;font-size:13.5px;min-width:620px}
+  .at th{text-align:left;padding:11px 18px;font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);border-bottom:1px solid var(--line-2)}
+  .at td{padding:12px 18px;border-bottom:1px solid var(--line-2);color:var(--ink-2);vertical-align:top}
+  .at tbody tr:last-child td{border-bottom:0}
+  .at tr.hid{visibility:hidden}
+  .at tr.in{animation:rowin .5s cubic-bezier(.2,.7,.2,1) both}
+  @keyframes rowin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .at .pname{font-weight:650;color:var(--ink)}
+  .at .pmeta{display:block;font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-top:3px;word-break:break-all}
+  .tag{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;font:700 10.5px var(--mono);letter-spacing:.04em;text-transform:uppercase;border:1px solid;white-space:nowrap}
+  .tag.ok{color:var(--green);border-color:rgba(15,127,87,.34);background:rgba(15,127,87,.09)}
+  .tag.warn{color:var(--amber);border-color:rgba(224,127,0,.34);background:rgba(224,127,0,.09)}
+  .tag.bad{color:var(--red);border-color:rgba(217,74,69,.34);background:rgba(217,74,69,.09)}
+  .note{padding:20px;border:1px solid var(--line);border-radius:var(--r);background:var(--paper-2)}
+  .note h3{margin:0 0 10px;font-size:16px}
+  .note ul{margin:0;padding:0;list-style:none}
+  .note li{padding:10px 0;border-top:1px solid var(--line-2);color:var(--muted);font-size:13.5px;line-height:1.5}
+  .note li:first-child{border-top:0}
+  .note li b{color:var(--ink)}
+
+  /* ---------- comparatif ---------- */
+  .scroll-x.shadow-l{border:1px solid var(--line);border-radius:var(--r);background:var(--card);box-shadow:var(--shadow-sm)}
+  table.ct{width:100%;border-collapse:collapse;font-size:14.5px;min-width:600px}
+  .ct th,.ct td{padding:14px 18px;text-align:left;border-bottom:1px solid var(--line-2)}
+  .ct thead th{font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);background:var(--paper-2)}
+  .ct thead th.hl{color:var(--accent)}
+  .ct tbody tr:last-child td{border-bottom:0}
+  .ct td.pk{background:var(--accent-soft);color:var(--ink);font-weight:600}
+  .ct td:first-child{color:var(--muted)}
+/* ---------- installation ---------- */
+  .inst{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:22px;align-items:start}
+  .inst-main{padding:26px;border:1px solid var(--line);border-radius:var(--r);background:var(--card);box-shadow:var(--shadow-sm)}
+  .cli{display:flex;align-items:center;gap:12px;padding:11px 13px;border:1px solid var(--line);border-radius:11px;background:var(--paper-2)}
+  .cli + .cli{margin-top:9px}
+  .cli label{font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);min-width:68px}
+  .cli code{flex:1;min-width:0;overflow:auto;white-space:nowrap;font-size:12.5px;color:var(--ink-2);scrollbar-width:thin}
+  .copy{flex:none;padding:7px 11px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--muted);font:700 11px var(--font);cursor:pointer;transition:border-color .2s,color .2s}
+  .copy:hover{border-color:var(--accent);color:var(--ink)}
+  .copy:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* ---------- faq ---------- */
+  .faq{display:grid;gap:10px;max-width:860px}
+  details.qa{border:1px solid var(--line);border-radius:13px;background:var(--card);overflow:hidden}
+  details.qa summary{cursor:pointer;padding:16px 18px;font-weight:650;font-size:15.5px;display:flex;justify-content:space-between;gap:14px;align-items:center;list-style:none}
+  details.qa summary::-webkit-details-marker{display:none}
+  details.qa summary:after{content:"+";font-family:var(--mono);color:var(--accent);font-size:17px;line-height:1}
+  details.qa[open] summary:after{content:"–"}
+  details.qa p{margin:0;padding:0 18px 17px;color:var(--muted);font-size:14.5px;line-height:1.55}
+  details.qa code{font-size:13px;padding:1px 5px;border:1px solid var(--line);border-radius:5px;background:var(--paper-2);color:var(--ink-2)}
+
+  /* ---------- cta + footer ---------- */
+  .cta{padding:88px 0;text-align:center;border-top:1px solid var(--line);background:var(--paper-2)}
+  .cta .inner{max-width:660px;margin:auto}
+  .cta h2{margin:14px auto;max-width:560px}
+  .cta p{color:var(--muted);font-size:17px;margin:0 0 26px}
+  footer{border-top:1px solid var(--line);background:var(--paper)}
+  .foot{display:grid;grid-template-columns:1.5fr repeat(3,1fr);gap:26px;padding:52px 0 26px}
+  .foot h4{margin:0 0 12px;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+  .foot a{display:block;padding:5px 0;color:var(--muted);font-size:14px;transition:color .2s}
+  .foot a:hover{color:var(--ink)}
+  .foot-brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px}
+  .foot-brand img{width:28px;height:28px;border-radius:8px;border:1px solid var(--line)}
+  .foot p{margin:12px 0 0;color:var(--muted);font-size:13.5px;line-height:1.55;max-width:330px}
+  .foot-bottom{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:16px 0 40px;border-top:1px solid var(--line-2);color:var(--faint);font-size:12.5px}
+
+  /* ---------- responsive ---------- */
+  @media (max-width:1040px){
+    .hero-grid{grid-template-columns:1fr;gap:40px}
+    .shead{grid-template-columns:1fr;gap:18px;align-items:start}
+    .bento .cell,.bento .cell.w3,.bento .cell.w4{grid-column:span 3}
+    .audit-grid,.inst,.shot-foot{grid-template-columns:1fr}
+    .foot{grid-template-columns:1fr 1fr}
+  }
+  @media (max-width:680px){
+    .nav-links > a:not(.nav-dl){display:none}
+    section{padding:70px 0}
+    h1{font-size:clamp(34px,10vw,46px)}
+    .bento .cell,.bento .cell.w3,.bento .cell.w4{grid-column:span 6}
+    .mb-menu:nth-of-type(n+3){display:none}
+    .mb-right{display:none}
+    .trace{width:88px}
+    .module .mseg:nth-child(2),.module .mseg:nth-child(3){display:none}
+    .call{display:none}
+    .foot{grid-template-columns:1fr}
+    .cta{padding:64px 0}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+    html{scroll-behavior:auto}
+    .rv{opacity:1;transform:none}
+    .strip-track{animation:none}
+  }
+.module-slot{display:none}
+  .module.low .pop{top:auto;bottom:calc(100% + 12px);right:auto;left:-6px}
+  .shot-media{position:relative}
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:26px}
+  .step{padding:20px;border:1px solid var(--line);border-radius:14px;background:var(--paper-2)}
+  .step b{display:block;font-family:var(--mono);font-size:10.5px;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+  .step p{margin:0;color:var(--muted);font-size:14px;line-height:1.5}
+  @media (max-width:1040px){.steps{grid-template-columns:1fr}}
+</style>
+<script>
+  /* thème clair / sombre appliqué avant le premier rendu (évite tout flash) */
+  (function () {
+    try {
+      var t = localStorage.getItem('pkmonitor-theme');
+      if (!t) t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {}
+  })();
+</script>
+</head>
+<body>
+<div id="progress" aria-hidden="true"></div>
+
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="#top"><img src="../icon.png" alt="PKMonitor">PKMonitor <small id="ver-badge">2026.09.32</small></a>
+    <nav class="nav-links" aria-label="Navigation principale">
+      <a href="#features">Fonctionnalités</a>
+      <a href="#second">Seconde barre</a>
+      <a href="#audit">Conseiller IA</a>
+      <a href="#install">Installation</a>
+      <a href="#faq">FAQ</a>
+      <a href="https://github.com/mondary/PKmonitor" target="_blank" rel="noreferrer">GitHub ↗</a>
+    </nav>
+    <div class="nav-tools">
+      <button class="icon-btn" id="theme-toggle" type="button" aria-label="Basculer entre le thème clair et sombre" title="Thème clair / sombre">◐</button>
+      <a class="btn btn-solid nav-dl download-link" href="https://github.com/mondary/PKmonitor/releases/latest"><img src="../icon.png" alt="">Télécharger</a>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- ===================== HERO ===================== -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <span class="badge rv"><i></i>Gratuit · Open source · macOS 13+</span>
+        <h1 class="rv d1">L’instrumentation de votre Mac, <em>sur une seule ligne.</em></h1>
+        <p class="lede rv d2">CPU, GPU, RAM, disque et réseau vivent dans votre barre des menus. <b>Un survol suffit</b> pour voir quelle application travaille, sans dashboard à ouvrir ni onglet à surveiller.</p>
+        <div class="hero-cta rv d3">
+          <a class="btn btn-solid download-link" href="https://github.com/mondary/PKmonitor/releases/latest"><img src="../icon.png" alt="">Télécharger PKMonitor</a>
+          <a class="btn btn-outline" href="#lab">Essayer le simulateur</a>
+        </div>
+        <div class="specs rv d4">
+          <span class="spec"><b>0 €</b> pour toujours</span>
+          <span class="spec">Intel &amp; <b>Apple Silicon</b></span>
+          <span class="spec">Données <b>100 % locales</b></span>
+          <span class="spec"><b>Aucun</b> compte</span>
+        </div>
+        <p class="fine rv d4" id="version-fine" style="margin-top:15px">Version <b>2026.09.32</b> · dernière release GitHub</p>
+      </div>
+
+      <!-- simulateur -->
+      <div class="lab rv d1" id="lab">
+        <div class="lab-head">
+          <span class="mono">Simulateur · barre des menus</span>
+          <span class="lab-tag">Démo</span>
+        </div>
+        <div class="desk">
+          <div class="mb">
+            <span class="mb-apple" aria-hidden="true"></span>
+            <span class="mb-spacer"></span>
+            <div class="chips in-bar" id="mb-chips" aria-label="Icônes d’autres applications"></div>
+            <span class="module-slot" id="module-slot"></span>
+            <div class="module" id="module" tabindex="0" role="group" aria-label="Module PKMonitor de la barre des menus">
+              <button class="mseg" type="button" data-metric="cpu" aria-pressed="true">CPU</button>
+              <button class="mseg" type="button" data-metric="gpu" aria-pressed="false">GPU</button>
+              <button class="mseg" type="button" data-metric="ram" aria-pressed="false">RAM</button>
+              <button class="mseg" type="button" data-metric="net" aria-pressed="false">NET</button>
+              <button class="mseg" type="button" data-metric="disk" aria-pressed="false">DISK</button>
+              <svg class="trace" viewBox="0 0 112 22" preserveAspectRatio="none" aria-hidden="true">
+                <path class="area" id="trace-area" d=""></path>
+                <path class="line" id="trace-line" d=""></path>
+              </svg>
+              <span class="mval" id="mval">34 %</span>
+              <div class="pop" id="pop" role="dialog" aria-label="Panneau de détail PKMonitor">
+                <div class="pop-head">
+                  <img src="../icon.png" alt="">
+                  <div><b id="pop-title">CPU</b><span id="pop-kind">Utilisation processeur</span></div>
+                </div>
+                <div class="pop-metric"><b id="pop-value">34 %</b><span id="pop-detail">4,1 cœurs sollicités</span></div>
+                <div class="pop-sub">Applications dominantes</div>
+                <div id="pop-rows"></div>
+                <div class="pop-actions">
+                  <button type="button" class="primary" data-goto="#audit">Audit IA</button>
+                  <button type="button" data-goto="#features">Settings</button>
+                  <button type="button" id="pop-move">Descendre ↓</button>
+                </div>
+              </div>
+            </div>
+            <div class="mb-right"><span class="wifi"></span><span class="batt"></span><span id="clock">jeu. 10:55</span></div>
+          </div>
+          <div class="desk-space" aria-hidden="true"></div>
+          <div class="sbar" id="sbar">
+            <span class="sbar-label">2ᵉ barre</span>
+            <div class="chips" id="sbar-chips"></div>
+          </div>
+          <div class="desk-hint">
+            <span class="fine">Clic sur un segment = changer la métrique · survol du module = panneau de détail · glisser (ou cliquer) une icône = la descendre.</span>
+            <span class="fine mono" id="lab-state">CPU · 34 %</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <!-- ===================== BANDEAU ===================== -->
+  <div class="strip" aria-hidden="true">
+    <div class="strip-track">
+      <span><em></em><b>0 €</b> pour toujours</span><span><em></em>Open source <b>MIT</b></span><span><em></em>Données <b>100 % locales</b></span><span><em></em>Rafraîchissement <b>200 ms</b></span><span><em></em>macOS <b>13+</b></span><span><em></em>Intel &amp; <b>Apple Silicon</b></span><span><em></em><b>Aucun</b> compte</span><span><em></em><b>Aucun</b> suivi</span><span><em></em>Conseiller IA <b>optionnel</b></span>
+      <span><em></em><b>0 €</b> pour toujours</span><span><em></em>Open source <b>MIT</b></span><span><em></em>Données <b>100 % locales</b></span><span><em></em>Rafraîchissement <b>200 ms</b></span><span><em></em>macOS <b>13+</b></span><span><em></em>Intel &amp; <b>Apple Silicon</b></span><span><em></em><b>Aucun</b> compte</span><span><em></em><b>Aucun</b> suivi</span><span><em></em>Conseiller IA <b>optionnel</b></span>
+    </div>
+  </div>
+
+  <!-- ===================== FONCTIONNALITÉS ===================== -->
+  <section id="features" class="band">
+    <div class="wrap">
+      <div class="shead">
+        <div>
+          <span class="kicker">Fonctionnalités</span>
+          <h2>Huit instruments, un seul emplacement.</h2>
+        </div>
+        <p>PKMonitor remplace le réflexe « ouvrir Activity Monitor » par une ligne discrète dans la barre des menus, réglable au pixel et silencieuse quand tout va bien.</p>
+      </div>
+      <div class="bento">
+        <article class="cell w3 demo rv">
+          <span class="num">01</span>
+          <div class="cell-body">
+            <h3><span>SPARK</span>Sparkline temps réel</h3>
+            <p>Une trace continue rafraîchie jusqu’à 200 ms, avec les icônes des applications dominantes dessinées dans le graphe.</p>
+          </div>
+          <div class="cell-stage">
+            <div class="mini">
+              <div class="mini-row"><span>Trace · 200 ms</span><b>CPU 34 %</b></div>
+              <svg class="trace" style="width:100%;height:44px;margin-top:8px" viewBox="0 0 300 44" preserveAspectRatio="none" aria-hidden="true">
+                <path class="line" d="M0 34 L14 30 L27 36 L41 18 L55 27 L69 12 L84 23 L98 19 L112 33 L127 14 L141 21 L156 9 L170 18 L184 15 L198 31 L212 23 L226 34 L241 15 L255 24 L269 11 L283 19 L300 14"></path>
+              </svg>
+            </div>
+          </div>
+        </article>
+        <article class="cell w3 demo rv d1">
+          <span class="num">02</span>
+          <div class="cell-body">
+            <h3><span>GAUGES</span>Jauges activables et réordonnables</h3>
+            <p>Couleur de base et couleur critique réglables pour chaque métrique : la teinte par défaut remplace le noir, la critique prend le relais au-delà de votre seuil.</p>
+          </div>
+          <div class="cell-stage">
+            <div class="mini">
+              <div class="mini-row"><span>CPU</span><b>34 %</b></div>
+              <div class="pbar"><i style="width:34%;background:var(--green)"></i></div>
+              <div class="mini-row"><span>RAM</span><b>65 %</b></div>
+              <div class="pbar"><i style="width:65%;background:var(--accent)"></i></div>
+              <div class="mini-row"><span>Disque</span><b>73 %</b></div>
+              <div class="pbar"><i style="width:73%;background:var(--red)"></i></div>
+            </div>
+          </div>
+        </article>
+        <article class="cell demo rv">
+          <span class="num">03</span>
+          <div class="cell-body">
+            <h3><span>DISK</span>Module disque sur mesure</h3>
+            <p>Total en rouge, espace libre et disponible en bleu — une ou deux lignes, interlignage, position et taille réglables.</p>
+          </div>
+          <div class="cell-stage">
+            <div class="disc"><i class="used"></i><i class="free"></i></div>
+            <div class="disc-legend"><span>361 Go utilisés</span><span>133 Go libres</span></div>
+          </div>
+        </article>
+        <article class="cell rv d1">
+          <span class="num">04</span>
+          <h3><span>2ᵉ BARRE</span>Seconde barre à la Bartender</h3>
+          <p>Cochez les icônes tierces à descendre, réordonnez-les, et le clic est transmis au menu d’origine de l’application. Tout est restauré au décochage ou à la fermeture.</p>
+        </article>
+        <article class="cell rv d2">
+          <span class="num">05</span>
+          <h3><span>AUDIT</span>Conseiller IA à la demande</h3>
+          <p>Un clic sur le bouton IA du panneau détaillé analyse les processus gourmands : légitimité estimée d’après le nom, le bundle et le chemin, motifs des alertes, recommandations.</p>
+        </article>
+        <article class="cell rv">
+          <span class="num">06</span>
+          <h3><span>DETAIL</span>Panneau de détail au survol</h3>
+          <p>Survolez l’élément de la barre : métriques détaillées, arrêt de processus, boutons Audit et Settings, bascule immédiate entre barre des menus et seconde barre. Clic droit pour le menu complet.</p>
+        </article>
+        <article class="cell rv d1">
+          <span class="num">07</span>
+          <h3><span>SETTINGS</span>Réglages catégorisés</h3>
+          <p>Tableau de bord système en direct, sidebar par module, recherche, pages Help &amp; Support et Project Library. Un onglet par réglage : sparkline, jauges, disque, panneau, icônes de la barre, conseiller IA.</p>
+        </article>
+        <article class="cell rv d2">
+          <span class="num">08</span>
+          <h3><span>LOCAL</span>Thème et démarrage</h3>
+          <p>Thème clair, sombre ou système, lancement à la connexion, et toggles d’affichage pour la sparkline, les jauges et le panneau. Aucune donnée ne quitte le Mac par défaut.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SECONDE BARRE ===================== -->
+  <section id="second">
+    <div class="wrap">
+      <div class="shead">
+        <div>
+          <span class="kicker">Seconde barre</span>
+          <h2>Vos icônes tierces, descendues d’un cran.</h2>
+        </div>
+        <p>Settings › Menu Bar Items liste les icônes présentes dans votre barre. Cochez celles à déplacer : PKMonitor les redessine dans une seconde barre, dans l’ordre que vous fixez, et transmet chaque clic au menu d’origine de l’application.</p>
+      </div>
+
+      <div class="shot rv">
+        <div class="shot-media">
+          <img src="assets/screenshots/cleanshot-2026-09-14-wide.png" alt="Capture réelle : la barre des menus macOS et le module PKMonitor basculé dans la seconde barre">
+          <span class="call" style="left:78%;top:4%">1</span>
+          <span class="call" style="left:67.5%;top:12.5%">2</span>
+        </div>
+        <div class="shot-foot">
+          <div class="shot-cap">
+            <b>Capture réelle · seconde barre active</b>
+            <p>En haut, la barre des menus telle que macOS la dessine, avec ses icônes d’origine intactes. En dessous, le module PKMonitor basculé dans la seconde barre : valeur, libellé, sparkline, icônes des applications dominantes et jauges.</p>
+          </div>
+          <ul class="call-list">
+            <li><b>1</b><span>Rien n’est supprimé : les icônes d’origine restent à leur place.</span></li>
+            <li><b>2</b><span>Module dans la seconde barre — bascule depuis le panneau, un clic.</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="steps">
+        <div class="step rv"><b>Cocher</b><p>Ouvrez Settings › Menu Bar Items et cochez les icônes tierces à descendre dans la seconde barre.</p></div>
+        <div class="step rv d1"><b>Ordonner</b><p>Réordonnez la liste pour fixer l’ordre d’affichage, ajustez la taille si besoin, et gardez les clics fonctionnels.</p></div>
+        <div class="step rv d2"><b>Restaurer</b><p>Décochez une icône ou quittez PKMonitor : chaque application retrouve exactement sa position d’origine.</p></div>
+      </div>
+
+      <p class="fine rv d3" style="margin-top:22px;max-width:820px">Les permissions Accessibilité (déplacer les icônes d’origine) et Enregistrement d’écran (redessiner les icônes descendues) ne sont demandées que pour cette fonctionnalité, et uniquement au moment où vous l’activez.</p>
+    </div>
+  </section>
+
+  <!-- ===================== CONSEILLER IA ===================== -->
+  <section id="audit" class="band">
+    <div class="wrap">
+      <div class="shead">
+        <div>
+          <span class="kicker">Conseiller IA</span>
+          <h2>Audit des processus, à la demande.</h2>
+        </div>
+        <p>Un clic sur le bouton IA du panneau détaillé envoie les métriques et les applications concernées à votre endpoint compatible OpenAI. Rien ne part avant ce clic, et la clé API reste dans le Keychain.</p>
+      </div>
+
+      <div class="audit-grid">
+        <div class="audit-card rv done" id="audit-card">
+          <div class="audit-top">
+            <span class="state"><i></i><span id="audit-state">Exemple d’analyse · démonstration locale</span></span>
+            <button class="btn btn-solid" type="button" id="audit-run" style="padding:10px 16px;font-size:14px">Analyser les processus</button>
+          </div>
+          <div class="audit-prog"><i id="audit-prog" style="width:100%"></i></div>
+          <div class="scroll-x">
+            <table class="at" aria-label="Résultat d’audit simulé">
+              <thead>
+                <tr><th>Processus</th><th>Empreinte</th><th>Légitimité</th><th>Motif &amp; recommandation</th></tr>
+              </thead>
+              <tbody id="audit-rows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <aside class="note rv d1">
+          <h3>Ce que l’audit regarde</h3>
+          <ul>
+            <li><b>Consommation</b>CPU, GPU, mémoire et débit réseau des processus gourmands.</li>
+            <li><b>Identité</b>Nom, bundle identifier et chemin d’exécution, confrontés à des motifs connus.</li>
+            <li><b>Légitimité estimée</b>Un statut par processus, avec le motif de l’alerte.</li>
+            <li><b>Recommandation</b>Laisser tourner, surveiller ou arrêter.</li>
+            <li><b>Confidentialité</b>Endpoint compatible OpenAI de votre choix, clé dans le Keychain, analyse déclenchée par vous.</li>
+          </ul>
+          <p class="fine" style="margin-top:14px">Le tableau ci-contre est une démonstration locale : cette page n’effectue aucune requête d’analyse.</p>
+        </aside>
+      </div>
+
+      <div class="shot rv" style="margin-top:26px">
+        <div class="shot-media">
+          <img src="assets/screenshots/cleanshot-2026-09-14-window.png" alt="Capture réelle du panneau de détail PKMonitor : GPU à 6 % avec la liste des processus dominants">
+          <span class="call" style="left:47%;top:2.5%">1</span>
+          <span class="call" style="left:69.5%;top:12%">2</span>
+          <span class="call" style="left:31%;top:27.5%">3</span>
+          <span class="call" style="left:31.5%;top:72%">4</span>
+        </div>
+        <div class="shot-foot">
+          <div class="shot-cap">
+            <b>Capture réelle · panneau de détail</b>
+            <p>Le panneau s’ouvre au survol du module : métrique active, valeur, processus classés par consommation, bouton d’arrêt, puis les accès Settings, Audit et Second Bar.</p>
+          </div>
+          <ul class="call-list">
+            <li><b>1</b><span>Le module dans la barre : valeur, libellé et sparkline.</span></li>
+            <li><b>2</b><span>La métrique active et sa valeur exacte.</span></li>
+            <li><b>3</b><span>Les processus dominants, chacun avec son bouton d’arrêt.</span></li>
+            <li><b>4</b><span>Settings · Audit · Second Bar, et le numéro de version.</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== COMPARATIF ===================== -->
+  <section>
+    <div class="wrap">
+      <div class="shead">
+        <div>
+          <span class="kicker">Et Activity Monitor ?</span>
+          <h2>Deux outils, deux moments.</h2>
+        </div>
+        <p>Activity Monitor reste la référence pour l’analyse en profondeur. PKMonitor occupe le créneau qu’il laisse vide : la réponse immédiate, sans quitter son travail.</p>
+      </div>
+      <div class="scroll-x shadow-l rv">
+        <table class="ct">
+          <thead>
+            <tr><th>Situation</th><th>Activity Monitor</th><th class="hl">PKMonitor</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Voir la charge d’un regard</td><td>Fenêtre à ouvrir, puis à retrouver</td><td class="pk">Module dans la barre des menus, visible en permanence</td></tr>
+            <tr><td>Savoir quelle application consomme</td><td>Liste triable en colonnes</td><td class="pk">Panneau au survol, apps dominantes dessinées dans la sparkline</td></tr>
+            <tr><td>Arrêter un processus</td><td>Bouton Arrêter, avec confirmation</td><td class="pk">Bouton d’arrêt directement dans le panneau de détail</td></tr>
+            <tr><td>Déplacer des icônes tierces</td><td>—</td><td class="pk">Seconde barre à la Bartender, clics transmis au menu d’origine</td></tr>
+            <tr><td>Interpréter les alertes</td><td>À votre charge</td><td class="pk">Conseiller IA optionnel : légitimité, motifs, recommandations</td></tr>
+            <tr><td>Disque et réseau</td><td>Onglets dédiés</td><td class="pk">Module disque deux lignes et débit ↓/↑ dans la barre</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="fine rv d1" style="margin-top:16px">Les deux peuvent cohabiter : PKMonitor ne remplace pas vos outils d’analyse, il supprime l’aller-retour.</p>
+    </div>
+  </section>
+  <!-- ===================== INSTALLATION ===================== -->
+  <section id="install" class="band">
+    <div class="wrap">
+      <div class="shead">
+        <div>
+          <span class="kicker">Installation</span>
+          <h2>Trois chemins, aucune friction.</h2>
+        </div>
+        <p>PKMonitor est gratuit et open source. Choisissez le DMG glisser-déposer, Homebrew ou la commande <code>curl</code> — aucun compte, aucun redémarrage.</p>
+      </div>
+      <div class="inst">
+        <div class="inst-main rv">
+          <h3 style="margin:0 0 8px;font-size:20px">Télécharger PKMonitor</h3>
+          <p style="margin:0 0 18px;color:var(--muted);font-size:15px;line-height:1.55">Version <b id="ver-inline">2026.09.32</b> · macOS 13 ou ultérieur · Intel et Apple Silicon. Les boutons de téléchargement pointent automatiquement vers le dernier DMG publié sur GitHub Releases.</p>
+          <div style="display:flex;gap:12px;flex-wrap:wrap">
+            <a class="btn btn-solid download-link" href="https://github.com/mondary/PKmonitor/releases/latest"><img src="../icon.png" alt="">Télécharger le DMG</a>
+            <a class="btn btn-outline" href="https://github.com/mondary/PKmonitor/releases" target="_blank" rel="noreferrer">Toutes les releases ↗</a>
+          </div>
+          <div style="margin-top:20px">
+            <div class="cli"><label>Homebrew</label><code>brew install --cask mondary/tap/pkmonitor</code><button class="copy" type="button" data-copy="brew install --cask mondary/tap/pkmonitor">Copier</button></div>
+            <div class="cli"><label>Mise à jour</label><code>brew upgrade --cask pkmonitor</code><button class="copy" type="button" data-copy="brew upgrade --cask pkmonitor">Copier</button></div>
+            <div class="cli"><label>curl</label><code id="curl-command">curl -L -o PKMonitor.dmg https://github.com/mondary/PKmonitor/releases/latest/download/PKMonitor-2026.09.32.dmg</code><button class="copy" type="button" id="curl-copy" data-copy="curl -L -o PKMonitor.dmg https://github.com/mondary/PKmonitor/releases/latest/download/PKMonitor-2026.09.32.dmg">Copier</button></div>
+          </div>
+        </div>
+        <aside class="note rv d1">
+          <h3>Bon à savoir</h3>
+          <ul>
+            <li><b>Prérequis</b>macOS 13 ou ultérieur, Intel comme Apple Silicon.</li>
+            <li><b>Prix</b>0 €, projet open source sous licence MIT.</li>
+            <li><b>Données</b>Par défaut, rien ne quitte le Mac ; l’analyse IA n’envoie que ce que vous déclenchez.</li>
+            <li><b>Permissions</b>Accessibilité et Enregistrement d’écran, demandées uniquement pour la seconde barre.</li>
+            <li><b>Contribuer</b>Issues et pull requests bienvenues sur GitHub.</li>
+          </ul>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FAQ ===================== -->
+  <section id="faq">
+    <div class="wrap">
+      <div class="shead">
+        <div>
+          <span class="kicker">FAQ</span>
+          <h2>Les questions qui reviennent.</h2>
+        </div>
+        <p>Et si la vôtre n’y est pas, la réponse est probablement déjà dans le dépôt GitHub ou dans le changelog.</p>
+      </div>
+      <div class="faq">
+        <details class="qa rv" open><summary>PKMonitor remplace-t-il Activity Monitor ?</summary><p>Il le complète plutôt : PKMonitor répond en un regard aux questions du quotidien (quelle application consomme, combien de mémoire reste-t-il, le disque se remplit-il, le réseau travaille-t-il) et laisse l’analyse fine à Activity Monitor quand vous en avez besoin.</p></details>
+        <details class="qa rv"><summary>Mes données quittent-elles mon Mac ?</summary><p>Par défaut non. Le conseiller IA est optionnel : aucune requête n’est envoyée avant une analyse explicite. Lors de cette analyse, seuls les métriques, noms, bundle identifiers et chemins des applications concernées sont transmis à l’endpoint compatible OpenAI que vous avez configuré — et votre clé API reste dans le Trousseau macOS.</p></details>
+        <details class="qa rv"><summary>Comment installer l’application ?</summary><p>Trois chemins : glisser-déposer depuis le <a class="download-link" href="https://github.com/mondary/PKmonitor/releases/latest">DMG</a>, <code>brew install --cask mondary/tap/pkmonitor</code>, ou la commande <code>curl</code> de la section installation. Aucun redémarrage n’est nécessaire.</p></details>
+        <details class="qa rv"><summary>Comment mettre à jour ?</summary><p>Avec Homebrew : <code>brew upgrade --cask pkmonitor</code>. Sinon, téléchargez le DMG de la dernière release et remplacez l’application : vos réglages sont conservés.</p></details>
+        <details class="qa rv"><summary>Descendre les icônes d’autres applications, comment ça marche ?</summary><p>Settings › Menu Bar Items : cochez les icônes à descendre, réordonnez-les, et PKMonitor les redessine dans la seconde barre. Un clic sur une icône descendue ouvre son menu d’origine, et tout est restauré au décochage ou à la fermeture de l’application.</p></details>
+        <details class="qa rv"><summary>La sparkline ralentit-elle le Mac ?</summary><p>Non. La surveillance s’appuie sur les API système natives avec un rafraîchissement raisonné : quelques points de CPU au repos, rien de perceptible en usage courant.</p></details>
+        <details class="qa rv"><summary>Puis-je proposer des améliorations ?</summary><p>Oui, et c’est bienvenu : ouvrez une issue ou une pull request sur <a href="https://github.com/mondary/PKmonitor" target="_blank" rel="noreferrer">le dépôt GitHub</a>. Vous pouvez aussi soutenir le projet sur <a href="https://ko-fi.com/pouark" target="_blank" rel="noreferrer">Ko-fi</a>.</p></details>
+      </div>
+    </div>
+  </section>
+  <!-- ===================== CTA ===================== -->
+  <section class="cta">
+    <div class="wrap inner">
+      <span class="kicker" style="justify-content:center">Disponible maintenant</span>
+      <h2>Un Mac plus calme commence ici.</h2>
+      <p>Quelques secondes d’installation, et votre barre des menus raconte enfin ce qui se passe.</p>
+      <a class="btn btn-solid download-link" href="https://github.com/mondary/PKmonitor/releases/latest"><img src="../icon.png" alt="">Télécharger PKMonitor (.dmg)</a>
+      <p class="fine" style="margin:16px 0 0">Version <b id="ver-cta">2026.09.32</b> · Gratuit · Open source MIT · macOS 13+</p>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="foot">
+      <div>
+        <a class="foot-brand" href="#top"><img src="../icon.png" alt="">PKMonitor</a>
+        <p>Le moniteur macOS discret dans la barre des menus. Sparkline temps réel, panneau de détail, seconde barre à la Bartender et conseiller IA optionnel. Tout reste local.</p>
+      </div>
+      <div>
+        <h4>Liens</h4>
+        <a href="https://github.com/mondary/PKmonitor" target="_blank" rel="noreferrer">Code source ↗</a>
+        <a href="https://github.com/mondary/PKmonitor/releases" target="_blank" rel="noreferrer">Releases ↗</a>
+        <a href="https://github.com/mondary/homebrew-tap" target="_blank" rel="noreferrer">Tap Homebrew ↗</a>
+        <a href="https://ko-fi.com/pouark" target="_blank" rel="noreferrer">Soutenir sur Ko-fi ↗</a>
+      </div>
+      <div>
+        <h4>Pages</h4>
+        <a href="#features">Fonctionnalités</a>
+        <a href="#second">Seconde barre</a>
+        <a href="#audit">Conseiller IA</a>
+        <a href="#install">Installation</a>
+      </div>
+      <div>
+        <h4>Télécharger</h4>
+        <a class="download-link" href="https://github.com/mondary/PKmonitor/releases/latest">Dernier DMG</a>
+        <a href="#install">Homebrew / curl</a>
+        <a href="https://github.com/mondary/PKmonitor/blob/main/LICENSE" target="_blank" rel="noreferrer">Licence MIT ↗</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 PKMonitor · Fait pour macOS</span>
+      <span>Gratuit · Open source · Sans suivi · <a href="https://github.com/mondary/PKmonitor/blob/main/CHANGELOG.md" target="_blank" rel="noreferrer">Changelog ↗</a></span>
+    </div>
+  </div>
+</footer>
+<script>
+(function () {
+  'use strict';
+  const root = document.documentElement;
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const $ = (s, c) => (c || document).querySelector(s);
+  const $$ = (s, c) => Array.prototype.slice.call((c || document).querySelectorAll(s));
+
+  /* ---------------- thème clair / sombre ---------------- */
+  const toggle = $('#theme-toggle');
+  const store = {
+    read() { try { return localStorage.getItem('pkmonitor-theme'); } catch (e) { return null; } },
+    write(v) { try { localStorage.setItem('pkmonitor-theme', v); } catch (e) {} }
+  };
+  function applyTheme(theme, persist) {
+    root.setAttribute('data-theme', theme);
+    if (toggle) {
+      toggle.textContent = theme === 'dark' ? '☀' : '◐';
+      toggle.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+    }
+    const meta = $('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', theme === 'dark' ? '#0e1013' : '#f2f3ef');
+    if (persist) store.write(theme);
+  }
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  applyTheme(store.read() || (prefersDark ? 'dark' : 'light'), false);
+  if (toggle) toggle.addEventListener('click', () => {
+    applyTheme(root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark', true);
+  });
+
+  /* ---------------- barre de progression ---------------- */
+  const progress = $('#progress');
+  function onScroll() {
+    if (!progress) return;
+    const h = document.documentElement.scrollHeight - window.innerHeight;
+    progress.style.width = (h > 0 ? Math.min(window.scrollY / h, 1) * 100 : 0) + '%';
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll);
+  onScroll();
+
+  /* ---------------- apparitions au scroll ---------------- */
+  const reveals = $$('.rv');
+  if (reduce || !('IntersectionObserver' in window)) {
+    reveals.forEach(el => el.classList.add('in'));
+  } else {
+    const io = new IntersectionObserver(entries => entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      entry.target.classList.add('in');
+      io.unobserve(entry.target);
+    }), { threshold: .12, rootMargin: '0px 0px -40px 0px' });
+    reveals.forEach(el => io.observe(el));
+  }
+
+  /* ---------------- horloge de la barre simulée ---------------- */
+  const clock = $('#clock');
+  if (clock) {
+    const fmt = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+    const tick = () => { clock.textContent = fmt.format(new Date()); };
+    tick();
+    setInterval(tick, 20000);
+  }
+
+  /* ---------------- simulateur : données des métriques ---------------- */
+  const mod = $('#module');
+  const mval = $('#mval');
+  const labState = $('#lab-state');
+  const lineEl = $('#trace-line');
+  const areaEl = $('#trace-area');
+  const segs = $$('.mseg');
+  const TW = 112, TH = 22, TN = 40;
+
+  function clamp(v, lo, hi) { return Math.min(Math.max(v, lo), hi); }
+
+  const METRICS = {
+    cpu: { kind: 'Utilisation processeur', lo: 0, hi: 100, base: 34, step: 11,
+      fmt: v => Math.round(v) + ' %',
+      detail: v => (v / 100 * 4.1).toFixed(1).replace('.', ',') + ' cœurs sollicités',
+      rows: [['Google Chrome', '42 %', 42], ['MonoCode', '18 %', 18], ['WindowServer', '7,4 %', 7], ['PKMonitor', '0,4 %', 1]] },
+    gpu: { kind: 'Utilisation graphique', lo: 0, hi: 100, base: 6, step: 5,
+      fmt: v => Math.round(v) + ' %',
+      detail: v => Math.round(v * 1.2) + ' % du moteur graphique',
+      rows: [['Google Chrome', '4,9 %', 5], ['Notification Center', '3,6 %', 4], ['CleanShot X', '1,9 %', 2], ['AVG AntiVirus', '1,4 %', 1]] },
+    ram: { kind: 'Pression mémoire', lo: 25, hi: 92, base: 65, step: 4,
+      fmt: v => Math.round(v) + ' %',
+      detail: v => (v / 100 * 34.4).toFixed(1).replace('.', ',') + ' Go sur 34,4 Go',
+      rows: [['Google Chrome', '3,4 Go', 34], ['MonoCode', '2,1 Go', 21], ['Figma', '1,2 Go', 12], ['PKMonitor', '93 Mo', 1]] },
+    net: { kind: 'Débit réseau', lo: 0, hi: 40, base: 15, step: 7,
+      fmt: v => (v < 10 ? v.toFixed(1).replace('.', ',') : Math.round(v)) + ' Ko/s',
+      detail: v => '↓ ' + Math.round(v) + ' Ko/s · ↑ ' + Math.max(1, Math.round(v * 0.6)) + ' Ko/s',
+      rows: [['Google Chrome', '12 Ko/s', 80], ['Dropbox', '4 Ko/s', 27], ['PKMonitor', '0,1 Ko/s', 2]] },
+    disk: { kind: 'Espace disque', lo: 71, hi: 78, base: 73, step: 0.4,
+      fmt: v => Math.round(v) + ' %',
+      detail: v => Math.round(v / 100 * 494) + ' Go utilisés · ' + (494 - Math.round(v / 100 * 494)) + ' Go libres',
+      rows: [['Disque système', '361 Go', 73], ['Xcode', '42 Go', 9], ['Photos', '18 Go', 4], ['PKMonitor', '2,4 Mo', 1]] }
+  };
+
+  const hist = {};
+  Object.keys(METRICS).forEach(key => {
+    const m = METRICS[key], arr = [];
+    let v = m.base;
+    for (let i = 0; i < TN; i++) { v = clamp(v + (Math.random() * 2 - 1) * m.step, m.lo, m.hi); arr.push(v); }
+    hist[key] = arr;
+  });
+
+  function drawTrace(key) {
+    const arr = hist[key], m = METRICS[key], span = (m.hi - m.lo) || 1;
+    const pts = arr.map((v, i) => {
+      const x = (i / (arr.length - 1)) * TW;
+      const y = TH - 2 - ((v - m.lo) / span) * (TH - 4);
+      return x.toFixed(1) + ' ' + y.toFixed(1);
+    }).join(' L');
+    lineEl.setAttribute('d', 'M' + pts);
+    areaEl.setAttribute('d', 'M' + pts + ' L' + TW + ' ' + TH + ' L0 ' + TH + ' Z');
+  }
+
+  function drawRows(key) {
+    $('#pop-rows').innerHTML = METRICS[key].rows.map(r =>
+      '<div class="prow"><span>' + r[0] + '</span><span>' + r[1] +
+      '</span><div class="pbar"><i style="width:' + r[2] + '%"></i></div></div>').join('');
+  }
+
+  function tween(node, from, to, fmt, dur) {
+    const t0 = performance.now();
+    const step = t => {
+      const p = Math.min((t - t0) / dur, 1), e = 1 - Math.pow(1 - p, 3);
+      node.textContent = fmt(from + (to - from) * e);
+      if (p < 1) requestAnimationFrame(step); else node.textContent = fmt(to);
+    };
+    requestAnimationFrame(step);
+  }
+
+  let current = 'cpu';
+  let shown = hist.cpu[hist.cpu.length - 1];
+
+  function renderMetric(key, animate) {
+    const m = METRICS[key], v = hist[key][hist[key].length - 1];
+    current = key;
+    segs.forEach(b => b.setAttribute('aria-pressed', b.dataset.metric === key ? 'true' : 'false'));
+    $('#pop-title').textContent = key.toUpperCase();
+    $('#pop-kind').textContent = m.kind;
+    $('#pop-detail').textContent = m.detail(v);
+    drawRows(key);
+    drawTrace(key);
+    if (animate && !reduce) tween(mval, shown, v, m.fmt, 420);
+    else { mval.textContent = m.fmt(v); $('#pop-value').textContent = m.fmt(v); }
+    shown = v;
+    if (labState) labState.textContent = key.toUpperCase() + ' · ' + m.fmt(v);
+  }
+
+  segs.forEach(btn => btn.addEventListener('click', e => { e.stopPropagation(); renderMetric(btn.dataset.metric, true); }));
+
+  function tickMetric() {
+    const m = METRICS[current], arr = hist[current];
+    const v = clamp(arr[arr.length - 1] + (Math.random() * 2 - 1) * m.step, m.lo, m.hi);
+    arr.push(v); arr.shift();
+    shown = v;
+    drawTrace(current);
+    mval.textContent = m.fmt(v);
+    $('#pop-value').textContent = m.fmt(v);
+    $('#pop-detail').textContent = m.detail(v);
+    if (labState) labState.textContent = current.toUpperCase() + ' · ' + m.fmt(v);
+  }
+  renderMetric('cpu', false);
+  if (!reduce) setInterval(tickMetric, 950);
+/* ---------------- simulateur : panneau, bascule de barre ---------------- */
+  const sbar = $('#sbar');
+  const modSlot = $('#module-slot');
+  const popMove = $('#pop-move');
+
+  function setBarTarget(low) {
+    if (low) {
+      sbar.insertBefore(mod, $('#sbar-chips'));
+      mod.classList.add('low');
+      if (popMove) popMove.textContent = 'Remonter ↑';
+    } else {
+      modSlot.parentNode.insertBefore(mod, modSlot.nextSibling);
+      mod.classList.remove('low');
+      if (popMove) popMove.textContent = 'Descendre ↓';
+    }
+  }
+  if (popMove) popMove.addEventListener('click', () => setBarTarget(!mod.classList.contains('low')));
+
+  if (!('ontouchstart' in window)) {
+    mod.addEventListener('mouseenter', () => mod.classList.add('pin'));
+    mod.addEventListener('mouseleave', () => mod.classList.remove('pin'));
+  }
+  mod.addEventListener('click', e => {
+    if (!e.target.closest('.pop') && !e.target.closest('.mseg')) mod.classList.toggle('pin');
+  });
+  document.addEventListener('click', e => { if (!mod.contains(e.target)) mod.classList.remove('pin'); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') mod.classList.remove('pin'); });
+  $$('[data-goto]').forEach(btn => btn.addEventListener('click', () => {
+    const target = $(btn.dataset.goto);
+    mod.classList.remove('pin');
+    if (target) target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+  }));
+
+  /* ---------------- seconde barre : icônes tierces ---------------- */
+  const mbChips = $('#mb-chips');
+  const sbarChips = $('#sbar-chips');
+  const APPS = [
+    { id: 'vscode', name: 'VS Code', icon: 'assets/app-icons/vscode.png' },
+    { id: 'chrome', name: 'Chrome', icon: 'assets/app-icons/chrome.png' },
+    { id: 'whatsapp', name: 'WhatsApp', icon: 'assets/app-icons/whatsapp.png' },
+    { id: 'monocode', name: 'MonoCode', glyph: '◍' }
+  ];
+  if (mbChips) {
+    mbChips.innerHTML = APPS.map(a => '<div class="chip" draggable="true" data-id="' + a.id + '" title="' + a.name + '">' +
+      (a.icon ? '<img src="' + a.icon + '" alt="' + a.name + '">' : '<span class="glyph">' + a.glyph + '</span>') + '</div>').join('');
+    /* une icône est déjà descendue dans la seconde barre, comme dans la capture réelle */
+    const pre = mbChips.querySelector('[data-id="monocode"]');
+    if (pre && sbarChips) sbarChips.appendChild(pre);
+  }
+  const zones = [mbChips, sbarChips].filter(Boolean);
+  let dragging = false;
+
+  function chipFrom(id) {
+    for (let i = 0; i < zones.length; i++) {
+      const c = zones[i].querySelector('[data-id="' + id + '"]');
+      if (c) return c;
+    }
+    return null;
+  }
+  zones.forEach(zone => {
+    zone.addEventListener('dragover', e => { e.preventDefault(); if (zone === sbarChips) sbar.classList.add('over'); });
+    zone.addEventListener('dragleave', () => sbar.classList.remove('over'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      sbar.classList.remove('over');
+      const chip = chipFrom(e.dataTransfer.getData('text/plain'));
+      if (!chip) return;
+      const over = e.target.closest ? e.target.closest('.chip') : null;
+      if (over && over !== chip && over.parentNode === zone) {
+        const r = over.getBoundingClientRect();
+        zone.insertBefore(chip, e.clientX > r.left + r.width / 2 ? over.nextSibling : over);
+      } else {
+        zone.appendChild(chip);
+      }
+    });
+  });
+  document.addEventListener('dragstart', e => {
+    const chip = e.target.closest && e.target.closest('.chip');
+    if (!chip) return;
+    dragging = true;
+    chip.classList.add('dragging');
+    e.dataTransfer.setData('text/plain', chip.dataset.id);
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  document.addEventListener('dragend', e => {
+    const chip = e.target.closest && e.target.closest('.chip');
+    if (chip) chip.classList.remove('dragging');
+    sbar.classList.remove('over');
+    setTimeout(() => { dragging = false; }, 150);
+  });
+  document.addEventListener('click', e => {
+    const chip = e.target.closest && e.target.closest('.chip');
+    if (!chip || dragging || zones.length < 2) return;
+    const to = chip.parentNode === zones[0] ? zones[1] : zones[0];
+    if (to) to.appendChild(chip);
+  });
+  /* ---------------- audit des processus (démonstration locale) ---------------- */
+  const AUDIT = [
+    { n: 'Google Chrome', p: 'com.google.Chrome · /Applications/Google Chrome.app', u: '4,9 % GPU', t: 'ok', tl: 'Sûr', m: 'Navigateur signé, identifiant connu.', r: 'Comportement normal : rien à faire.' },
+    { n: 'Notification Center', p: 'com.apple.notificationcenterui · /System/Library/CoreServices', u: '3,6 % GPU', t: 'ok', tl: 'Sûr', m: 'Processus système Apple.', r: 'Pic ponctuel lors de l’affichage d’alertes.' },
+    { n: 'com', p: 'signature absente · ~/Library/Application Support/com', u: '2,8 % GPU', t: 'warn', tl: 'À vérifier', m: 'Nom générique, aucun bundle identifier, chemin utilisateur.', r: 'Confirmez l’origine ; sinon surveillez-le puis arrêtez-le.' },
+    { n: 'CleanShot X', p: 'pl.maketheweb.cleanshotx · /Applications/CleanShot X.app', u: '1,9 % GPU', t: 'ok', tl: 'Sûr', m: 'Outil de capture signé.', r: 'Consommation liée à un enregistrement en cours.' },
+    { n: 'AVG AntiVirus', p: 'com.avg.Antivirus · /Applications/AVG AntiVirus.app', u: '1,4 % GPU', t: 'warn', tl: 'À vérifier', m: 'Antivirus tiers, surveillance permanente.', r: 'Légitime mais gourmand : à garder seulement si vous l’utilisez.' },
+    { n: 'kernel_task', p: 'com.apple.kernel · /System/Library/Kernels', u: '0,8 % CPU', t: 'bad', tl: 'Ne pas arrêter', m: 'Processus noyau protégé.', r: 'Il gère notamment la dissipation thermique : ne l’arrêtez jamais.' }
+  ];
+  const rowsEl = $('#audit-rows');
+  const auditCard = $('#audit-card');
+  const auditState = $('#audit-state');
+  const auditProg = $('#audit-prog');
+  const auditRun = $('#audit-run');
+
+  if (rowsEl) {
+    rowsEl.innerHTML = AUDIT.map(r =>
+      '<tr><td><span class="pname">' + r.n + '</span><span class="pmeta">' + r.p + '</span></td>' +
+      '<td>' + r.u + '</td><td><span class="tag ' + r.t + '">' + r.tl + '</span></td>' +
+      '<td>' + r.m + '<span class="pmeta">→ ' + r.r + '</span></td></tr>').join('');
+  }
+
+  if (auditRun) {
+    auditRun.addEventListener('click', () => {
+      if (auditCard.classList.contains('busy')) return;
+      const rows = $$('tr', rowsEl);
+      rows.forEach(tr => { tr.classList.remove('in'); tr.classList.add('hid'); });
+      auditCard.classList.remove('done');
+      auditCard.classList.add('busy');
+      auditState.textContent = 'Analyse en cours…';
+      auditRun.textContent = 'Analyse en cours';
+      auditProg.style.width = '0%';
+      requestAnimationFrame(() => { auditProg.style.width = '100%'; });
+      rows.forEach((tr, i) => setTimeout(() => {
+        tr.classList.remove('hid');
+        tr.classList.add('in');
+      }, reduce ? 0 : 200 + i * 180));
+      setTimeout(() => {
+        auditCard.classList.remove('busy');
+        auditCard.classList.add('done');
+        auditState.textContent = 'Analyse terminée · ' + rows.length + ' processus examinés';
+        auditRun.textContent = 'Relancer l’analyse';
+      }, reduce ? 60 : 200 + rows.length * 180 + 220);
+    });
+  }
+
+  /* ---------------- copie des commandes ---------------- */
+  $$('.copy').forEach(btn => btn.addEventListener('click', () => {
+    const text = btn.dataset.copy || '';
+    const done = () => {
+      const label = btn.textContent;
+      btn.textContent = 'Copié';
+      setTimeout(() => { btn.textContent = label; }, 1400);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, done);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); } catch (e) {}
+      document.body.removeChild(ta);
+      done();
+    }
+  }));
+
+  /* ---------------- dernière release GitHub ---------------- */
+  fetch('https://api.github.com/repos/mondary/PKmonitor/releases/latest')
+    .then(r => r.ok ? r.json() : Promise.reject(new Error('release')))
+    .then(release => {
+      const dmg = (release.assets || []).find(a => /^PKMonitor-.+\.dmg$/i.test(a.name));
+      if (dmg) {
+        $$('.download-link').forEach(l => { l.href = dmg.browser_download_url; });
+        const cmd = 'curl -L -o PKMonitor.dmg ' + dmg.browser_download_url;
+        const code = $('#curl-command'), copy = $('#curl-copy');
+        if (code) code.textContent = cmd;
+        if (copy) copy.dataset.copy = cmd;
+      }
+      const v = (release.tag_name || '').replace(/^v/, '');
+      if (v) {
+        ['#ver-badge', '#ver-inline', '#ver-cta'].forEach(sel => {
+          const el = $(sel);
+          if (el) el.textContent = v;
+        });
+        const fine = $('#version-fine');
+        if (fine) fine.innerHTML = 'Version <b>' + v + '</b> · dernière release GitHub';
+      }
+    })
+    .catch(() => {});
+})();
+</script>
+</body>
+</html>

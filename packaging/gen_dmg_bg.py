@@ -246,13 +246,7 @@ def build_frames():
 
 if __name__ == "__main__":
     frames = build_frames()
-    frames[0].save(
-        "/tmp/pkmonitor/dmg-background-v3.gif",
-        save_all=True, append_images=frames[1:],
-        duration=DUR, loop=0, optimize=True,
-    )
+    frames[48].convert("RGB").save(
+        "/tmp/pkmonitor/dmg-background-hero.png", dpi=(144, 144), optimize=True)
     import os
-    print("GIF", os.path.getsize("/tmp/pkmonitor/dmg-background-v3.gif") // 1024, "KB,", len(frames), "frames")
-    # previews for probing
-    for probe in (0, 16, 30, 38, 48):
-        frames[probe].convert("RGB").save(f"/tmp/pkmonitor/v3-frame-{probe}.png")
+    print("hero PNG", os.path.getsize("/tmp/pkmonitor/dmg-background-hero.png") // 1024, "KB")

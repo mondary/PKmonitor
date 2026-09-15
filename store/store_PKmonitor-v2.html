@@ -1,0 +1,1033 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="PKMonitor — CPU, GPU, RAM, réseau et disque dans la barre des menus macOS. La sparkline nomme l’app qui fait chauffer votre Mac. Gratuit, open source, 100 % local.">
+  <meta name="theme-color" content="#08090b">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="PKMonitor — Voyez ce qui compte. Sur une ligne.">
+  <meta property="og:description" content="Le moniteur système macOS discret : sparkline temps réel, jauges réglables, seconde barre façon Bartender, panneau au survol. Gratuit, open source, aucune télémétrie.">
+  <meta property="og:image" content="assets/screenshots/cleanshot-2026-09-14-window.png">
+  <title>PKMonitor — Voyez ce qui compte. Sur une ligne.</title>
+  <link rel="icon" href="../icon.png">
+  <link rel="apple-touch-icon" href="../icon.png">
+  <style>
+    :root{
+      color-scheme:dark;
+      --bg:#08090b; --bg2:#0b0d10; --panel:#101216; --panel2:#15171c;
+      --line:rgba(255,255,255,.09); --line2:rgba(255,255,255,.18);
+      --ink:#f2f4f2; --muted:#9aa0a6; --dim:#6b7177;
+      --lime:#b9ff31; --lime2:#86c200; --blue:#2f7bff; --red:#ff5f57; --gold:#ffb526; --violet:#9b5cff;
+      --radius:18px; --max:1160px;
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:var(--bg);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased;
+      font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif;letter-spacing:-.011em}
+    a{color:inherit;text-decoration:none}
+    img,video{display:block;max-width:100%}
+    button{font:inherit}
+    ::selection{background:var(--lime);color:#101500}
+    :focus-visible{outline:2px solid var(--lime);outline-offset:3px;border-radius:6px}
+    .container{width:min(calc(100% - 40px),var(--max));margin:auto}
+    .skip{position:absolute;left:-9999px;top:0;background:var(--lime);color:#101500;padding:10px 14px;border-radius:0 0 10px 0;font-weight:700;z-index:100}
+    .skip:focus{left:0}
+
+    /* ---------- nav ---------- */
+    .nav-wrap{position:fixed;z-index:60;top:14px;left:0;right:0}
+    .nav{height:60px;display:flex;align-items:center;gap:14px;padding:0 14px;border:1px solid var(--line);
+      border-radius:16px;background:rgba(9,10,13,.7);backdrop-filter:blur(22px) saturate(1.4);-webkit-backdrop-filter:blur(22px) saturate(1.4)}
+    .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15.5px;letter-spacing:-.02em}
+    .brand img{width:28px;height:28px;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+    .brand i{font:600 10px ui-monospace,SFMono-Regular,Menlo,monospace;font-style:normal;color:var(--dim);
+      border:1px solid var(--line);border-radius:99px;padding:3px 7px;white-space:nowrap}
+    .navlinks{display:flex;align-items:center;gap:2px;margin-left:auto}
+    .navlinks a{font-size:13px;color:var(--muted);padding:8px 11px;border-radius:9px;transition:color .18s,background .18s}
+    .navlinks a:hover{color:var(--ink);background:rgba(255,255,255,.06)}
+    .nav-cta{display:inline-flex;align-items:center;gap:8px;padding:9px 15px;border-radius:10px;background:var(--lime);
+      color:#12180a;font-weight:700;font-size:13.5px;box-shadow:0 6px 22px rgba(185,255,49,.16);transition:transform .2s,filter .2s;white-space:nowrap}
+    .nav-cta:hover{transform:translateY(-1px);filter:brightness(1.06)}
+
+    /* ---------- boutons ---------- */
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;border-radius:13px;font-weight:650;font-size:15px;
+      padding:15px 22px;transition:transform .2s,background .2s,border-color .2s;border:1px solid transparent;cursor:pointer}
+    .btn:hover{transform:translateY(-2px)}
+    .btn-primary{background:var(--lime);color:#12180a;box-shadow:0 16px 36px -12px rgba(185,255,49,.5)}
+    .btn-ghost{border-color:var(--line2);color:var(--ink);background:rgba(255,255,255,.03)}
+    .btn-ghost:hover{background:rgba(255,255,255,.07)}
+    .fine{font-size:12.5px;color:var(--dim)}
+
+    /* ---------- hero ---------- */
+    .hero{position:relative;padding:130px 0 0;isolation:isolate;overflow:hidden}
+    .hero:before{content:"";position:absolute;z-index:-2;inset:-150px 0 auto;height:780px;
+      background:radial-gradient(760px 400px at 76% 6%,rgba(47,123,255,.24),transparent 62%),
+                 radial-gradient(600px 340px at 10% 24%,rgba(185,255,49,.13),transparent 66%),
+                 radial-gradient(900px 460px at 50% 122%,rgba(155,92,255,.10),transparent 70%)}
+    .hero:after{content:"";position:absolute;z-index:-1;inset:0;pointer-events:none;
+      background-image:linear-gradient(rgba(255,255,255,.028) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.028) 1px,transparent 1px);
+      background-size:56px 56px;-webkit-mask-image:radial-gradient(720px 520px at 60% 10%,#000,transparent 78%);
+      mask-image:radial-gradient(720px 520px at 60% 10%,#000,transparent 78%)}
+    .hero-grid{display:grid;grid-template-columns:1.12fr .88fr;gap:54px;align-items:start}
+    .eyebrow{display:inline-flex;align-items:center;gap:9px;border:1px solid var(--line);background:rgba(255,255,255,.03);
+      border-radius:999px;padding:7px 14px;font:600 11px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.12em;
+      text-transform:uppercase;color:var(--muted)}
+    .eyebrow i{width:6px;height:6px;border-radius:50%;background:var(--lime);box-shadow:0 0 10px var(--lime);flex:none}
+    .eyebrow b{color:var(--lime);font-weight:700}
+    h1{margin:24px 0 0;font-size:clamp(44px,5.6vw,76px);line-height:1;letter-spacing:-.05em;font-weight:720;max-width:15ch}
+    h1 em{font-style:normal;display:block;background:linear-gradient(94deg,var(--lime) 8%,var(--lime) 52%,#6f9f39 98%);
+      -webkit-background-clip:text;background-clip:text;color:transparent}
+    .lede{margin:22px 0 0;max-width:56ch;font-size:17.5px;line-height:1.62;color:#b3b8bd}
+    .lede b{color:var(--ink);font-weight:640}
+    .hero-actions{display:flex;gap:11px;flex-wrap:wrap;margin:32px 0 14px}
+    .trust{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:24px;padding-top:22px;border-top:1px solid var(--line)}
+    .trust span{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+    .trust svg{flex:none;color:var(--lime)}
+
+    /* ---------- carte produit (façon store) ---------- */
+    .card-product{border:1px solid var(--line2);border-radius:22px;background:linear-gradient(180deg,#12151a,#0b0d11);
+      box-shadow:0 40px 90px -34px #000,0 2px 0 rgba(255,255,255,.04) inset;padding:24px;position:sticky;top:96px}
+    .cp-head{display:flex;gap:16px;align-items:center}
+    .cp-head img{width:76px;height:76px;border-radius:19px;box-shadow:0 14px 30px -12px rgba(0,0,0,.9)}
+    .cp-head h2{margin:0;font-size:22px;letter-spacing:-.03em}
+    .cp-head p{margin:4px 0 0;font-size:13.5px;color:var(--muted)}
+    .cp-head .cp-dev{font-size:12.5px;color:var(--dim);margin-top:2px}
+    .cp-badges{display:flex;flex-wrap:wrap;gap:7px;margin:18px 0 0}
+    .pill{font:600 10.5px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.06em;text-transform:uppercase;
+      color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:6px 10px;background:rgba(255,255,255,.02)}
+    .pill.lime{color:var(--lime);border-color:rgba(185,255,49,.3);background:rgba(185,255,49,.07)}
+    .cp-rows{margin:20px 0 0;border-top:1px solid var(--line)}
+    .cp-rows div{display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+    .cp-rows dt{color:var(--dim)}
+    .cp-rows dd{margin:0;color:var(--ink);font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+    .cp-cta{display:flex;align-items:center;gap:12px;margin-top:20px}
+    .cp-cta .btn{flex:1}
+    .cp-get{width:100%;background:var(--blue);color:#fff;box-shadow:0 16px 36px -14px rgba(47,123,255,.8)}
+    .cp-note{margin:14px 0 0;font-size:12px;color:var(--dim);text-align:center}
+/* ---------- maquette barre des menus ---------- */
+    .stage{position:relative;margin:70px 0 0;padding:26px 0 0}
+    .stage-note{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:baseline;margin-bottom:14px}
+    .stage-note span{font:600 10.5px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+    .stage-note em{font-style:normal;font-size:13px;color:var(--muted)}
+    .desktop{position:relative;border:1px solid var(--line);border-radius:20px;min-height:436px;padding:0 0 84px;
+      background:radial-gradient(1000px 300px at 82% 0,rgba(47,123,255,.20),transparent 70%),linear-gradient(180deg,#0d1016,#080a0d);
+      overflow:hidden}
+    .legend{position:absolute;z-index:2;top:104px;right:22px;width:min(262px,38%);display:grid;gap:10px;
+      font-size:12.5px;color:var(--muted);line-height:1.45}
+    .legend div{display:flex;gap:10px}
+    .legend b{flex:none;width:20px;height:20px;border-radius:6px;display:grid;place-items:center;
+      font:700 10px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--lime);border:1px solid rgba(185,255,49,.28);background:rgba(185,255,49,.07)}
+    .legend span b{display:inline;width:auto;height:auto;border:0;background:none;color:var(--ink);font:600 12.5px inherit}
+    .desktop .wall{position:absolute;inset:0;background:
+      radial-gradient(420px 200px at 88% 12%,rgba(86,213,230,.10),transparent 70%),
+      radial-gradient(520px 240px at 4% 88%,rgba(185,255,49,.07),transparent 72%)}
+    .menubar{position:relative;z-index:3;height:34px;display:flex;align-items:center;gap:14px;padding:0 14px;font-size:12.5px;color:#dfe3e8;
+      background:rgba(20,22,26,.72);border-bottom:1px solid rgba(255,255,255,.07);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+      font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden}
+    .menubar .apple{font-size:15px;margin-right:2px}
+    .menubar .mb-app{font-weight:700}
+    .menubar .spacer{flex:1}
+    .menubar .mb-item{display:inline-flex;align-items:center;gap:6px;color:#cfd4da}
+    .menubar svg{display:block;flex:none}
+    .pk-strip{display:inline-flex;align-items:center;gap:9px;padding:4px 9px;border-radius:8px;background:rgba(255,255,255,.05)}
+    .spark{position:relative;width:104px;height:20px;flex:none}
+    .spark svg{width:104px;height:20px}
+    .spark .hit{position:absolute;top:-1px;left:10px;width:20px;height:20px;border-radius:6px;background:#fff;padding:3px;
+      box-shadow:0 3px 10px rgba(0,0,0,.6);opacity:0;transform:scale(.6);transition:opacity .35s,transform .35s cubic-bezier(.16,1,.3,1)}
+    .spark .hit.on{opacity:1;transform:scale(1)}
+    .spark .hit img{width:100%;height:100%;object-fit:contain;display:block}
+    .gauge{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#c4c9cf}
+    .gauge .track{width:34px;height:5px;border-radius:99px;background:rgba(255,255,255,.14);overflow:hidden}
+    .gauge .track i{display:block;height:100%;width:0;background:var(--lime);transition:width .8s cubic-bezier(.16,1,.3,1)}
+    .gauge .track i.warn{background:var(--red)}
+    .disk{display:inline-flex;flex-direction:column;line-height:1.25;font-size:11px;font-weight:600}
+    .disk b{color:var(--red);font-weight:700}
+    .disk s{color:#5aa9ff;text-decoration:none}
+    .toggles{display:inline-flex;gap:4px}
+    .toggles i{width:9px;height:9px;border-radius:3px;background:rgba(255,255,255,.22)}
+    .toggles i.on{background:var(--lime);box-shadow:0 0 8px rgba(185,255,49,.7)}
+    .second-bar{position:relative;z-index:2;margin:-6px 0 0;display:flex;align-items:center;gap:10px;padding:7px 12px;font-size:12px;color:#d6dbe0;
+      border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(16,18,22,.86);width:max-content;max-width:100%;
+      box-shadow:0 18px 40px -18px #000;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+    .second-bar .sb-icons{display:flex;gap:7px;align-items:center}
+    .second-bar .sb-icons img{width:16px;height:16px;border-radius:4px}
+    .second-bar .sb-label{font:600 10px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+    .desktop-tag{position:absolute;left:16px;bottom:16px;font:600 10.5px ui-monospace,SFMono-Regular,Menlo,monospace;
+      letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.28)}
+/* ---------- panneau de survol (maquette) ---------- */
+    .panel{position:absolute;z-index:6;top:106px;left:14px;width:min(430px,calc(100% - 28px));padding:18px 18px 10px;
+      border:1px solid rgba(255,255,255,.13);border-radius:19px;background:rgba(17,19,23,.93);
+      box-shadow:0 46px 90px -34px #000;backdrop-filter:blur(26px);-webkit-backdrop-filter:blur(26px);
+      opacity:0;transform:translateY(-10px) scale(.98);transition:opacity .34s,transform .4s cubic-bezier(.16,1,.3,1);pointer-events:none}
+    .panel.open{opacity:1;transform:none;pointer-events:auto}
+    .panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.09)}
+    .panel-head h3{margin:0;font-size:17px;letter-spacing:-.02em}
+    .panel-head p{margin:2px 0 0;font-size:11.5px;color:var(--dim)}
+    .panel-head .big{font-size:24px;font-weight:700;letter-spacing:-.03em;color:var(--lime)}
+    .panel-head .big.warn{color:var(--red)}
+    .panel-rows{list-style:none;margin:8px 0 0;padding:0}
+    .panel-rows li{display:grid;grid-template-columns:22px 1fr auto auto;align-items:center;gap:11px;padding:9px 0;font-size:13.5px}
+    .panel-rows img{width:22px;height:22px;border-radius:6px;object-fit:contain}
+    .panel-rows .who{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .panel-rows .val{font-variant-numeric:tabular-nums;color:#cfd4da;font-weight:600}
+    .panel-foot{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:11px 0 6px;margin-top:6px;border-top:1px solid rgba(255,255,255,.09);
+      font-size:12px;color:var(--muted)}
+    .panel-foot b{font-weight:600;color:#dfe3e8;display:inline-flex;align-items:center;gap:6px}
+    .panel-foot svg{color:var(--dim)}
+    .kill{width:15px;height:15px;border-radius:50%;border:1.4px solid rgba(255,95,87,.85);position:relative;flex:none}
+    .kill::before,.kill::after{content:"";position:absolute;inset:3px 1px;border-top:1.4px solid rgba(255,95,87,.85)}
+    .kill::before{transform:rotate(45deg)}.kill::after{transform:rotate(-45deg)}
+    .reveal{position:absolute;inset:0 0 auto;height:34px;z-index:5;cursor:pointer;background:transparent;border:0}
+
+    /* ---------- sections ---------- */
+    section.band{padding:104px 0;border-top:1px solid rgba(255,255,255,.07)}
+    .kicker{display:inline-block;font:700 11px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--lime)}
+    .kicker.blue{color:#6fa8ff}
+    h2{margin:14px 0 14px;font-size:clamp(30px,4vw,46px);line-height:1.05;letter-spacing:-.045em;font-weight:720;max-width:24ch}
+    h2 span{color:var(--lime)}
+    p.desc{margin:0;color:var(--muted);font-size:16px;line-height:1.65;max-width:64ch}
+    .head-row{display:flex;justify-content:space-between;align-items:flex-end;gap:30px;flex-wrap:wrap}
+
+    /* ---------- 3 étapes ---------- */
+    .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:44px}
+    .step{border:1px solid var(--line);border-radius:var(--radius);padding:24px;background:linear-gradient(180deg,#0f1115,#0a0c0f);transition:border-color .2s,transform .2s}
+    .step:hover{border-color:var(--line2);transform:translateY(-3px)}
+    .step .num{font:700 11px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em;color:var(--dim)}
+    .step h3{margin:14px 0 8px;font-size:19px;letter-spacing:-.025em}
+    .step p{margin:0;font-size:14.5px;color:var(--muted);line-height:1.6}
+    .step .ico{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;border:1px solid var(--line);
+      background:rgba(185,255,49,.07);color:var(--lime)}
+    .step.blue .ico{background:rgba(47,123,255,.12);color:#7fb0ff}
+    /* ---------- captures ---------- */
+    .shots{display:grid;grid-template-columns:1fr;gap:16px;margin-top:44px}
+    .shot{position:relative;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--panel);cursor:zoom-in}
+    .shot img{width:100%;height:auto;display:block;transition:transform .5s cubic-bezier(.16,1,.3,1)}
+    .shot-wide img{aspect-ratio:20/6;object-fit:cover;object-position:50% 0}
+    .shot:hover img{transform:scale(1.025)}
+    .shot figcaption{position:absolute;inset:auto 0 0;padding:34px 16px 14px;font-size:13px;color:#d7dadf;
+      background:linear-gradient(to top,rgba(6,7,9,.92),rgba(6,7,9,.55) 55%,transparent)}
+    .shot figcaption b{display:block;font-size:14px;color:#fff;margin-bottom:3px;font-weight:650}
+    .shot .zoom{position:absolute;top:12px;right:12px;width:28px;height:28px;border-radius:8px;display:grid;place-items:center;
+      background:rgba(10,11,14,.72);border:1px solid var(--line);color:#e6e9ec;font-size:14px;backdrop-filter:blur(8px)}
+    .shot-video{grid-column:1/-1;cursor:default}
+    .shot-video video{width:100%;aspect-ratio:16/9;object-fit:cover;background:#0a0b0d}
+    .play{position:absolute;inset:0;display:grid;place-items:center;border:0;cursor:pointer;background:rgba(6,7,9,.35)}
+    .play span{width:66px;height:66px;border-radius:50%;display:grid;place-items:center;background:rgba(185,255,49,.94);color:#12180a;
+      box-shadow:0 20px 44px -14px rgba(185,255,49,.8);transition:transform .25s}
+    .play:hover span{transform:scale(1.07)}
+    .play[hidden]{display:none}
+    dialog.lightbox{width:min(1240px,94vw);padding:0;border:1px solid var(--line2);border-radius:18px;background:#0a0b0e;color:var(--ink);overflow:hidden}
+    dialog.lightbox::backdrop{background:rgba(3,4,5,.86);backdrop-filter:blur(6px)}
+    dialog.lightbox img{width:100%;height:auto}
+    dialog.lightbox .lb-bar{display:flex;align-items:center;gap:12px;padding:13px 16px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}
+    dialog.lightbox .lb-bar b{color:var(--ink);font-weight:620}
+    dialog.lightbox .lb-close{margin-left:auto;padding:7px 12px;border:1px solid var(--line2);border-radius:9px;background:transparent;color:var(--ink);cursor:pointer}
+
+    /* ---------- bento fonctionnalités ---------- */
+    .bento{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:44px}
+    .cell{border:1px solid var(--line);border-radius:var(--radius);padding:24px;background:linear-gradient(180deg,#0f1115,#0a0c0f);
+      transition:border-color .2s,transform .2s}
+    .cell:hover{border-color:var(--line2);transform:translateY(-3px)}
+    .cell.wide{grid-column:span 2}
+    .cell .ico{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--lime)}
+    .cell h3{margin:16px 0 8px;font-size:18px;letter-spacing:-.025em}
+    .cell p{margin:0;font-size:14.5px;color:var(--muted);line-height:1.62}
+    .cell ul{list-style:none;margin:12px 0 0;padding:0;font-size:13.5px;color:#c3c8cd}
+    .cell ul li{padding:5px 0 5px 15px;position:relative}
+    .cell ul li::before{content:"";position:absolute;left:0;top:12px;width:5px;height:5px;border-radius:50%;background:var(--lime)}
+    .cell .tag{position:absolute;top:20px;right:20px}
+
+    /* ---------- liste réglages ---------- */
+    .split{display:grid;grid-template-columns:1fr 1fr;gap:46px;align-items:start;margin-top:44px}
+    .kv{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+    .kv li{display:flex;gap:16px;padding:16px 0;border-bottom:1px solid var(--line)}
+    .kv b{min-width:186px;font-size:14px;font-weight:640}
+    .kv span{font-size:14px;color:var(--muted);line-height:1.55}
+    .note{border:1px solid var(--line);border-left:2px solid var(--lime);border-radius:12px;padding:16px 18px;background:rgba(255,255,255,.02);margin-top:26px}
+    .note p{margin:0;font-size:13.5px;color:var(--muted);line-height:1.6}
+
+    /* ---------- stats ---------- */
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:44px}
+    .stat{border:1px solid var(--line);border-radius:var(--radius);padding:22px;background:rgba(255,255,255,.02)}
+    .stat b{display:block;font-size:clamp(26px,3.4vw,38px);letter-spacing:-.04em;line-height:1;color:var(--lime);font-variant-numeric:tabular-nums}
+    .stat span{display:block;margin-top:9px;font-size:13px;color:var(--muted)}
+    .cell{position:relative}
+    .shot-video figcaption{position:static;background:none;border-top:1px solid var(--line);padding:14px 16px}
+    .shot-video .zoom{display:none}
+
+    /* ---------- installation ---------- */
+    .install{position:relative;border-top:1px solid rgba(255,255,255,.07);padding:104px 0 96px;text-align:center;overflow:hidden}
+    .install:before{content:"";position:absolute;inset:-200px 0 auto;height:560px;pointer-events:none;
+      background:radial-gradient(560px 300px at 50% 55%,rgba(185,255,49,.10),transparent 70%)}
+    .install h2{margin-inline:auto;max-width:22ch}
+    .install p.sub{margin:0 auto;color:var(--muted);max-width:56ch}
+    .install .hero-actions{justify-content:center}
+    .opts{width:min(700px,100%);margin:36px auto 0;display:grid;gap:10px;text-align:left}
+    .opt{display:grid;grid-template-columns:72px minmax(0,1fr) auto;align-items:center;gap:14px;padding:13px 16px;border:1px solid var(--line);border-radius:13px;background:var(--panel)}
+    .opt label{color:var(--dim);font:700 10.5px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.1em;text-transform:uppercase}
+    .opt code{flex:1;min-width:0;overflow:auto;color:#dfe4e8;font:13px ui-monospace,SFMono-Regular,Menlo,monospace;white-space:nowrap;scrollbar-width:none}
+    .opt code::-webkit-scrollbar{height:0}
+    .copy{flex:none;padding:7px 11px;border:1px solid var(--line2);border-radius:9px;background:transparent;color:#c3c8cd;
+      font:11px ui-monospace,SFMono-Regular,Menlo,monospace;cursor:pointer;transition:.15s;white-space:nowrap}
+    .copy:hover{color:#fff;border-color:rgba(255,255,255,.36)}
+    .copy.done{color:var(--lime);border-color:rgba(185,255,49,.4)}
+    .req{margin:20px auto 0;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;font-size:12.5px;color:var(--dim)}
+
+    /* ---------- FAQ ---------- */
+    .faq{margin-top:36px;display:grid;gap:10px}
+    details{border:1px solid var(--line);border-radius:14px;background:var(--panel);overflow:hidden}
+    details[open]{border-color:var(--line2)}
+    summary{padding:17px 18px;font-weight:600;font-size:15px;cursor:pointer;display:flex;align-items:center;gap:12px;list-style:none}
+    summary::-webkit-details-marker{display:none}
+    summary::after{content:"+";margin-left:auto;color:var(--lime);font-weight:400;font-size:19px;line-height:1}
+    details[open] summary::after{content:"–"}
+    details p{margin:0;padding:0 18px 18px;color:var(--muted);font-size:14.5px;line-height:1.68;max-width:76ch}
+    details p code{font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace;background:rgba(255,255,255,.06);padding:2px 6px;border-radius:6px}
+
+    /* ---------- dernier CTA + footer ---------- */
+    .final{border-top:1px solid rgba(255,255,255,.07);padding:100px 0;text-align:center}
+    .final h2{margin:16px auto 14px;max-width:20ch}
+    .final p{margin:0 auto;color:var(--muted);max-width:50ch}
+    .final .hero-actions{justify-content:center}
+    footer{border-top:1px solid rgba(255,255,255,.07);padding:28px 0 44px;color:var(--dim);font-size:13px}
+    footer .container{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+    footer a{color:var(--muted)}
+    footer a:hover{color:var(--ink)}
+    .is-hidden{display:none!important}
+
+    @media(max-width:1040px){
+      .hero-grid{grid-template-columns:1fr;gap:40px}
+      .card-product{position:static}
+      .bento{grid-template-columns:repeat(2,1fr)}
+      .cell.wide{grid-column:span 2}
+      .legend{display:none}
+      .shots{grid-template-columns:1fr}
+      .split{grid-template-columns:1fr;gap:34px}
+      .stats{grid-template-columns:repeat(2,1fr)}
+    }
+    @media(max-width:1120px){
+      .menubar .gauge-lg{display:none}
+    }
+    @media(max-width:980px){
+      .menubar .gauge{display:none}
+    }
+    @media(max-width:860px){
+      .navlinks{display:none}
+      .steps{grid-template-columns:1fr}
+      .kv li{flex-direction:column;gap:6px}
+      .kv b{min-width:0}
+    }
+    @media(max-width:640px){
+      section.band{padding:78px 0}
+      .hero{padding-top:112px}
+      .bento{grid-template-columns:1fr}
+      .cell.wide{grid-column:span 1}
+      .stats{grid-template-columns:1fr}
+      .menubar{gap:8px;font-size:11px}
+      .menubar .mb-item.opt-hide{display:none}
+      .menubar .mb-app{display:none}
+      .menubar .gauge{display:none}
+      .panel{margin-left:0}
+      .container{width:calc(100% - 28px)}
+    }
+    @media(max-width:560px){
+      .menubar .toggles{display:none}
+      .opt{grid-template-columns:1fr auto}
+      .opt code{grid-column:1/-1}
+    }
+    @media(max-width:430px){
+      .menubar #mb-clock{display:none}
+      .spark,.spark svg{width:76px}
+    }
+    @media(prefers-reduced-motion:reduce){
+      *{animation:none!important}
+      html{scroll-behavior:auto}
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Aller au contenu</a>
+  <header class="nav-wrap">
+    <div class="container">
+      <nav class="nav" aria-label="Navigation principale">
+        <a class="brand" href="#top">
+          <img src="../icon.png" alt="Icône PKMonitor" width="28" height="28">
+          PKMonitor
+          <i id="nav-version">v2026.09.34</i>
+        </a>
+        <div class="navlinks">
+          <a href="#apercu">Aperçu</a>
+          <a href="#captures">Captures</a>
+          <a href="#fonctionnalites">Fonctionnalités</a>
+          <a href="#vie-privee">Confidentialité</a>
+          <a href="#install">Installer</a>
+          <a href="#faq">FAQ</a>
+          <a href="https://github.com/mondary/PKmonitor" target="_blank" rel="noreferrer">GitHub ↗</a>
+        </div>
+        <a class="nav-cta download-link" href="https://github.com/mondary/PKmonitor/releases/latest">↓ Télécharger</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- ============ HERO ============ -->
+    <section class="hero" id="top">
+      <div class="container">
+        <div class="hero-grid">
+          <div>
+            <span class="eyebrow"><i></i>Moniteur natif macOS · <b id="hero-version">v2026.09.34</b></span>
+            <h1>Voyez ce qui compte.<em>Sur une ligne.</em></h1>
+            <p class="lede">PKMonitor révèle <b>ce qui sollicite votre Mac</b>, sans interrompre votre travail. CPU, GPU, RAM, réseau et disque vivent dans votre barre des menus, sur une sparkline temps réel : <b>chaque pic porte l’icône de l’app qui l’a provoqué</b>. Un survol pour le détail, un clic pour arrêter le processus gourmand. <b>Gratuit, open source, 100 % local.</b></p>
+            <div class="hero-actions">
+              <a class="btn btn-primary download-link" href="https://github.com/mondary/PKmonitor/releases/latest">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                Télécharger pour macOS
+              </a>
+              <a class="btn btn-ghost" href="https://github.com/mondary/PKmonitor" target="_blank" rel="noreferrer">Voir le code source</a>
+            </div>
+            <p class="fine">macOS 13 Ventura ou plus récent · Intel &amp; Apple Silicon · <span id="hero-size">4,8 Mo</span> · licence MIT · aucun compte requis</p>
+            <div class="trust">
+              <span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>0 octet envoyé par défaut</span>
+              <span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Aucune télémétrie</span>
+              <span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Pas de compte, pas d’abonnement</span>
+            </div>
+          </div>
+<aside class="card-product" aria-label="Fiche de l’application">
+            <div class="cp-head">
+              <img src="../icon.png" alt="Icône de PKMonitor" width="76" height="76">
+              <div>
+                <h2>PKMonitor</h2>
+                <p>Moniteur système dans la barre des menus</p>
+                <p class="cp-dev">Par mondary · open source MIT</p>
+              </div>
+            </div>
+            <div class="cp-badges">
+              <span class="pill lime">Gratuit</span>
+              <span class="pill">Open source</span>
+              <span class="pill">100 % local</span>
+              <span class="pill">0 télémétrie</span>
+            </div>
+            <dl class="cp-rows">
+              <div><dt>Catégorie</dt><dd>Utilitaires</dd></div>
+              <div><dt>Version</dt><dd id="card-version">2026.09.34</dd></div>
+              <div><dt>Taille</dt><dd id="card-size">4,8 Mo</dd></div>
+              <div><dt>Compatibilité</dt><dd>macOS 13+</dd></div>
+              <div><dt>Architectures</dt><dd>Intel &amp; Apple Silicon</dd></div>
+              <div><dt>Langues</dt><dd>Français, English</dd></div>
+              <div><dt>Publication</dt><dd id="card-date">10 sept. 2026</dd></div>
+            </dl>
+            <div class="cp-cta">
+              <a class="btn cp-get download-link" href="https://github.com/mondary/PKmonitor/releases/latest">Obtenir — Gratuit</a>
+            </div>
+            <p class="cp-note">DMG direct depuis GitHub Releases · <a href="#install" style="text-decoration:underline">3 méthodes d’installation</a></p>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ APERÇU / MAQUETTE LIVE ============ -->
+    <section class="stage" id="apercu">
+      <div class="container">
+        <div class="stage-note">
+          <span>Aperçu live · maquette animée</span>
+          <em>Survolez la barre des menus : le panneau de détail s’ouvre.</em>
+        </div>
+        <div class="desktop" id="desktop">
+          <div class="wall" aria-hidden="true"></div>
+          <div class="menubar" role="group" aria-label="Maquette : barre des menus macOS avec le module PKMonitor (sparkline, jauges, espace disque) et la seconde barre">
+            <span class="apple" aria-hidden="true"></span>
+            <span class="mb-app">Finder</span>
+            <span class="mb-item opt-hide">Fichier</span>
+            <span class="mb-item opt-hide">Édition</span>
+            <span class="spacer"></span>
+            <span class="pk-strip" id="pk-strip" style="min-width:0;overflow:hidden">
+              <span class="mb-item" id="mb-metric">CPU</span>
+              <span class="spark" id="spark">
+                <svg viewBox="0 0 104 20" preserveAspectRatio="none" aria-hidden="true">
+                  <path d="M0 12 C4 12 6 6 10 6 C14 6 16 15 20 15 C24 15 26 9 30 9 C34 9 36 17 40 17 C44 17 46 4 50 4 C54 4 56 13 60 13 C64 13 66 8 70 8 C74 8 76 16 80 16 C84 16 86 7 90 7 C94 7 96 11 100 11 L104 11" id="spark-path" fill="none" stroke="#b9ff31" stroke-width="1.6" stroke-linecap="round"/>
+                </svg>
+                <span class="hit" id="hit-0"><img src="assets/app-icons/vscode.png" alt=""></span>
+                <span class="hit" id="hit-1"><img src="assets/app-icons/chrome.png" alt=""></span>
+                <span class="hit" id="hit-2"><img src="assets/app-icons/whatsapp.png" alt=""></span>
+              </span>
+              <span class="gauge">CPU <span class="track"><i data-g="cpu"></i></span><b data-val="cpu">34%</b></span>
+              <span class="gauge">GPU <span class="track"><i data-g="gpu"></i></span><b data-val="gpu">18%</b></span>
+              <span class="gauge gauge-lg">RAM <span class="track"><i data-g="ram"></i></span><b data-val="ram">62%</b></span>
+              <span class="gauge gauge-lg">NET <span class="track"><i data-g="net"></i></span><b data-val="net">8%</b></span>
+            </span>
+            <span class="disk" title="Total utilisé et espace libre"><b data-disk="total">494,3 Go</b><s data-disk="free">85,4 Go</s></span>
+            <span class="toggles" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i></span>
+            <span class="mb-item opt-hide"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 19.5a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2Zm0-6.4c1.6 0 3.1.6 4.2 1.6l-1.3 1.4a4.6 4.6 0 0 0-5.8 0l-1.3-1.4a6.3 6.3 0 0 1 4.2-1.6Zm0-4.3c2.7 0 5.2 1 7.1 2.7l-1.3 1.4A9.1 9.1 0 0 0 12 10.5c-2.2 0-4.2.8-5.8 2.2l-1.3-1.4A11 11 0 0 1 12 8.8Z"/></svg></span>
+            <span class="mb-item opt-hide"><svg width="22" height="12" viewBox="0 0 26 13" fill="none" aria-hidden="true"><rect x=".6" y=".6" width="21" height="11.8" rx="3.4" stroke="currentColor" stroke-opacity=".5"/><rect x="2.2" y="2.2" width="15" height="8.6" rx="2.2" fill="currentColor"/><path d="M23.4 4.4v4.2c1-.3 1.6-1 1.6-2.1s-.6-1.8-1.6-2.1Z" fill="currentColor" fill-opacity=".55"/></svg></span>
+            <span class="mb-item" id="mb-clock">Lun. 15 sept.</span>
+            <span class="mb-item" id="mb-time">09:24</span>
+          </div>
+          <div style="padding:16px 14px 0">
+            <div class="second-bar">
+              <span class="sb-label">Seconde barre</span>
+              <span class="sb-icons">
+                <img src="assets/app-icons/whatsapp.png" alt="WhatsApp descendue dans la seconde barre">
+                <img src="assets/app-icons/chrome.png" alt="Chrome descendu dans la seconde barre">
+                <img src="assets/app-icons/vscode.png" alt="VS Code descendu dans la seconde barre">
+              </span>
+              <span style="color:var(--dim)">clic transféré au menu d’origine</span>
+            </div>
+          </div>
+          <div class="legend" aria-hidden="true">
+            <div><b>1</b><span><b>Sparkline signée</b> — l’app dominante se pose sur chaque pic</span></div>
+            <div><b>2</b><span><b>Jauges CPU, GPU, RAM, réseau</b> — activables, réordonnables, colorables</span></div>
+            <div><b>3</b><span><b>Disque en deux lignes</b> — total en rouge, espace libre en bleu</span></div>
+            <div><b>4</b><span><b>Seconde barre</b> — vos icônes tierces rangées, clic inchangé</span></div>
+          </div>
+          <div class="panel" id="panel" aria-live="polite">
+            <div class="panel-head">
+              <div>
+                <h3 id="panel-title">GPU</h3>
+                <p id="panel-sub">Utilisation GPU · processus dominants</p>
+              </div>
+              <div class="big" id="panel-value">18%</div>
+            </div>
+            <ul class="panel-rows" id="panel-rows">
+              <li><img src="assets/app-icons/chrome.png" alt=""><span class="who">Google Chrome</span><span class="val">4,9%</span><span class="kill" aria-hidden="true"></span></li>
+              <li><img src="assets/app-icons/vscode.png" alt=""><span class="who">Visual Studio Code</span><span class="val">3,1%</span><span class="kill" aria-hidden="true"></span></li>
+              <li><img src="assets/app-icons/whatsapp.png" alt=""><span class="who">WhatsApp</span><span class="val">2,4%</span><span class="kill" aria-hidden="true"></span></li>
+              <li><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9aa0a6" stroke-width="1.7" aria-hidden="true"><path d="M18 8.5a6 6 0 1 0-12 0c0 5-2 6.5-2 6.5h16s-2-1.5-2-6.5"/><path d="M10.3 19a2 2 0 0 0 3.4 0"/></svg><span class="who">Notification Center</span><span class="val">1,8%</span><span class="kill" aria-hidden="true"></span></li>
+            </ul>
+            <div class="panel-foot">
+              <b><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2 2 2 0 1 1-4 0 1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 15a2 2 0 1 1 0-4 1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 4.1a2 2 0 1 1 4 0 1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 21 11a2 2 0 1 1 0 4Z"/></svg>Settings</b>
+              <b><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8Z"/><path d="M18.5 16.5l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7Z"/></svg>Audit</b>
+              <b><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><rect x="2.5" y="7" width="19" height="5" rx="1.6"/><path d="M6 15.5h12"/></svg>Second Bar</b>
+              <span style="margin-left:auto">PKMonitor · v2026.09.34</span>
+            </div>
+          </div>
+          <span class="desktop-tag">Maquette fidèle aux captures réelles de l’app</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ LE RÉCIT EN 3 TEMPS ============ -->
+    <section class="band" id="pourquoi">
+      <div class="container">
+        <span class="kicker">Pourquoi ça marche</span>
+        <h2>Voyez ce qui compte. Comprenez en un instant. <span>Analysez seulement s’il le faut.</span></h2>
+        <p class="desc">PKMonitor ne veut pas vous occuper : il veut répondre en une seconde à la seule question qui compte — <em>qu’est-ce qui travaille, là, maintenant&nbsp;?</em></p>
+        <div class="steps">
+          <article class="step">
+            <span class="ico" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14.5 6 9l3 6 3-9 3 11 3-7 3 4"/></svg></span>
+            <span class="num">01 · VOYEZ</span>
+            <h3>Le pic, et son auteur</h3>
+            <p>La sparkline vit dans la barre des menus, entre l’horloge et le Wi-Fi. Quand ça chauffe, l’icône de l’app responsable se pose sur le pic : plus besoin d’ouvrir un dashboard pour savoir qui consomme.</p>
+          </article>
+          <article class="step blue">
+            <span class="ico" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span>
+            <span class="num">02 · COMPRENEZ</span>
+            <h3>Le détail au survol</h3>
+            <p>Un survol ouvre le panneau : métrique en cours, top processus, pourcentages, bouton d’arrêt propre, accès direct aux réglages et à l’audit. Vous repartez au travail sans avoir rien lancé.</p>
+          </article>
+          <article class="step">
+            <span class="ico" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></span>
+            <span class="num">03 · ANALYSEZ</span>
+            <h3>L’IA à la demande</h3>
+            <p>Un clic sur Audit et votre propre endpoint compatible OpenAI rend son verdict : légitimité estimée de chaque processus, motifs des alertes, recommandations. Rien ne part avant votre clic.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+<!-- ============ CAPTURES RÉELLES ============ -->
+    <section class="band" id="captures">
+      <div class="container">
+        <div class="head-row">
+          <div>
+            <span class="kicker">Captures réelles</span>
+            <h2>Le Mac de développement, <span>sans retouche.</span></h2>
+            <p class="desc">Ce que PKMonitor affiche vraiment : la barre, la seconde barre, le panneau de détail. Cliquez sur une capture pour l’agrandir.</p>
+          </div>
+          <a class="btn btn-ghost download-link" href="https://github.com/mondary/PKmonitor/releases/latest">↓ Télécharger le DMG</a>
+        </div>
+        <div class="shots">
+          <figure class="shot shot-wide" data-full="assets/screenshots/cleanshot-2026-09-14-wide.png" data-caption="La barre des menus et la seconde barre, en situation">
+            <img src="assets/screenshots/cleanshot-2026-09-14-wide.png" alt="Barre des menus macOS contenant le module PKMonitor : sparkline, jauges CPU, GPU, RAM, espace disque et seconde barre d’icônes" loading="lazy">
+            <span class="zoom" aria-hidden="true">⤢</span>
+            <figcaption><b>La barre, en situation</b>Sparkline, jauges, espace disque total/libre et seconde barre : tout tient entre l’horloge et le Wi-Fi.</figcaption>
+          </figure>
+          <figure class="shot" data-full="assets/screenshots/cleanshot-2026-09-14-window.png" data-caption="Le panneau de détail au survol, métrique GPU">
+            <img src="assets/screenshots/cleanshot-2026-09-14-window.png" alt="Panneau de détail PKMonitor au survol : GPU à 6 % et la liste des processus dominants avec Google Chrome, Notification Center, CleanShot X, Control Center et AVG AntiVirus" loading="lazy">
+            <span class="zoom" aria-hidden="true">⤢</span>
+            <figcaption><b>Le panneau de détail</b>GPU · 6 % — processus dominants, part de chacun, flèche vers l’app et bouton d’arrêt.</figcaption>
+          </figure>
+          <figure class="shot shot-video">
+            <video id="demo-video" controls preload="none" playsinline poster="assets/videos/CleanShot%202026-09-14%20at%2021.46.55.cleanshotvideo/previews/preview.jpg">
+              <source src="assets/videos/pkmonitor-cleanshot-demo.mp4" type="video/mp4">
+              Votre navigateur ne prend pas en charge la lecture vidéo.
+            </video>
+            <button class="play" id="play-demo" type="button" aria-label="Lire la démonstration en vidéo"><span aria-hidden="true">▶</span></button>
+            <figcaption><b>La démonstration</b>La barre, le panneau, la seconde barre — capture d’écran réelle, sans montage.</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+<!-- ============ FONCTIONNALITÉS ============ -->
+    <section class="band" id="fonctionnalites">
+      <div class="container">
+        <span class="kicker blue">Fonctionnalités</span>
+        <h2>Cinq métriques. Deux barres. <span>Zéro fenêtre à ouvrir.</span></h2>
+        <p class="desc">Tout ce que fait PKMonitor, sans détour&nbsp;: ce qui se voit, ce qui se règle, ce qui reste privé.</p>
+        <div class="bento">
+          <article class="cell wide">
+            <span class="ico" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 14.5 6 9l3 6 3-9 3 11 3-7 3 4"/></svg></span>
+            <h3>Sparkline temps réel, signée</h3>
+            <p>Un tracé continu de l’activité de votre Mac, assez compact pour vivre dans la barre des menus. Chaque pic affiche l’icône de l’application dominante à cet instant.</p>
+            <ul>
+              <li>Échantillonnage rapide (200 ms) et rendu léger</li>
+              <li>Icône de l’app dominante posée sur le pic</li>
+              <li>Métrique active changée d’un clic sur un segment</li>
+            </ul>
+          </article>
+          <article class="cell">
+            <span class="ico" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h16M4 12h10M4 17h13"/></svg></span>
+            <h3>Jauges réordonnables</h3>
+            <p>CPU, GPU, RAM, réseau download/upload : activez, réordonnez, colorez. Couleur de base et couleur critique réglables pour chaque métrique.</p>
+          </article>
+          <article class="cell">
+            <span class="ico" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="7" rx="2"/><path d="M7 16.5h10"/></svg></span>
+            <h3>Seconde barre, façon Bartender</h3>
+            <p>Descendez n’importe quelle icône tierce : cases à cocher, ordre réglable, clic transféré au menu d’origine, restauration automatique à la sortie.</p>
+          </article>
+          <article class="cell">
+            <span class="ico" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 20V9m0 0 5-5m-5 5L7 4"/></svg></span>
+            <h3>Disque en deux lignes</h3>
+            <p>Total utilisé en rouge, espace libre/disponible en bleu, interlignage, position et taille réglables — l’état du disque sans ouvrir le Finder.</p>
+          </article>
+          <article class="cell">
+            <span class="ico" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8Z"/></svg></span>
+            <h3>Conseiller IA optionnel</h3>
+            <p>Panneau latéral redimensionnable (droite, gauche ou bas) branché sur votre endpoint compatible OpenAI. Analyse déclenchée volontairement, clé API dans le Trousseau macOS.</p>
+          </article>
+          <article class="cell wide">
+            <span class="ico" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M4.5 12a7.5 7.5 0 0 1 15 0"/><path d="M2 12a10 10 0 0 1 20 0"/></svg></span>
+            <h3>Des réglages pensés, pas empilés</h3>
+            <p>Une fenêtre Settings avec tableau de bord système en direct, sidebar par catégories, champ de recherche et un onglet par module — sparkline, jauges, disque, panneau, icônes de la barre des menus, conseiller IA — plus Help &amp; Support et Project Library.</p>
+            <ul>
+              <li>Thème clair, sombre ou système, lancement à la connexion</li>
+              <li>Arrêt de processus depuis le panneau de survol, menu contextuel complet</li>
+              <li>App SwiftUI native (<code>LSUIElement</code>), pas d’Electron, pas de service tiers</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+    <!-- ============ RÉGLAGES & UTILISATION ============ -->
+    <section class="band" id="reglages">
+      <div class="container">
+        <span class="kicker">Sous le capot</span>
+        <h2>Ce que vous réglez tient <span>en cinq minutes.</span></h2>
+        <div class="split">
+          <div>
+            <ul class="kv">
+              <li><b>Sparkline</b><span>Hauteur, métrique par défaut, densité du tracé, positions des icônes d’applications.</span></li>
+              <li><b>Jauges</b><span>Modules affichés, ordre par glisser-déposer, couleur de base et couleur critique par métrique.</span></li>
+              <li><b>Disque</b><span>Une ou deux lignes, interlignage, position, taille, espace libre ou disponible, seuil d’alerte.</span></li>
+              <li><b>Panneau de survol</b><span>Métriques visibles, profondeur de la liste de processus, boutons Settings et Audit, arrêt en un clic.</span></li>
+              <li><b>Icônes de la barre</b><span>Cochez les icônes tierces à descendre dans la seconde barre, réordonnez-les, restaurez tout d’un clic.</span></li>
+              <li><b>Conseiller IA</b><span>Endpoint compatible OpenAI, mode panneau (droite, gauche, bas) ou fenêtre, clé API conservée dans le Trousseau.</span></li>
+            </ul>
+          </div>
+          <div>
+            <ul class="kv">
+              <li><b>Survoler la barre</b><span>Le panneau de détail s’ouvre : métrique, processus dominants, pourcentages.</span></li>
+              <li><b>Cliquer un segment</b><span>La métrique active change — CPU, GPU, RAM, réseau, disque.</span></li>
+              <li><b>Cliquer une icône descendue</b><span>Son menu d’origine s’ouvre, comme si elle n’avait jamais quitté la barre.</span></li>
+              <li><b>Clic droit</b><span>Menu complet : réglages, seconde barre, audit IA, mise à jour, à propos.</span></li>
+            </ul>
+            <div class="note">
+              <p><b style="color:var(--ink)">Natif, discret, silencieux.</b> PKMonitor est une app SwiftUI en mode <code style="font-family:ui-monospace,Menlo,monospace">LSUIElement</code> : pas d’icône dans le Dock, pas d’Electron, pas de service en arrière-plan gourmand. Elle n’échantillonne que ce qu’elle affiche, et vit dans la barre des menus.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CONFIDENTIALITÉ ============ -->
+    <section class="band" id="vie-privee">
+      <div class="container">
+        <span class="kicker blue">Confidentialité</span>
+        <h2>Un moniteur qui ne rapporte rien <span>à personne.</span></h2>
+        <p class="desc">Pas d’analytics, pas de compte, pas de serveur à nous. PKMonitor observe votre Mac pour vous, et pour vous seul.</p>
+        <div class="stats">
+          <div class="stat"><b>0 octet</b><span>transmis par défaut, aucune télémétrie, aucun ping de mise à jour silencieux</span></div>
+          <div class="stat"><b>0 compte</b><span>ni inscription, ni licence, ni e-mail — le DMG et Homebrew suffisent</span></div>
+          <div class="stat"><b>100 %</b><span>des mesures calculées localement sur votre machine</span></div>
+          <div class="stat"><b>Opt-in</b><span>l’analyse IA n’envoie quoi que ce soit qu’après votre clic explicite</span></div>
+        </div>
+        <div class="split" style="margin-top:34px">
+          <div class="note" style="margin-top:0">
+            <p><b style="color:var(--ink)">L’IA, seulement si vous la branchez.</b> Le conseiller utilise votre propre endpoint compatible OpenAI. Lors d’une analyse, seuls les métriques, noms, bundle identifiers et chemins des applications concernées partent vers ce endpoint. La clé API reste dans le Trousseau macOS, jamais dans un fichier de configuration en clair.</p>
+          </div>
+          <div class="note" style="margin-top:0;border-left-color:#6fa8ff">
+            <p><b style="color:var(--ink)">Permissions demandées au strict nécessaire.</b> Accessibilité et Enregistrement d’écran ne sont sollicités que pour la seconde barre (déplacer puis redessiner les icônes tierces). Refusez-les&nbsp;: PKMonitor continue de fonctionner, seule la seconde barre reste indisponible.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ============ INSTALLATION ============ -->
+    <section class="install" id="install">
+      <div class="container">
+        <span class="kicker">Installation</span>
+        <h2>Une commande. <span>Et c’est réglé.</span></h2>
+        <p class="sub">Trois méthodes, le même résultat : PKMonitor dans votre barre des menus. Gratuit, sans compte, sans abonnement.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary download-link" href="https://github.com/mondary/PKmonitor/releases/latest"><span>↓ Télécharger PKMonitor (<span id="cta-version">2026.09.34</span>.dmg)</span></a>
+        </div>
+        <p class="fine">Version <span id="install-version">2026.09.34</span> · <span id="install-size">4,8 Mo</span> · macOS 13 Ventura ou plus récent</p>
+        <div class="opts">
+          <div class="opt">
+            <label for="brew-cmd">Homebrew</label>
+            <code id="brew-cmd">brew install --cask mondary/tap/pkmonitor</code>
+            <button class="copy" type="button" data-copy="brew install --cask mondary/tap/pkmonitor">Copier</button>
+          </div>
+          <div class="opt">
+            <label for="curl-command">curl</label>
+            <code id="curl-command">curl -L -o PKMonitor.dmg https://github.com/mondary/PKmonitor/releases/latest/download/PKMonitor-2026.09.34.dmg</code>
+            <button class="copy" type="button" id="curl-copy" data-copy="curl -L -o PKMonitor.dmg https://github.com/mondary/PKmonitor/releases/latest/download/PKMonitor-2026.09.34.dmg">Copier</button>
+          </div>
+          <div class="opt">
+            <label>Releases</label>
+            <code>github.com/mondary/PKmonitor/releases</code>
+            <a class="copy" href="https://github.com/mondary/PKmonitor/releases" target="_blank" rel="noreferrer">Ouvrir ↗</a>
+          </div>
+        </div>
+        <p class="req">
+          <span>macOS 13+</span><span>·</span><span>Intel &amp; Apple Silicon</span><span>·</span><span>Open source MIT</span><span>·</span>
+          <span><a href="https://ko-fi.com/pouark" target="_blank" rel="noreferrer" style="text-decoration:underline">Soutenir le projet sur Ko-fi ↗</a></span>
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ FAQ ============ -->
+    <section class="band" id="faq">
+      <div class="container">
+        <span class="kicker blue">Questions fréquentes</span>
+        <h2>Ce qu’on nous demande <span>avant d’installer.</span></h2>
+        <div class="faq">
+          <details open>
+            <summary>En quoi PKMonitor est-il différent d’un moniteur classique&nbsp;?</summary>
+            <p>La plupart des moniteurs affichent des chiffres qu’il faut aller regarder. PKMonitor fait l’inverse&nbsp;: il place le signal dans la barre des menus, sur une sparkline, et <b>signe chaque pic avec l’icône de l’application qui l’a provoqué</b>. Vous n’ouvrez rien&nbsp;: la réponse est déjà là, à côté de l’horloge.</p>
+          </details>
+          <details>
+            <summary>Quelle configuration est requise&nbsp;?</summary>
+            <p>macOS 13 Ventura ou plus récent, sur Mac Intel comme Apple Silicon. Le DMG pèse <span class="js-size">4,8 Mo</span>, aucune dépendance n’est installée en dehors de la méthode choisie (Homebrew, curl, ou glisser-déposer depuis le DMG).</p>
+          </details>
+          <details>
+            <summary>macOS affiche un avertissement au premier lancement. Est-ce normal&nbsp;?</summary>
+            <p>Oui&nbsp;: l’app est distribuée en direct depuis GitHub Releases, sans passer par l’App Store. Faites un <b>clic droit sur PKMonitor.app › Ouvrir › Ouvrir</b> une seule fois, macOS mémorise votre choix. La signature et la notarisation automatisées figurent à la feuille de route du projet.</p>
+          </details>
+          <details>
+            <summary>Est-ce que ça ralentit le Mac&nbsp;?</summary>
+            <p>Non. PKMonitor est une app SwiftUI native, sans Electron&nbsp;: échantillonnage léger, rendu compact, et elle ne mesure que ce qu’elle affiche. Aucun historique n’est stocké en base et aucun service tiers n’est lancé.</p>
+          </details>
+<details>
+            <summary>Les données quittent-elles mon Mac&nbsp;?</summary>
+            <p>Par défaut, non&nbsp;: aucune télémétrie, aucun compte, tout est calculé localement. Si vous branchez le conseiller IA et lancez une analyse, seuls les métriques et les informations des applications concernées (nom, bundle identifier, chemin) sont envoyés à <b>votre</b> endpoint compatible OpenAI. La clé API reste dans le Trousseau macOS.</p>
+          </details>
+          <details>
+            <summary>Puis-je descendre n’importe quelle icône dans la seconde barre&nbsp;?</summary>
+            <p>Oui, pour les icônes tierces&nbsp;: cochez-les dans <b>Settings › Menu Bar Items</b>, réordonnez-les, et PKMonitor les restaure automatiquement quand vous les décochez ou quand l’app se ferme. Les permissions Accessibilité et Enregistrement d’écran sont demandées uniquement pour ce module.</p>
+          </details>
+          <details>
+            <summary>Combien ça coûte&nbsp;?</summary>
+            <p>Rien, pour toujours. PKMonitor est publié sous licence MIT&nbsp;: code source public, releases libres, et un soutien facultatif sur Ko-fi si le projet vous est utile.</p>
+          </details>
+          <details>
+            <summary>Comment le mettre à jour ou le désinstaller&nbsp;?</summary>
+            <p>Mise à jour&nbsp;: <code>brew upgrade --cask pkmonitor</code> ou le dernier DMG depuis les releases. Désinstallation&nbsp;: quittez PKMonitor (les icônes tierces sont restaurées) puis glissez <code>PKMonitor.app</code> à la corbeille — le Trousseau et les préférences se suppriment depuis Réglages Système si vous le souhaitez.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ DERNIER APPEL ============ -->
+    <section class="final">
+      <div class="container">
+        <span class="kicker">Prêt en une minute</span>
+        <h2>Votre Mac est bavard. <span>Écoutez-le sans effort.</span></h2>
+        <p>Installez PKMonitor, laissez-le vivre dans la barre des menus, et ne cherchez plus jamais d’où vient le ventilateur.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary download-link" href="https://github.com/mondary/PKmonitor/releases/latest">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+            Télécharger pour macOS
+          </a>
+          <a class="btn btn-ghost" href="https://github.com/mondary/PKmonitor" target="_blank" rel="noreferrer">Explorer le code</a>
+        </div>
+        <p class="fine" style="margin-top:18px">Gratuit · open source MIT · macOS 13+ · Made for macOS</p>
+      </div>
+    </section>
+  </main>
+
+  <dialog class="lightbox" id="lightbox" aria-label="Capture agrandie">
+    <img id="lightbox-image" src="assets/screenshots/cleanshot-2026-09-14-window.png" alt="">
+    <div class="lb-bar">
+      <b id="lightbox-caption">Capture PKMonitor</b>
+      <button class="lb-close" type="button" id="lightbox-close">Fermer (Échap)</button>
+    </div>
+  </dialog>
+
+  <footer>
+    <div class="container">
+      <span>© 2026 PKMonitor · <span id="footer-version">v2026.09.34</span> · Fait pour macOS</span>
+      <span>
+        <a href="https://github.com/mondary/PKmonitor" target="_blank" rel="noreferrer">Code source</a> ·
+        <a href="https://github.com/mondary/PKmonitor/releases" target="_blank" rel="noreferrer">Releases</a> ·
+        <a href="https://github.com/mondary?tab=repositories" target="_blank" rel="noreferrer">Bibliothèque de projets</a> ·
+        <a href="https://ko-fi.com/pouark" target="_blank" rel="noreferrer">Ko-fi</a>
+      </span>
+    </div>
+  </footer>
+<script>
+    // ---------- horloge de la maquette ----------
+    (() => {
+      const clock = document.getElementById('mb-clock');
+      const time = document.getElementById('mb-time');
+      if (!clock || !time) return;
+      const jours = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
+      const mois = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+      const tick = () => {
+        const now = new Date();
+        const j = jours[now.getDay()];
+        clock.textContent = `${j.charAt(0).toUpperCase()}${j.slice(1)} ${now.getDate()} ${mois[now.getMonth()]}`;
+        time.textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      };
+      tick();
+      setInterval(tick, 20000);
+    })();
+
+    // ---------- sparkline temps réel + icônes sur les pics ----------
+    (() => {
+      const path = document.getElementById('spark-path');
+      if (!path) return;
+      const W = 104, H = 20, PAD = 3.2, N = 26;
+      const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const hits = [0, 1, 2].map(i => document.getElementById('hit-' + i)).filter(Boolean);
+      let vals = Array.from({ length: N }, (_, i) => 0.42 + Math.sin(i / 2.6) * 0.15 + (i / N) * 0.06);
+      let turn = 0, idle = 0, boost = 1;
+
+      const scale = v => H - PAD - v * (H - PAD * 2);
+      function draw() {
+        const step = W / (N - 1);
+        const pts = vals.map((v, i) => [i * step, scale(Math.min(v, 1))]);
+        let d = `M ${pts[0][0].toFixed(2)} ${pts[0][1].toFixed(2)}`;
+        for (let i = 1; i < pts.length - 1; i++) {
+          const [cx, cy] = pts[i], [nx, ny] = pts[i + 1];
+          d += ` Q ${cx.toFixed(2)} ${cy.toFixed(2)} ${((cx + nx) / 2).toFixed(2)} ${((cy + ny) / 2).toFixed(2)}`;
+        }
+        const last = pts[pts.length - 1];
+        d += ` L ${last[0].toFixed(2)} ${last[1].toFixed(2)}`;
+        path.setAttribute('d', d);
+      }
+      function showHit(index) {
+        const x = Math.round(index / (N - 1) * (W - 20));
+        const el = hits[turn++ % hits.length];
+        hits.forEach(h => { if (h !== el) h.classList.remove('on'); });
+        el.style.left = x + 'px';
+        el.classList.add('on');
+      }
+      function step() {
+        const prev = vals[vals.length - 1];
+        let next = prev + (Math.random() - 0.5) * 0.36 * boost;
+        if (Math.random() < 0.13) next += 0.34 * boost;
+        vals.push(Math.min(0.97, Math.max(0.06, next)));
+        vals.shift();
+        draw();
+        const peak = Math.max(...vals);
+        if (peak > 0.7 && Math.random() < 0.8) { showHit(vals.indexOf(peak)); idle = 0; }
+        else if (++idle > 2) hits.forEach(h => h.classList.remove('on'));
+      }
+      draw();
+      if (!reduced) setInterval(step, 640);
+      // la métrique active module l’amplitude du tracé
+      window.__pkBoost = v => { boost = v; };
+    })();
+    // ---------- jauges vivantes + métrique active ----------
+    (() => {
+      const metrics = [
+        { id: 'cpu', label: 'CPU', sub: 'Utilisation CPU · processus dominants', base: 30, amp: 21, boost: 1 },
+        { id: 'gpu', label: 'GPU', sub: 'Utilisation GPU · processus dominants', base: 17, amp: 12, boost: .7 },
+        { id: 'ram', label: 'RAM', sub: 'Mémoire utilisée · pression mémoire', base: 58, amp: 8, boost: .45 },
+        { id: 'net', label: 'NET', sub: 'Réseau · débit descendant et montant', base: 13, amp: 17, boost: 1.3 }
+      ];
+      const bars = {}, outs = {};
+      document.querySelectorAll('[data-g]').forEach(el => { bars[el.dataset.g] = el; });
+      document.querySelectorAll('[data-val]').forEach(el => { outs[el.dataset.val] = el; });
+      const label = document.getElementById('mb-metric');
+      const pTitle = document.getElementById('panel-title');
+      const pSub = document.getElementById('panel-sub');
+      const pValue = document.getElementById('panel-value');
+      const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const fmt = v => Math.round(v) + '%';
+      let t = 0, current = 0;
+
+      function paint() {
+        t += 1;
+        metrics.forEach((m, i) => {
+          const v = Math.max(4, Math.min(97, m.base + Math.sin(t / (3 + i) + i) * m.amp + (Math.random() - .5) * 3));
+          m.value = v;
+          if (bars[m.id]) { bars[m.id].style.width = fmt(v); bars[m.id].classList.toggle('warn', v > 82); }
+          if (outs[m.id]) { outs[m.id].textContent = fmt(v); outs[m.id].style.color = v > 82 ? '#ff5f57' : ''; }
+        });
+        const a = metrics[current] || metrics[0];
+        if (label) label.textContent = a.label;
+        if (pTitle) pTitle.textContent = a.label;
+        if (pSub) pSub.textContent = a.sub;
+        if (pValue) { pValue.textContent = fmt(a.value); pValue.classList.toggle('warn', a.value > 82); }
+        if (window.__pkBoost) window.__pkBoost(a.boost);
+      }
+      paint();
+      if (!reduced) {
+        setInterval(paint, 1200);
+        setInterval(() => { current = (current + 1) % metrics.length; paint(); }, 7000);
+      }
+      // cliquer une jauge change la métrique active, comme dans l’app
+      document.querySelectorAll('.gauge').forEach(g => g.addEventListener('click', () => {
+        const el = g.querySelector('[data-g]');
+        const i = metrics.findIndex(m => m.id === el.dataset.g);
+        if (i > -1) { current = i; paint(); }
+      }));
+    })();
+
+    // ---------- panneau de détail : survol, clic, clavier ----------
+    (() => {
+      const desktop = document.getElementById('desktop');
+      const strip = document.getElementById('pk-strip');
+      const panel = document.getElementById('panel');
+      if (!desktop || !strip || !panel) return;
+      const bar = desktop.querySelector('.menubar');
+      const toggle = () => panel.classList.toggle('open');
+      const open = () => panel.classList.add('open');
+      let timer;
+      const close = () => { clearTimeout(timer); timer = setTimeout(() => panel.classList.remove('open'), 280); };
+      if (bar) bar.addEventListener('mouseenter', open);
+      desktop.addEventListener('mouseleave', close);
+      strip.addEventListener('click', toggle);
+      strip.setAttribute('role', 'button');
+      strip.setAttribute('tabindex', '0');
+      strip.setAttribute('aria-expanded', 'false');
+      strip.setAttribute('aria-label', 'Module PKMonitor — afficher ou masquer le panneau de détail');
+      strip.addEventListener('focus', open);
+      strip.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+        if (e.key === 'Escape') panel.classList.remove('open');
+      });
+      new MutationObserver(() => strip.setAttribute('aria-expanded', panel.classList.contains('open') ? 'true' : 'false'))
+        .observe(panel, { attributes: true, attributeFilter: ['class'] });
+    })();
+    // ---------- lightbox des captures ----------
+    (() => {
+      const dialog = document.getElementById('lightbox');
+      const img = document.getElementById('lightbox-image');
+      const cap = document.getElementById('lightbox-caption');
+      const close = document.getElementById('lightbox-close');
+      if (!dialog || !img || typeof dialog.showModal !== 'function') return;
+      document.querySelectorAll('.shot[data-full]').forEach(shot => {
+        shot.addEventListener('click', () => {
+          const thumb = shot.querySelector('img');
+          img.src = shot.dataset.full;
+          img.alt = (thumb && thumb.alt) || 'Capture d’écran PKMonitor';
+          cap.textContent = shot.dataset.caption || 'Capture PKMonitor';
+          dialog.showModal();
+        });
+      });
+      if (close) close.addEventListener('click', () => dialog.close());
+      dialog.addEventListener('click', e => { if (e.target === dialog) dialog.close(); });
+    })();
+
+    // ---------- vidéo de démonstration ----------
+    (() => {
+      const video = document.getElementById('demo-video');
+      const play = document.getElementById('play-demo');
+      if (!video || !play) return;
+      play.addEventListener('click', () => { video.play(); });
+      video.addEventListener('play', () => { play.hidden = true; });
+      video.addEventListener('pause', () => { play.hidden = false; });
+      video.addEventListener('ended', () => { play.hidden = false; });
+    })();
+
+    // ---------- copier les commandes d’installation ----------
+    document.querySelectorAll('.copy[data-copy]').forEach(button => button.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(button.dataset.copy);
+        const label = button.textContent;
+        button.textContent = 'Copié';
+        button.classList.add('done');
+        setTimeout(() => { button.textContent = label; button.classList.remove('done'); }, 1500);
+      } catch (_) {}
+    }));
+
+    // ---------- métadonnées live depuis GitHub Releases ----------
+    (() => {
+      const setText = (id, value) => { const el = document.getElementById(id); if (el && value) el.textContent = value; };
+      const frDate = iso => {
+        const d = new Date(iso);
+        if (isNaN(d)) return '';
+        const mois = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+        return `${d.getDate()} ${mois[d.getMonth()]} ${d.getFullYear()}`;
+      };
+      const weight = bytes => bytes ? (bytes / 1048576).toFixed(1).replace('.', ',') + ' Mo' : '';
+      fetch('https://api.github.com/repos/mondary/PKmonitor/releases/latest')
+        .then(r => r.ok ? r.json() : Promise.reject())
+        .then(release => {
+          const version = String(release.tag_name || '').replace(/^v/, '');
+          const dmg = (release.assets || []).find(a => /^PKMonitor-.+\.dmg$/i.test(a.name));
+          if (version) {
+            setText('nav-version', 'v' + version);
+            setText('hero-version', 'v' + version);
+            setText('card-version', version);
+            setText('install-version', version);
+            setText('cta-version', version);
+            setText('footer-version', 'v' + version);
+          }
+          const size = weight(dmg && dmg.size);
+          if (size) {
+            setText('hero-size', size);
+            setText('card-size', size);
+            setText('install-size', size);
+            document.querySelectorAll('.js-size').forEach(el => { el.textContent = size; });
+          }
+          if (release.published_at) setText('card-date', frDate(release.published_at));
+          if (dmg) {
+            document.querySelectorAll('.download-link').forEach(l => { l.href = dmg.browser_download_url; });
+            const curl = `curl -L -o PKMonitor.dmg ${dmg.browser_download_url}`;
+            const code = document.getElementById('curl-command');
+            const button = document.getElementById('curl-copy');
+            if (code) code.textContent = curl;
+            if (button) button.dataset.copy = curl;
+          }
+        })
+        .catch(() => {});
+    })();
+  </script>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "PKMonitor",
+    "operatingSystem": "macOS 13+",
+    "applicationCategory": "UtilitiesApplication",
+    "softwareVersion": "2026.09.34",
+    "downloadUrl": "https://github.com/mondary/PKmonitor/releases/latest",
+    "codeRepository": "https://github.com/mondary/PKmonitor",
+    "license": "https://opensource.org/licenses/MIT",
+    "inLanguage": "fr",
+    "description": "Moniteur système macOS dans la barre des menus : sparkline temps réel avec l’icône de l’application dominante sur chaque pic, jauges CPU, GPU, RAM, réseau et disque, panneau de détail au survol, seconde barre d’icônes façon Bartender, conseiller IA optionnel.",
+    "featureList": [
+      "Sparkline temps réel avec icônes des applications dominantes",
+      "Jauges CPU, GPU, RAM, réseau et disque réordonnables et colorables",
+      "Panneau de détail au survol avec arrêt de processus",
+      "Seconde barre d’icônes tierces façon Bartender",
+      "Conseiller IA optionnel via endpoint compatible OpenAI"
+    ],
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+    "author": { "@type": "Organization", "name": "mondary", "url": "https://github.com/mondary" }
+  }
+  </script>
+</body>
+</html>

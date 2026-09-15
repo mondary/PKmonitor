@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="PKMonitor — surveillez tout, sans abonnement. Le moniteur Mac de la barre des menus, gratuit et open source.">
+  <title>PKMonitor — tout surveiller, rien payer</title>
+  <link rel="icon" href="../../icon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Recoleta:wght@400;500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{--ink:#1b1b1b;--muted:#5f6068;--line:#e7e5e0;--paper:#f7f6f4;--indigo:#6c6cf8;--indigo-deep:#497efb;--green:#96c362;--cream:#fffdf8}
+    *{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{background:var(--paper);color:var(--ink);font-family:Inter,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+    a{color:inherit;text-decoration:none}
+    img{display:block;max-width:100%}
+    .wrap{width:min(1080px,calc(100% - 40px));margin:auto}
+    .site-header{position:sticky;top:0;z-index:50;background:var(--paper)f2;background:rgba(247,246,244,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+    .hrow{height:64px;display:flex;align-items:center;justify-content:space-between}
+    .brand{display:flex;align-items:center;gap:9px;font-family:Recoleta,Georgia,serif;font-size:21px;font-weight:600}
+    .brand img{width:28px;height:28px;border-radius:9px}
+    .desktop-nav{display:flex;gap:24px;font-size:14px;color:var(--muted)}
+    .desktop-nav a:hover{color:var(--ink)}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;font-weight:600;font-size:15px;padding:13px 22px;transition:.15s}
+    .btn-primary{background:var(--indigo);color:#fff;box-shadow:0 8px 22px rgba(108,108,248,.35)}
+    .btn-primary:hover{transform:translateY(-2px);background:var(--indigo-deep)}
+    .btn-ghost{border:1.5px solid var(--ink);color:var(--ink);background:transparent}
+    .hero{position:relative;overflow:visible;padding:110px 24px 120px;text-align:center}
+    .hero-content{position:relative;width:min(940px,100%);margin:auto;display:flex;flex-direction:column;align-items:center;gap:36px}
+    .reveal{animation:rise .7s cubic-bezier(.22,1,.36,1) both}
+    .delay-1{animation-delay:.12s}.delay-2{animation-delay:.2s}
+    @keyframes rise{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+    .hero h1{font-family:Recoleta,Georgia,serif;font-size:clamp(40px,7vw,68px);line-height:1.04;font-weight:500}
+    .hero h1 em{font-style:normal;color:var(--indigo)}
+    .hero-lede{max-width:640px;font-size:clamp(17px,2.2vw,22px);font-weight:300;line-height:1.35;color:var(--muted)}
+    .hero-action{display:flex;flex-direction:column;align-items:center;gap:12px}
+    .hero-action small{color:var(--muted);font-size:13px}
+    .hero-video{width:min(880px,100%);aspect-ratio:897/505;border:10px solid #fff;border-radius:22px;overflow:hidden;background:#0c0d0e;box-shadow:0 2px 4px rgba(0,0,0,.25);position:relative;cursor:pointer}
+    .hero-video img,.hero-video video{width:100%;height:100%;object-fit:cover}
+    .play{position:absolute;inset:50% auto auto 50%;transform:translate(-50%,-50%);width:70px;height:70px;border-radius:50%;background:#fff;display:grid;place-items:center;box-shadow:0 4px 15px rgba(0,0,0,.18);transition:transform .2s}
+    .hero-video:hover .play{transform:translate(-50%,-50%) scale(1.08)}
+    .play:after{content:"";margin-left:4px;border-left:14px solid #111;border-top:9px solid transparent;border-bottom:9px solid transparent}
+    .sticker{position:absolute;z-index:4;user-select:none;animation:float 8s ease-in-out infinite;filter:drop-shadow(0 8px 8px rgba(0,0,0,.18))}
+    @keyframes float{0%,100%{translate:0 0 rotate(var(--r))}25%{translate:0 -9px;rotate:calc(var(--r) + 2deg)}50%{translate:0 0;rotate:var(--r)}75%{translate:0 6px;rotate:calc(var(--r) - 1.4deg)}}
+    .sticker-cpu{left:4%;top:64px;width:86px;height:86px;border-radius:20px;background:var(--indigo);color:#fff;display:grid;place-items:center;font-size:12.5px;font-weight:600;text-align:center;line-height:1.25;rotate:-16deg;box-shadow:inset 0 -6px 18px rgba(255,255,255,.28),0 5px 3px rgba(0,0,0,.15);--r:-16deg}
+    .sticker-spark{right:4.5%;top:60px;width:230px;height:44px;border:4px solid #fff;border-radius:22px;background:#262626;color:#fff;display:flex;align-items:center;gap:10px;padding:0 14px;rotate:11deg;font-size:13px;white-space:nowrap;--r:11deg}
+    .sticker-spark svg{flex:none}
+    .sticker-net{left:7%;bottom:70px;width:120px;height:44px;border:4px solid #fff;border-radius:22px;background:var(--green);color:#15300a;display:flex;align-items:center;justify-content:center;gap:7px;font-size:13px;font-weight:600;rotate:-7deg;--r:-7deg}
+    section.features{padding:80px 0}
+    .frow{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center;margin-top:64px}
+    .frow:first-of-type{margin-top:0}
+    .frow.flip .fmedia{order:2}
+    .ftag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--indigo);background:#6c6cf81c;border-radius:99px;padding:6px 12px}
+    .frow h2{font-family:Recoleta,Georgia,serif;font-size:clamp(28px,4vw,42px);line-height:1.1;font-weight:500;margin:16px 0 12px}
+    .frow p{color:var(--muted);font-size:16px;line-height:1.6;max-width:46ch}
+    .fmedia{border-radius:18px;overflow:hidden;border:9px solid #fff;box-shadow:0 18px 40px rgba(0,0,0,.14);background:#0c0d0e}
+    .fmedia img{width:100%}
+    .pricing{background:var(--cream);border-block:1px solid var(--line);padding:80px 0;text-align:center}
+    .pricing h2{font-family:Recoleta,Georgia,serif;font-size:clamp(30px,4.4vw,46px);font-weight:500}
+    .price-card{width:min(420px,100%);margin:36px auto 0;padding:34px 30px;border:2px solid var(--ink);border-radius:22px;background:#fff;box-shadow:8px 8px 0 var(--indigo)}
+    .price-card .price{font-family:Recoleta,Georgia,serif;font-size:58px;line-height:1}
+    .price-card .per{color:var(--muted);font-size:14px}
+    .price-card ul{list-style:none;margin:22px 0;text-align:left;display:flex;flex-direction:column;gap:9px;font-size:14.5px;color:var(--muted)}
+    .price-card li::before{content:"✓";color:var(--indigo);font-weight:700;margin-right:9px}
+    .faq{padding:80px 0}
+    .faq h2{font-family:Recoleta,Georgia,serif;font-size:clamp(28px,4vw,42px);font-weight:500;text-align:center}
+    details{max-width:680px;margin:14px auto 0;border:1px solid var(--line);border-radius:14px;background:#fff;padding:4px 18px}
+    summary{padding:13px 0;font-weight:500;cursor:list-markers}
+    details p{padding-bottom:13px;color:var(--muted);font-size:14.5px;line-height:1.55}
+    .cta{padding:90px 0 110px;text-align:center;background:radial-gradient(ellipse at center,#6c6cf817,transparent 60%)}
+    .cta h2{font-family:Recoleta,Georgia,serif;font-size:clamp(32px,5vw,54px);font-weight:500}
+    .cta h2 em{font-style:normal;color:var(--indigo)}
+    .cta p{color:var(--muted);margin-top:10px}
+    .cmd{display:inline-block;margin-top:18px;border:1.5px dashed #a9a8a2;border-radius:12px;padding:11px 16px;font:13px ui-monospace,Menlo,monospace;color:#4c4b45;background:#fff}
+    footer{border-top:1px solid var(--line);padding:24px 0 36px}
+    .frow-foot{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+    footer a:hover{color:var(--ink)}
+    @media(max-width:820px){.desktop-nav{display:none}.frow{grid-template-columns:1fr}.frow.flip .fmedia{order:0}.sticker-cpu,.sticker-net{display:none}.sticker-spark{width:180px;font-size:11px}}
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap hrow">
+      <a class="brand" href="#top"><img src="../../icon.png" alt="">PKMonitor</a>
+      <nav class="desktop-nav">
+        <a href="#features">Fonctionnalités</a>
+        <a href="#pricing">Prix</a>
+        <a href="#faq">FAQ</a>
+        <a href="https://github.com/mondary/PKmonitor" target="_blank" rel="noreferrer">GitHub</a>
+      </nav>
+      <a class="btn btn-primary download-link" href="https://github.com/mondary/PKmonitor/releases/latest">Télécharger</a>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-content">
+        <div class="sticker sticker-cpu reveal">CPU<br>34 %</div>
+        <div class="sticker sticker-spark">
+          <svg width="54" height="14" viewBox="0 0 46 14"><path d="M1 10 C6 10 5 3 10 3.5 C15 4 13 11 19 11 C25 11 24 12 30 12 C36 12 35 4 40 4.5 C43 4.8 44 9 45 9.5" fill="none" stroke="#b9ff31" stroke-width="1.8" stroke-linecap="round"/></svg>
+          Xcode · pic
+        </div>
+        <div class="sticker sticker-net">↓ 2,1 Mo/s</div>
+        <h1 class="reveal">Tout surveiller.<br><em>Rien payer.</em></h1>
+        <p class="hero-lede reveal delay-1">PKMonitor garde un œil sur votre Mac depuis la barre des menus : CPU, GPU, RAM, réseau, disque — et une sparkline qui nomme l’app derrière chaque pic.</p>
+        <div class="hero-action reveal delay-2">
+          <a class="btn btn-primary download-link" href="https://github.com/mondary/PKmonitor/releases/latest">↓ Télécharger gratuitement</a>
+          <small>Open source · macOS 13+ · sans carte bancaire, pour toujours</small>
+        </div>
+        <div class="hero-video reveal delay-2" id="heroVideo" role="button" tabindex="0" aria-label="Lire la démonstration">
+          <img src="../gifs/pkmonitor-demo.gif" alt="Démonstration de PKMonitor">
+          <span class="play" aria-hidden="true"></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="features wrap" id="features">
+      <div class="frow">
+        <div>
+          <span class="ftag">Temps réel</span>
+          <h2>Chaque pic a un nom.</h2>
+          <p>La sparkline dessine l’activité de votre Mac en continu. VS Code compile, Chrome charge, WhatsApp appelle : l’icône de l’app dominante se pose sur le pic. Au survol, le panneau détaille tout.</p>
+        </div>
+        <div class="fmedia"><img src="../gifs/pkmonitor-live-detail.gif" alt="Panneau de détail au survol d'un pic"></div>
+      </div>
+      <div class="frow flip">
+        <div>
+          <span class="ftag">Rangement</span>
+          <h2>Une barre plus nette, façon Bartender.</h2>
+          <p>Descendez les icônes secondaires dans une seconde barre : cases à cocher, ordre réglable, clic transféré vers le menu d’origine. Vous gardez l’accès, sans l’encombrement.</p>
+        </div>
+        <div class="fmedia"><img src="../screenshots/01-barre-et-seconde-barre.png" alt="Seconde barre de la barre des menus"></div>
+      </div>
+      <div class="frow">
+        <div>
+          <span class="ftag">Confidentialité</span>
+          <h2>Ce que votre Mac fait reste chez vous.</h2>
+          <p>Tout tourne en local. Le conseiller IA est optionnel : analyse uniquement sur clic explicite, vers votre endpoint compatible OpenAI, clé API dans le Trousseau macOS.</p>
+        </div>
+        <div class="fmedia"><img src="../screenshots/live-ai-advisor.jpeg" alt="Conseiller IA de PKMonitor"></div>
+      </div>
+    </section>
+
+    <section class="pricing" id="pricing">
+      <div class="wrap">
+        <h2>Un seul prix. Zéro abonnement.</h2>
+        <div class="price-card">
+          <span class="price">0 €</span>
+          <span class="per">/ à vie — c’est open source</span>
+          <ul>
+            <li>CPU, GPU, RAM, réseau, disque</li>
+            <li>Sparkline + panneau de détail</li>
+            <li>Seconde barre façon Bartender</li>
+            <li>Conseiller IA optionnel (clé au Trousseau)</li>
+            <li>Toutes les mises à jour, pour toujours</li>
+          </ul>
+          <a class="btn btn-primary download-link" style="width:100%" href="https://github.com/mondary/PKmonitor/releases/latest">↓ Télécharger PKMonitor</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="faq wrap" id="faq">
+      <h2>Les vraies réponses.</h2>
+      <details><summary>Alors c’est gratuit, vraiment ?</summary><p>Oui. PKMonitor est open source : le code est public, les releases sont libres, et il n’existe aucune version payante cachée.</p></details>
+      <details><summary>Les données quittent-elles mon Mac ?</summary><p>Non, sauf action explicite de votre part : l’analyse IA n’envoie des métriques qu’à l’endpoint que vous configurez, après un clic. La clé API reste dans le Trousseau.</p></details>
+      <details><summary>Est-ce que ça ralentit le Mac ?</summary><p>Non — app native SwiftUI, empreinte minimale, conçue pour rester dans la barre des menus sans se faire remarquer.</p></details>
+      <details><summary>macOS requis ?</summary><p>macOS 13 Ventura ou ultérieur, sur Intel comme sur Apple Silicon.</p></details>
+    </section>
+
+    <section class="cta">
+      <div class="wrap">
+        <h2>Allez, mettez-le <em>dans la barre.</em></h2>
+        <p>Une commande brew, quelques secondes, et votre Mac devient lisible.</p>
+        <div><a class="btn btn-primary download-link" href="https://github.com/mondary/PKmonitor/releases/latest">↓ Télécharger PKMonitor (.dmg)</a></div>
+        <br><span class="cmd">brew install --cask mondary/tap/pkmonitor</span>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap frow-foot">
+      <span>© 2026 PKMonitor · Fait pour macOS</span>
+      <span><a href="https://github.com/mondary/PKmonitor" target="_blank" rel="noreferrer">Code source</a> · <a href="https://ko-fi.com/pouark" target="_blank" rel="noreferrer">Soutenir</a></span>
+    </div>
+  </footer>
+
+  <script>
+    const hv = document.getElementById('heroVideo');
+    function playVideo() {
+      const v = document.createElement('video');
+      v.src = '../videos/pkmonitor-live-graph.mp4';
+      v.autoplay = true; v.controls = true; v.playsInline = true;
+      v.style.cssText = 'width:100%;height:100%;object-fit:cover';
+      hv.innerHTML = ''; hv.appendChild(v);
+    }
+    hv.addEventListener('click', playVideo, { once: true });
+    hv.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); playVideo(); } }, { once: true });
+    fetch('https://api.github.com/repos/mondary/PKmonitor/releases/latest').then(r => r.ok ? r.json() : Promise.reject()).then(release => { const dmg = release.assets.find(a => /^PKMonitor-.+\.dmg$/i.test(a.name)); if (dmg) document.querySelectorAll('.download-link').forEach(l => l.href = dmg.browser_download_url); }).catch(() => {});
+  </script>
+</body>
+</html>

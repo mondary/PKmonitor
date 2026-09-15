@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="PKMonitor — un moniteur Mac minuscule et natif. Pas d'Electron. Pas de compte. Pas de télémétrie.">
+  <title>PKMonitor — votre Mac, sur une ligne</title>
+  <link rel="icon" href="../../icon.png">
+  <style>
+    :root{color-scheme:dark;--bg:#030405;--panel:#0d0e10;--panel2:#111216;--line:#292a2e;--muted:#96979d;--subtle:#696b73;--white:#f5f5f6;--violet:#9b5cff;--lime:#b9ff31;--max:1105px}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}
+    body{margin:0;background:var(--bg);color:var(--white);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.45}
+    a{color:inherit;text-decoration:none}img{display:block;max-width:100%}
+    .container{width:min(calc(100% - 40px),var(--max));margin:auto}
+    .nav-wrap{position:fixed;z-index:10;top:16px;left:0;right:0}
+    .nav{height:58px;border:1px solid var(--line);border-radius:16px;background:rgba(7,8,10,.67);backdrop-filter:blur(24px);display:flex;align-items:center;justify-content:space-between;padding:0 15px}
+    .brand{display:flex;align-items:center;gap:9px;font-weight:650}
+    .brand img{width:24px;height:24px;border-radius:7px}
+    .navlinks{display:flex;align-items:center;gap:7px}
+    .navlinks a{font-size:13px;color:var(--muted);padding:8px 12px;border-radius:8px}
+    .navlinks a:hover{color:var(--white);background:#fff1}
+    .download{background:#eee;color:#454545;border-radius:9px;font-weight:600;padding:9px 14px;font-size:13px;box-shadow:0 5px 20px #fff2;transition:.2s}
+    .download:hover{transform:translateY(-1px);background:#fff}
+    .hero{position:relative;overflow:hidden;text-align:center;padding:180px 0 60px}
+    .hero:before{content:"";position:absolute;z-index:-1;inset:-40px 0 auto;height:520px;background:radial-gradient(ellipse at 51% 0,#250b4e 0,rgba(15,7,32,.7) 30%,transparent 68%),radial-gradient(ellipse at 4% 82%,#06232b 0,transparent 32%)}
+    .eyebrow{display:inline-flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:20px;padding:5px 12px;font:11px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:1.5px;color:#9b9ba2;text-transform:uppercase}
+    .eyebrow i{width:6px;height:6px;background:var(--violet);border-radius:50%;box-shadow:0 0 9px var(--violet)}
+    h1{font-size:clamp(46px,6vw,66px);line-height:1.04;letter-spacing:-2.6px;max-width:730px;margin:34px auto 0;font-weight:720}
+    h1 span{color:var(--lime)}
+    .lede{font-size:16px;color:#a1a2a8;margin:28px auto 0;max-width:620px}
+    .actions{display:flex;justify-content:center;gap:10px;margin:30px 0 8px;flex-wrap:wrap}
+    .primary{display:inline-flex;align-items:center;gap:8px;background:#eee;color:#454545;border-radius:11px;font-weight:650;padding:14px 22px;font-size:15px;box-shadow:0 5px 20px #fff2;transition:.2s}
+    .primary:hover{transform:translateY(-1px);background:#fff}
+    .ghost{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:11px;padding:14px 22px;font-weight:550;font-size:15px;color:var(--white)}
+    .ghost:hover{background:#fff1}
+    .fine{font-size:12px;color:var(--subtle)}
+    .menubar-mock{margin:56px auto 0;width:min(880px,100%);border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,#15161a,#0b0c0e);box-shadow:0 40px 90px -20px #000c;padding:12px 16px;display:flex;align-items:center;gap:16px;font-size:13px;color:#c9cad0;overflow-x:auto}
+    .menubar-mock svg{flex:none}
+    .g{display:inline-block;width:42px;height:7px;border-radius:99px;background:#ffffff1c;overflow:hidden;vertical-align:middle}
+    .g i{display:block;height:100%;background:var(--lime)}
+    .alt{padding:90px 0;border-top:1px solid #17181b}
+    .alt-grid{display:grid;grid-template-columns:1fr 1fr;gap:54px;align-items:center}
+    .alt.flip .alt-vis{order:2}
+    .alt h2{font-size:clamp(30px,4.2vw,44px);line-height:1.06;letter-spacing:-1.8px;font-weight:700;margin:14px 0 14px}
+    .alt h2 span{color:var(--violet)}
+    .kicker{font:600 11px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;color:var(--lime)}
+    .alt p{color:var(--muted);font-size:15.5px;max-width:52ch}
+    .alt-vis{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#0c0d0e;box-shadow:0 30px 70px -18px #000c}
+    .alt-vis img{width:100%}
+    .checks{list-style:none;margin-top:18px;display:flex;flex-direction:column;gap:9px;font-size:14.5px;color:#c9cad0}
+    .checks li::before{content:"— ";color:var(--violet)}
+    .install{padding:90px 0 110px;text-align:center;border-top:1px solid #17181b}
+    .install h2{font-size:clamp(32px,4.6vw,50px);letter-spacing:-2px;font-weight:720;margin:0 0 12px}
+    .install p{color:var(--muted)}
+    .cmd{display:inline-block;margin-top:24px;padding:13px 18px;border:1px solid var(--line);border-radius:11px;background:var(--panel);font:13.5px ui-monospace,SFMono-Regular,Menlo,monospace;color:#d8d9de}
+    footer{border-top:1px solid #17181b;padding:26px 0 40px;color:var(--subtle);font-size:13px}
+    footer .container{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+    footer a{color:var(--muted)}
+    footer a:hover{color:var(--white)}
+    @media(max-width:820px){.alt-grid{grid-template-columns:1fr}.alt.flip .alt-vis{order:0}.navlinks{display:none}}
+  </style>
+</head>
+<body>
+  <header class="nav-wrap">
+    <div class="container">
+      <nav class="nav">
+        <a class="brand" href="#top"><img src="../../icon.png" alt="">PKMonitor</a>
+        <div class="navlinks">
+          <a href="#features">Fonctionnalités</a>
+          <a href="#proof">En situation</a>
+          <a href="https://github.com/mondary/PKmonitor" target="_blank" rel="noreferrer">GitHub</a>
+        </div>
+        <a class="download download-link" href="https://github.com/mondary/PKmonitor/releases/latest"> Download</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="container">
+        <div class="eyebrow"><i></i>Moniteur natif macOS</div>
+        <h1>Tout ce que fait votre Mac.<br><span>Sur une ligne.</span></h1>
+        <p class="lede">Un moniteur minuscule, natif, dans la barre des menus. Pas d’Electron. Pas de compte. Pas de télémétrie. Pas de blabla.</p>
+        <div class="actions">
+          <a class="primary download-link" href="https://github.com/mondary/PKmonitor/releases/latest">↓ Télécharger pour macOS</a>
+          <a class="ghost" href="https://github.com/mondary/PKmonitor" target="_blank" rel="noreferrer">Voir le code</a>
+        </div>
+        <p class="fine">macOS 13+ · Intel &amp; Apple Silicon · gratuit, open source</p>
+        <div class="menubar-mock" aria-label="Aperçu de la barre des menus">
+          <span></span>
+          <svg width="46" height="14" viewBox="0 0 46 14"><path d="M1 10 C6 10 5 3 10 3.5 C15 4 13 11 19 11 C25 11 24 12 30 12 C36 12 35 4 40 4.5 C43 4.8 44 9 45 9.5" fill="none" stroke="#b9ff31" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span>CPU <span class="g"><i style="width:34%"></i></span></span>
+          <span>GPU <span class="g"><i style="width:18%"></i></span></span>
+          <span>RAM <span class="g"><i style="width:62%"></i></span></span>
+          <span>NET <span class="g"><i style="width:12%"></i></span></span>
+          <span style="margin-left:auto"></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="alt" id="features">
+      <div class="container alt-grid">
+        <div>
+          <span class="kicker">Sparkline</span>
+          <h2>Chaque pic porte <span>un nom.</span></h2>
+          <p>La courbe d’activité vit directement dans la barre des menus. Quand Xcode compile ou quand Chrome s’emballe, l’icône de l’app se pose sur le pic. Un survol, et le panneau liste les processus gourmands.</p>
+          <ul class="checks">
+            <li>Icônes des apps dominantes sur les pics</li>
+            <li>Panneau de détail au survol</li>
+            <li>Arrêt propre d’une app en un clic</li>
+          </ul>
+        </div>
+        <div class="alt-vis"><img src="../gifs/pkmonitor-demo.gif" alt="Démonstration de la sparkline et du panneau de détail"></div>
+      </div>
+    </section>
+
+    <section class="alt flip" id="proof">
+      <div class="container alt-grid">
+        <div>
+          <span class="kicker">Seconde barre</span>
+          <h2>Une barre des menus <span>enfin nette.</span></h2>
+          <p>Descendez n’importe quelle icône dans une seconde barre façon Bartender : cases à cocher, ordre réglable, clic transféré vers le menu d’origine. Et comme pour le reste : rien ne sort du Mac sans votre clic explicite.</p>
+          <ul class="checks">
+            <li>Icônes tierces rangées, accès conservé</li>
+            <li>Clé IA dans le Trousseau macOS</li>
+            <li>0 octet envoyé par défaut</li>
+          </ul>
+        </div>
+        <div class="alt-vis"><img src="../screenshots/live-menubar-secondbar.png" alt="Seconde barre de la barre des menus"></div>
+      </div>
+    </section>
+
+    <section class="install">
+      <div class="container">
+        <h2>Une commande. Et c’est réglé.</h2>
+        <p>Gratuit pour toujours, sans compte, sans télémétrie — c’est open source.</p>
+        <div class="actions">
+          <a class="primary download-link" href="https://github.com/mondary/PKmonitor/releases/latest">↓ Télécharger PKMonitor (.dmg)</a>
+        </div>
+        <br><span class="cmd">brew install --cask mondary/tap/pkmonitor</span>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      <span>© 2026 PKMonitor · Fait pour macOS</span>
+      <span><a href="https://github.com/mondary/PKmonitor" target="_blank" rel="noreferrer">Code source</a> · <a href="https://ko-fi.com/pouark" target="_blank" rel="noreferrer">Soutenir</a></span>
+    </div>
+  </footer>
+  <script>
+    fetch('https://api.github.com/repos/mondary/PKmonitor/releases/latest').then(r => r.ok ? r.json() : Promise.reject()).then(release => { const dmg = release.assets.find(a => /^PKMonitor-.+\.dmg$/i.test(a.name)); if (dmg) document.querySelectorAll('.download-link').forEach(l => l.href = dmg.browser_download_url); }).catch(() => {});
+  </script>
+</body>
+</html>

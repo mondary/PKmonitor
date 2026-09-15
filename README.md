@@ -54,6 +54,8 @@ swift run PKMonitor --self-test
 
 La page de présentation est disponible dans [`store/index.html`](store/index.html). Elle est autonome, responsive et prête à être hébergée telle quelle. Ses boutons récupèrent automatiquement le DMG de la dernière release GitHub.
 
+Une fiche produit dédiée, pensée comme une page de store — carte application (catégorie, version, taille, compatibilité), maquette animée de la barre des menus avec panneau de détail au survol, captures réelles et installation Homebrew/curl — est disponible dans [`store/store_PKmonitor-v2.html`](store/store_PKmonitor-v2.html). Elle est également autonome et met à jour version, taille et lien DMG depuis l’API GitHub Releases.
+
 ## 🧪 Installation
 
 Requiert macOS 13+ et les outils de ligne de commande Xcode. Exécuter `./run.sh`, puis conserver `dist/PKMonitor.app` ou le copier dans Applications.

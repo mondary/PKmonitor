@@ -18,3 +18,4 @@ build/
 .venv/
 __pycache__/
 *.log
+store/assets/videos/CleanShot*.cleanshotvideo/

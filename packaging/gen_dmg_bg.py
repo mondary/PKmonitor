@@ -1,17 +1,48 @@
 #!/usr/bin/env python3
-"""PKMonitor animated DMG background v2 — dmgly contract 660x400.
+"""PKMonitor animated DMG background — dmgly contract.
 Scene: dashed sparkline path app->Applications, bright trace, traveling mini
 app icon that drops into the Applications folder, confirmation ring,
-breathing glow + drifting specks. Loop 64 frames @ 70ms."""
-import math
+breathing glow + drifting specks. Loop 64 frames @ 70ms.
+Fine-tuning: lire packaging/dmg-params.json (exporte par tuner.html) s'il existe."""
+import json, math, os
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
-W, H = 676, 500
-APP = (180, 170)      # real Finder icon centers (create-dmg)
-FOLDER = (480, 170)
-LIME = (185, 255, 49)
-LIME_DIM = (143, 212, 31)
-TRACE_FAINT = (74, 104, 24)
+# ---------- params (defauts = design valide ; dmg-params.json surcharge) ----------
+P = {
+    "canvas": {"w": 676, "h": 500},
+    "app": {"x": 180, "y": 170},
+    "folder": {"x": 480, "y": 170},
+    "accent": "#b9ff31",
+    "texts": {
+        "title": "PKMonitor",
+        "subtitle": "Glissez l'application vers le dossier Applications",
+        "caption": "macOS 13+ · Gratuit · Open source",
+    },
+    "spark": {"dx": 8, "dy": -12},
+    "caption_y": 362,
+}
+_params_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dmg-params.json")
+if os.path.isfile(_params_path):
+    try:
+        _over = json.load(open(_params_path))
+        for k, v in _over.items():
+            if isinstance(v, dict) and isinstance(P.get(k), dict):
+                P[k].update(v)
+            else:
+                P[k] = v
+    except Exception as e:
+        print("dmg-params.json illisible, defauts conserves:", e)
+
+def _hex_rgb(s):
+    s = s.lstrip("#")
+    return tuple(int(s[i:i+2], 16) for i in (0, 2, 4))
+
+W, H = P["canvas"]["w"], P["canvas"]["h"]
+APP = (P["app"]["x"], P["app"]["y"])
+FOLDER = (P["folder"]["x"], P["folder"]["y"])
+LIME = _hex_rgb(P["accent"])
+LIME_DIM = tuple(int(c * 0.78) for c in LIME)
+TRACE_FAINT = tuple(int(c * 0.4) for c in LIME)
 INK = (244, 245, 240)
 MUTED = (155, 158, 151)
 DIM = (111, 106, 97)
@@ -69,10 +100,12 @@ def bez(p0, p1, p2, p3, n):
     return pts
 
 # elegant S-path: app -> up peak -> trough -> arrive folder (left edge)
+# exprime en offsets relatifs a APP (fin ≈ FOLDER.x-38) pour rester draggable
+_ax, _ay = APP
 PATH = (
-    bez((246, 176), (288, 120), (330, 120), (352, 158), 26) +
-    bez((352, 158), (372, 190), (392, 210), (412, 190), 18) +
-    bez((412, 190), (424, 178), (432, 172), (442, 171), 10)
+    bez((_ax+66, _ay+6), (_ax+108, _ay-50), (_ax+150, _ay-50), (_ax+172, _ay-12), 26) +
+    bez((_ax+172, _ay-12), (_ax+192, _ay+20), (_ax+212, _ay+40), (_ax+232, _ay+20), 18) +
+    bez((_ax+232, _ay+20), (_ax+244, _ay+8), (_ax+252, _ay+2), (_ax+262, _ay+1), 10)
 )
 PLEN = len(PATH)
 
@@ -101,17 +134,17 @@ def make_overlay():
     mask = Image.new("L", (W, H), 0)
     d = ImageDraw.Draw(ov)
     f_title = font(34, 1)
-    t = "PKMonitor"
+    t = P["texts"]["title"]
     tw = d.textlength(t, font=f_title)
     d.text(((W - tw) / 2, 26), t, font=f_title, fill=INK)
     f_sub = font(13.5, 0)
-    t2 = "Glissez l’application vers le dossier Applications"
+    t2 = P["texts"]["subtitle"]
     tw2 = d.textlength(t2, font=f_sub)
     d.text(((W - tw2) / 2, 68), t2, font=f_sub, fill=MUTED)
     f_cap = font(11, 0)
-    cap = "macOS 13+ · Gratuit · Open source"
+    cap = P["texts"]["caption"]
     cw = d.textlength(cap, font=f_cap)
-    d.text((608 - cw, 362), cap, font=f_cap, fill=DIM)
+    d.text((W - 68 - cw, P["caption_y"]), cap, font=f_cap, fill=DIM)
     # dashed path (faint, always visible) + chevrons near folder
     d2 = ImageDraw.Draw(ov)
     draw_dashed(d2, PATH, TRACE_FAINT, 3)
@@ -135,11 +168,12 @@ def mini_icon(size):
     return ic, m
 
 # ---------- bottom brand sparkline ----------
-SPARK_RAW = [
-    (68, 328), (103, 328), (96, 290), (126, 292), (154, 326), (196, 326),
-    (240, 332), (276, 332), (312, 338), (348, 338), (380, 326), (412, 326),
-    (436, 284), (460, 288), (480, 324), (516, 326), (556, 326), (608, 328),
+_SPARK_BASE = [
+    (60, 340), (95, 340), (88, 302), (118, 304), (146, 338), (188, 338),
+    (232, 344), (268, 344), (304, 350), (340, 350), (372, 338), (404, 338),
+    (428, 296), (452, 300), (472, 336), (508, 338), (548, 338), (600, 340),
 ]
+SPARK_RAW = [(x + P["spark"]["dx"], y + P["spark"]["dy"]) for x, y in _SPARK_BASE]
 def spark_points():
     pts = []
     for i in range(len(SPARK_RAW) - 1):

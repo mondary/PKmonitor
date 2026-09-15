@@ -4,131 +4,201 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="PKMonitor — les métriques essentielles de votre Mac dans la barre des menus. Gratuit, open source, pensé pour macOS.">
-<meta name="theme-color" content="#f7f3ec">
+<meta name="theme-color" content="#08090b">
 <meta property="og:title" content="PKMonitor — Gardez un œil sur votre Mac.">
 <meta property="og:description" content="Un moniteur macOS gratuit, discret et configurable dans la barre des menus.">
 <title>PKMonitor — Gardez un œil sur votre Mac.</title>
 <link rel="icon" href="../icon.png">
 <style>
   :root{
-    --bg:#f7f3ec; --bg-alt:#fffdf9; --ink:#1d1a16; --muted:#6f6a61; --line:rgba(29,26,22,.12);
-    --lime:#b9ff31; --lime-ink:#1a2205; --dark:#141310; --card:#fffefb;
-    --radius:18px; --font:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",sans-serif;
+    --bg:#08090b; --bg-2:#0c0e11; --ink:#f4f5f0; --muted:#9b9e97; --line:rgba(255,255,255,.11);
+    --lime:#b9ff31; --lime-dim:#8fd41f; --lime-ink:#131a03;
+    --card:rgba(255,255,255,.04); --card-2:rgba(255,255,255,.025);
+    --font:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",sans-serif;
     --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
-  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);letter-spacing:-.015em;-webkit-font-smoothing:antialiased}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);letter-spacing:-.015em;-webkit-font-smoothing:antialiased;overflow-x:hidden}
   a{color:inherit;text-decoration:none}
   img,video{display:block;max-width:100%}
   .wrap{width:min(1120px,calc(100% - 40px));margin:auto}
-  /* Nav */
-  header{position:sticky;top:0;z-index:50;background:rgba(247,243,236,.82);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
-  .nav{height:66px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+
+  /* reveal on scroll */
+  .rv{opacity:0;transform:translateY(28px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1)}
+  .rv.in{opacity:1;transform:none}
+  .rv.d1{transition-delay:.08s}.rv.d2{transition-delay:.16s}.rv.d3{transition-delay:.24s}.rv.d4{transition-delay:.32s}
+
+  /* nav */
+  header{position:sticky;top:0;z-index:50;background:rgba(8,9,11,.75);backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
+  .nav{height:68px;display:flex;align-items:center;justify-content:space-between;gap:20px}
   .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px}
-  .brand img{width:34px;height:34px;border-radius:9px}
+  .brand img{width:34px;height:34px;border-radius:9px;transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+  .brand:hover img{transform:rotate(-8deg) scale(1.1)}
   .nav-links{display:flex;align-items:center;gap:26px;font-size:14.5px;color:var(--muted)}
+  .nav-links a{transition:color .2s}
   .nav-links a:hover{color:var(--ink)}
-  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 18px;border-radius:12px;font-weight:700;font-size:15px;border:1px solid transparent;cursor:pointer;transition:transform .18s,box-shadow .18s,background .18s}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:13px 20px;border-radius:13px;font-weight:700;font-size:15px;border:1px solid transparent;cursor:pointer;transition:transform .2s,box-shadow .25s,background .2s,border-color .2s}
   .btn:hover{transform:translateY(-2px)}
-  .btn-primary{background:var(--dark);color:#f6f2e9;box-shadow:0 8px 24px rgba(20,19,16,.18)}
-  .btn-primary:hover{box-shadow:0 12px 30px rgba(20,19,16,.26)}
-  .btn-light{background:var(--lime);color:var(--lime-ink);box-shadow:0 8px 24px rgba(112,150,20,.25)}
-  .btn-ghost{border-color:var(--line);background:var(--bg-alt);color:var(--ink)}
-  .btn img{width:18px;height:18px;border-radius:5px}
-  /* Hero */
-  .hero{padding:72px 0 40px;text-align:center;overflow:hidden;position:relative}
-  .hero:before{content:"";position:absolute;width:900px;height:420px;left:50%;top:-200px;transform:translateX(-50%);background:radial-gradient(ellipse,rgba(185,255,49,.35),transparent 65%);pointer-events:none}
-  h1{max-width:860px;margin:18px auto 22px;font-size:clamp(42px,6.4vw,78px);line-height:1.02;letter-spacing:-.045em;font-weight:800}
-  .hl{position:relative;display:inline-block;padding:0 .18em;white-space:nowrap}
-  .hl i{position:absolute;z-index:-1;inset:-.04em -.1em -.02em;background:var(--lime);border-radius:.14em;transform:rotate(-1.2deg);font-style:normal}
-  .lede{max-width:640px;margin:0 auto;font-size:clamp(17px,2vw,20px);color:var(--muted);line-height:1.5}
-  .lede strong{color:var(--ink)}
-  .hero-cta{margin:32px 0 8px;display:flex;flex-direction:column;align-items:center;gap:9px}
-  .hero-cta small{font-size:13.5px;color:var(--muted)}
-  .hero-media{position:relative;margin:48px auto 0;max-width:980px}
-  .frame{padding:10px;background:linear-gradient(140deg,#3a3833,#171613 40%,#26241f);border-radius:24px;box-shadow:0 40px 90px rgba(29,26,22,.35);border:1px solid rgba(255,255,255,.08)}
-  .frame video,.frame img{width:100%;border-radius:16px;background:#0c0d0e}
-  .frame-label{position:absolute;top:26px;left:28px;z-index:2;display:flex;gap:7px}
-  .frame-label i{width:11px;height:11px;border-radius:50%;background:#ff5d57;box-shadow:17px 0 #ffbd2e,34px 0 #28c840;font-style:normal}
-  .trust{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin:34px 0 0}
-  .pill{padding:7px 13px;border:1px solid var(--line);border-radius:999px;background:var(--bg-alt);font-size:13px;color:var(--muted);font-weight:600}
-  .pill b{color:var(--ink)}
-  /* Sections */
-  section{padding:96px 0}
-  .alt{background:var(--bg-alt);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-  .kicker{color:#5a7a12;font-size:12.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
-  h2{margin:12px 0 14px;font-size:clamp(30px,4vw,48px);line-height:1.06;letter-spacing:-.035em;font-weight:800}
-  .intro{color:var(--muted);font-size:17.5px;line-height:1.5;max-width:520px}
-  .row{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
+  .btn:active{transform:translateY(0) scale(.98)}
+  .btn-lime{background:var(--lime);color:var(--lime-ink);box-shadow:0 10px 32px rgba(185,255,49,.22)}
+  .btn-lime:hover{box-shadow:0 14px 42px rgba(185,255,49,.34)}
+  .btn-dark{background:#17181c;color:var(--ink);border-color:var(--line);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+  .btn-dark:hover{border-color:rgba(255,255,255,.26)}
+  .btn-ghost{border-color:var(--line);background:var(--card);color:var(--ink)}
+  .btn-ghost:hover{background:rgba(255,255,255,.07)}
+  .btn .bicon{width:19px;height:19px;border-radius:5px;transition:transform .25s cubic-bezier(.34,1.56,.64,1)}
+  .btn:hover .bicon{transform:scale(1.18) rotate(-6deg)}
+
+  /* hero */
+  .hero{position:relative;padding:84px 0 30px;text-align:center}
+  .glow{position:absolute;pointer-events:none;border-radius:50%;filter:blur(90px)}
+  .glow-a{width:820px;height:400px;left:50%;top:-190px;transform:translateX(-50%);background:radial-gradient(ellipse,rgba(120,160,30,.30),transparent 68%)}
+  .glow-b{width:520px;height:340px;right:-220px;top:340px;background:radial-gradient(ellipse,rgba(185,255,49,.09),transparent 70%);animation:float 11s ease-in-out infinite alternate}
+  .glow-c{width:460px;height:320px;left:-220px;top:620px;background:radial-gradient(ellipse,rgba(80,140,240,.08),transparent 70%);animation:float 13s ease-in-out infinite alternate-reverse}
+  @keyframes float{to{transform:translateY(50px)}}
+  .eyebrow{display:inline-flex;align-items:center;gap:9px;padding:8px 14px;border:1px solid rgba(185,255,49,.28);background:rgba(185,255,49,.07);color:#d5ff77;border-radius:999px;font-size:13px;font-weight:700}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--lime);box-shadow:0 0 12px var(--lime);animation:pulse 2.2s infinite}
+  @keyframes pulse{50%{opacity:.35}}
+  h1{max-width:880px;margin:22px auto 22px;font-size:clamp(44px,6.6vw,82px);line-height:1.01;letter-spacing:-.048em;font-weight:800;color:#fbfcf8}
+  .hl{position:relative;display:inline-block;padding:0 .2em;white-space:nowrap;color:var(--lime-ink)}
+  .hl i{position:absolute;z-index:-1;inset:-.05em -.06em 0;background:var(--lime);border-radius:.16em;transform:rotate(-1.4deg);overflow:hidden;font-style:normal}
+  .hl i:after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.55) 50%,transparent 70%);transform:translateX(-120%);animation:shine 4.5s ease-in-out infinite}
+  @keyframes shine{0%,55%{transform:translateX(-120%)}75%,100%{transform:translateX(120%)}}
+  .lede{max-width:620px;margin:0 auto;font-size:clamp(17px,2vw,20px);color:var(--muted);line-height:1.5}
+  .lede strong{color:#dfe2da;font-weight:650}
+  .hero-cta{margin:34px 0 10px;display:flex;flex-direction:column;align-items:center;gap:10px}
+  .hero-cta small{font-size:13.5px;color:#777a73}
+
+  .hero-media{position:relative;margin:52px auto 0;max-width:980px}
+  .frame{padding:9px;background:linear-gradient(150deg,rgba(255,255,255,.16),rgba(255,255,255,.03) 30%,rgba(255,255,255,.09));border-radius:24px;box-shadow:0 50px 110px rgba(0,0,0,.6);transition:transform .35s cubic-bezier(.2,.7,.2,1),box-shadow .35s}
+  .frame:hover{transform:scale(1.012);box-shadow:0 60px 130px rgba(0,0,0,.7),0 0 80px rgba(185,255,49,.07)}
+  .frame-inner{position:relative;border-radius:17px;overflow:hidden;background:#0b0c0e;border:1px solid rgba(255,255,255,.08)}
+  .frame-inner video{width:100%;transition:transform .5s ease}
+  .frame:hover .frame-inner video{transform:scale(1.015)}
+  .tl{position:absolute;top:14px;left:17px;z-index:2;display:flex;gap:7px}
+  .tl i{width:11px;height:11px;border-radius:50%;background:#ff5d57;box-shadow:17px 0 #ffbd2e,34px 0 #28c840;font-style:normal}
+
+  /* dock */
+  .hero-foot{max-width:980px;margin:26px auto 0;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap}
+  .hero-note{max-width:300px;font-size:15px;color:var(--muted);line-height:1.45;text-align:left}
+  .hero-note b{color:var(--ink)}
+  .dock{display:flex;align-items:flex-end;gap:12px;padding:10px 14px;border:1px solid var(--line);border-radius:22px;background:rgba(255,255,255,.045);backdrop-filter:blur(10px)}
+  .dock-item{position:relative;width:52px;height:52px;transition:transform .28s cubic-bezier(.34,1.56,.64,1);cursor:default}
+  .dock-item img{width:100%;height:100%;object-fit:contain;border-radius:13px}
+  .dock-item:hover{transform:translateY(-12px) scale(1.28)}
+  .dock-item.active:after{content:"";position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);width:5px;height:5px;border-radius:50%;background:var(--ink)}
+  .dock-item:hover:before{content:attr(data-name);position:absolute;bottom:calc(100% + 12px);left:50%;transform:translateX(-50%);white-space:nowrap;padding:5px 10px;border-radius:8px;background:rgba(30,32,36,.95);border:1px solid var(--line);font-size:12px;font-weight:600;color:var(--ink)}
+
+  /* marquee */
+  .marquee{border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-top:74px;padding:15px 0;overflow:hidden;background:var(--bg-2)}
+  .marquee-track{display:flex;gap:44px;width:max-content;animation:scroll 30s linear infinite}
+  .marquee:hover .marquee-track{animation-play-state:paused}
+  @keyframes scroll{to{transform:translateX(-50%)}}
+  .mq{display:inline-flex;align-items:center;gap:9px;font-size:13.5px;font-weight:650;color:#84887e;white-space:nowrap}
+  .mq i{width:5px;height:5px;border-radius:50%;background:var(--lime-dim);font-style:normal}
+  .mq b{color:#c9cdc2}
+
+  /* sections */
+  section{padding:110px 0;position:relative}
+  .alt{background:var(--bg-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  .kicker{color:var(--lime);font-size:12.5px;font-weight:800;letter-spacing:.11em;text-transform:uppercase}
+  h2{margin:13px 0 15px;font-size:clamp(31px,4.2vw,50px);line-height:1.05;letter-spacing:-.038em;font-weight:800;color:#fbfcf8;max-width:560px}
+  .intro{color:var(--muted);font-size:17.5px;line-height:1.5;max-width:500px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:66px;align-items:center}
   .row.flip .media{order:-1}
-  .items{margin:26px 0 0;padding:0;list-style:none}
-  .items li{padding:15px 0;border-top:1px solid var(--line)}
-  .items h3{margin:0 0 4px;font-size:16.5px;letter-spacing:-.02em}
-  .items p{margin:0;color:var(--muted);font-size:14.5px;line-height:1.45}
-  .items li:before{content:"✓";color:#5a7a12;font-weight:800;margin-right:9px}
-  .media{border-radius:var(--radius);overflow:hidden;border:1px solid var(--line);box-shadow:0 24px 60px rgba(29,26,22,.16);background:var(--card)}
-  .media.shot img{width:100%}
-  .media-caption{padding:13px 17px;font-size:13px;color:var(--muted);border-top:1px solid var(--line)}
-  /* Sparkline mock */
-  .menubar{padding:20px 22px 26px;background:linear-gradient(160deg,#efeadf,#e7e1d3);border-bottom:1px solid var(--line)}
-  .menubar-strip{display:flex;align-items:center;justify-content:flex-end;gap:16px;font:600 12.5px var(--font);color:#3c3830}
-  .gauge{display:inline-flex;align-items:center;gap:6px}
-  .gauge b{font-weight:700}
-  .spark{position:relative;height:120px;margin-top:18px}
+  .items{margin:28px 0 0;padding:0;list-style:none}
+  .items li{padding:15px 0;border-top:1px solid var(--line);font-size:15.5px;color:#cfd2ca;transition:padding-left .25s}
+  .items li:hover{padding-left:8px}
+  .items li:before{content:"✓";color:var(--lime);font-weight:800;margin-right:10px}
+  .media{border-radius:20px;overflow:hidden;border:1px solid rgba(255,255,255,.13);box-shadow:0 34px 80px rgba(0,0,0,.5);background:var(--card-2);transition:transform .4s cubic-bezier(.2,.7,.2,1),box-shadow .4s}
+  .media:hover{transform:translateY(-6px);box-shadow:0 44px 95px rgba(0,0,0,.6)}
+  .media-caption{padding:14px 18px;font-size:13px;color:var(--muted);border-top:1px solid var(--line)}
+
+  /* menubar mock */
+  .menubar{padding:22px 24px 30px;background:linear-gradient(165deg,rgba(255,255,255,.07),rgba(255,255,255,.015));border-bottom:1px solid var(--line)}
+  .menubar-strip{display:flex;align-items:center;justify-content:flex-end;gap:20px;font:650 13px var(--font);color:#c8ccc1}
+  .gauge{display:inline-flex;align-items:baseline;gap:6px}
+  .gauge b{font-size:15px;color:var(--ink);font-variant-numeric:tabular-nums}
+  .gauge .u{color:var(--lime);transition:color .3s}
+  .spark{position:relative;height:130px;margin-top:20px}
   .spark svg{width:100%;height:100%;overflow:visible}
-  .spark path{fill:none;stroke:#22201b;stroke-width:5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:740;stroke-dashoffset:740;animation:trace 4s ease-in-out infinite alternate}
+  .spark path{fill:none;stroke:#f2f4ec;stroke-width:5.5;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 9px rgba(185,255,49,.28));stroke-dasharray:740;stroke-dashoffset:740;animation:trace 4.2s ease-in-out infinite alternate}
   @keyframes trace{to{stroke-dashoffset:0}}
-  .spark .app{position:absolute;width:40px;height:40px;opacity:0;animation:marker 4s ease-in-out infinite alternate both}
+  .spark .app{position:absolute;width:42px;height:42px;opacity:0;animation:marker 4.2s ease-in-out infinite alternate both;transition:transform .25s cubic-bezier(.34,1.56,.64,1)}
+  .spark .app:hover{transform:scale(1.3)}
   .spark .app img{width:100%;height:100%;object-fit:contain}
-  .spark .app.vscode{left:12%;top:4%;animation-delay:2.9s}
-  .spark .app.whatsapp{left:44%;top:56%;animation-delay:1.6s}
-  .spark .app.chrome{right:7%;top:8%;animation-delay:.3s}
-  @keyframes marker{0%,12%{opacity:0;transform:scale(.7)}22%,100%{opacity:1;transform:scale(1)}}
-  /* Download */
-  .dl-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:18px;margin-top:44px;text-align:left}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:30px;box-shadow:0 18px 45px rgba(29,26,22,.08)}
-  .card .price{font-size:44px;font-weight:800;letter-spacing:-.04em}
-  .card .price small{font-size:16px;color:var(--muted);font-weight:600}
-  .card .tag{display:inline-block;padding:5px 11px;border-radius:999px;background:rgba(185,255,49,.35);color:#3d5306;font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;margin-bottom:12px}
-  .card .items li{font-size:15px;color:#3c3830}
-  .card .btn{width:100%;margin-top:20px}
-  .cli{display:flex;align-items:center;gap:12px;padding:13px 15px;border:1px solid var(--line);border-radius:12px;background:var(--bg);margin-top:12px}
-  .cli label{min-width:74px;color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
-  .cli code{flex:1;min-width:0;overflow:auto;white-space:nowrap;font:12.5px var(--mono);color:#2b2823}
-  .copy{flex:none;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);font:11px var(--mono);color:var(--muted);cursor:pointer}
-  .copy:hover{color:var(--ink);border-color:rgba(29,26,22,.3)}
-  .card .fine{margin:16px 0 0;font-size:12.5px;color:var(--muted);text-align:center}
-  .card .fine a{color:#3d5306;font-weight:700}
-  /* FAQ */
-  .faq{max-width:760px;margin:44px auto 0;text-align:left}
-  details{border:1px solid var(--line);border-radius:14px;background:var(--card);margin-bottom:10px;overflow:hidden}
-  summary{padding:18px 22px;font-weight:700;font-size:16px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:14px}
+  .spark .app.vscode{left:12%;top:2%;animation-delay:2.9s}
+  .spark .app.whatsapp{left:44%;top:58%;animation-delay:1.6s}
+  .spark .app.chrome{right:7%;top:6%;animation-delay:.3s}
+  @keyframes marker{0%,12%{opacity:0;transform:scale(.6)}24%,100%{opacity:1;transform:scale(1)}}
+
+  /* download */
+  .dl-head{text-align:center}
+  .dl-head h2,.dl-head .intro{margin-left:auto;margin-right:auto}
+  .dl-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:18px;margin-top:48px;text-align:left}
+  .card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:32px;overflow:hidden;transition:transform .35s,border-color .35s,box-shadow .35s}
+  .card:hover{transform:translateY(-5px);border-color:rgba(185,255,49,.28);box-shadow:0 30px 70px rgba(0,0,0,.45)}
+  .card:before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% -20%,rgba(185,255,49,.10),transparent 60%);pointer-events:none}
+  .tag{display:inline-block;padding:5px 12px;border-radius:999px;background:rgba(185,255,49,.14);color:#d5ff77;font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;margin-bottom:14px}
+  .price{font-size:46px;font-weight:800;letter-spacing:-.045em;color:#fbfcf8}
+  .price small{font-size:16px;color:var(--muted);font-weight:600}
+  .card .items li{font-size:15px}
+  .card .btn{width:100%;margin-top:22px}
+  .cli{display:flex;align-items:center;gap:12px;padding:14px 15px;border:1px solid var(--line);border-radius:13px;background:rgba(0,0,0,.32);margin-top:12px;transition:border-color .25s}
+  .cli:hover{border-color:rgba(255,255,255,.24)}
+  .cli label{min-width:78px;color:#84887e;font-size:11px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}
+  .cli code{flex:1;min-width:0;overflow:auto;white-space:nowrap;font:12.5px var(--mono);color:#e3e6dc}
+  .copy{flex:none;padding:7px 11px;border:1px solid var(--line);border-radius:9px;background:transparent;font:11px var(--mono);color:#a9ada3;cursor:pointer;transition:color .2s,border-color .2s,background .2s}
+  .copy:hover{color:var(--ink);border-color:rgba(255,255,255,.3);background:rgba(255,255,255,.05)}
+  .fine{margin:18px 0 0;font-size:12.5px;color:#777a73;text-align:center}
+  .fine a{color:var(--lime-dim);font-weight:700}
+
+  /* faq */
+  .faq{max-width:760px;margin:48px auto 0;text-align:left}
+  details{border:1px solid var(--line);border-radius:16px;background:var(--card);margin-bottom:11px;overflow:hidden;transition:border-color .3s,background .3s}
+  details[open]{border-color:rgba(185,255,49,.25);background:rgba(255,255,255,.05)}
+  summary{padding:19px 24px;font-weight:700;font-size:16px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:14px}
   summary::-webkit-details-marker{display:none}
-  summary:after{content:"+";font-size:20px;color:var(--muted);flex:none}
-  details[open] summary:after{content:"–"}
-  details p{margin:0;padding:0 22px 20px;color:var(--muted);font-size:15px;line-height:1.55}
-  details p a{color:#3d5306;font-weight:650}
-  details p code{font:13px var(--mono);background:var(--bg);padding:2px 6px;border-radius:6px}
-  /* Final CTA */
-  .final{background:var(--dark);color:#f0ece1;text-align:center;border-radius:28px;padding:78px 30px;position:relative;overflow:hidden}
-  .final:before{content:"";position:absolute;inset:-40%;background:radial-gradient(ellipse at 50% 120%,rgba(185,255,49,.22),transparent 55%);pointer-events:none}
-  .final h2{color:#fdfaf2}
-  .final p{color:#b9b4a7;max-width:480px;margin:0 auto 28px;font-size:17px}
-  .final .kicker{color:var(--lime)}
-  /* Footer */
-  footer{border-top:1px solid var(--line);padding:46px 0 60px;font-size:13.5px;color:var(--muted)}
-  .foot-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:34px}
-  .foot-grid h4{margin:0 0 12px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink)}
-  .foot-grid a{display:block;padding:4px 0}
-  .foot-grid a:hover{color:var(--ink)}
-  .foot-bottom{margin-top:40px;padding-top:22px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
-  @media(max-width:860px){
+  summary:after{content:"+";font-size:21px;color:var(--muted);flex:none;transition:transform .3s,color .3s}
+  details[open] summary:after{content:"–";color:var(--lime);transform:rotate(180deg)}
+  details p{margin:0;padding:0 24px 21px;color:var(--muted);font-size:15px;line-height:1.6;animation:fadein .45s ease}
+  @keyframes fadein{from{opacity:0;transform:translateY(-6px)}}
+  details p a{color:var(--lime-dim);font-weight:650}
+  details p code{font:13px var(--mono);background:rgba(0,0,0,.35);padding:2px 7px;border-radius:6px;border:1px solid var(--line)}
+
+  /* final */
+  .final{position:relative;text-align:center;border-radius:30px;padding:86px 30px;background:linear-gradient(170deg,#101216,#0a0b0d);border:1px solid rgba(255,255,255,.12);overflow:hidden}
+  .final:before{content:"";position:absolute;left:50%;bottom:-260px;transform:translateX(-50%);width:900px;height:460px;background:radial-gradient(ellipse,rgba(185,255,49,.17),transparent 62%);pointer-events:none;animation:breathe 7s ease-in-out infinite alternate}
+  @keyframes breathe{to{opacity:.55;transform:translateX(-50%) scale(1.15)}}
+  .final h2{margin-left:auto;margin-right:auto}
+  .final p{color:var(--muted);max-width:460px;margin:0 auto 30px;font-size:17px}
+
+  /* footer */
+  footer{border-top:1px solid var(--line);padding:50px 0 64px;font-size:13.5px;color:#84887e;background:var(--bg-2)}
+  .foot-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:36px}
+  .foot-grid h4{margin:0 0 13px;font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:#c9cdc2}
+  .foot-grid a{display:block;padding:4.5px 0;transition:color .2s,transform .2s}
+  .foot-grid a:hover{color:var(--ink);transform:translateX(3px)}
+  .foot-brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;color:var(--ink)}
+  .foot-brand img{width:30px;height:30px;border-radius:8px}
+  .foot-desc{margin:12px 0 0;max-width:280px;line-height:1.55}
+  .foot-bottom{margin-top:42px;padding-top:22px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+
+  @media(max-width:880px){
     .row,.dl-grid,.foot-grid{grid-template-columns:1fr}
-    .row{gap:36px}
+    .row{gap:40px}
     .row.flip .media{order:0}
     .nav-links a:not(.nav-cta){display:none}
-    section{padding:66px 0}
+    section{padding:74px 0}
+    .hero-foot{justify-content:center;text-align:center}
+    .hero-note{text-align:center}
+    .dock-item{width:44px;height:44px}
+  }
+  @media(prefers-reduced-motion:reduce){
+    *,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+    .rv{opacity:1;transform:none}
   }
 </style>
 </head>
@@ -142,120 +212,137 @@
       <a href="#download">Télécharger</a>
       <a href="#faq">FAQ</a>
       <a href="https://github.com/mondary/PKmonitor" target="_blank" rel="noreferrer">GitHub ↗</a>
-      <a class="nav-cta btn btn-primary" href="https://github.com/mondary/PKmonitor/releases/latest"><img src="../icon.png" alt="">Télécharger l’app</a>
+      <a class="nav-cta btn btn-dark" href="https://github.com/mondary/PKmonitor/releases/latest"><img class="bicon" src="../icon.png" alt="">Télécharger l’app</a>
     </nav>
   </div>
 </header>
 
 <main id="top">
 
-  <!-- Hero -->
-  <section class="hero wrap">
-    <div class="kicker">Gratuit · Open source · macOS 13+</div>
-    <h1>Les métriques de votre Mac,<br><span class="hl"><i></i>sur une seule ligne.</span></h1>
-    <p class="lede">CPU, GPU, RAM, réseau — l’essentiel vit dans votre barre des menus. <strong>Un survol suffit</strong> pour voir quel app fait travailler votre Mac, sans ouvrir le moindre dashboard.</p>
-    <div class="hero-cta">
-      <a class="btn btn-primary download-link" href="https://github.com/mondary/PKmonitor/releases/latest"><img src="../icon.png" alt="">Télécharger PKMonitor — Gratuit</a>
-      <small>Conçu pour macOS · Intel & Apple Silicon · Aucun compte requis</small>
-    </div>
-    <div class="hero-media">
-      <div class="frame">
-        <div class="frame-label" aria-hidden="true"><i></i></div>
-        <video autoplay muted loop playsinline preload="metadata" poster="assets/screenshots/cleanshot-2026-09-14-wide.png">
-          <source src="assets/videos/pkmonitor-cleanshot-demo.mp4" type="video/mp4">
-        </video>
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="glow glow-a"></div><div class="glow glow-b"></div><div class="glow glow-c"></div>
+    <div class="wrap" style="position:relative">
+      <div class="eyebrow rv"><i class="dot"></i> Gratuit · Open source · macOS 13+</div>
+      <h1 class="rv d1">Les métriques de votre Mac,<br><span class="hl"><i></i>sur une seule ligne.</span></h1>
+      <p class="lede rv d2">CPU, GPU, RAM, réseau — l’essentiel vit dans votre barre des menus. <strong>Un survol suffit</strong> pour voir quelle app fait travailler votre Mac, sans ouvrir le moindre dashboard.</p>
+      <div class="hero-cta rv d3">
+        <a class="btn btn-lime download-link" href="https://github.com/mondary/PKmonitor/releases/latest"><img class="bicon" src="../icon.png" alt="">Télécharger PKMonitor — Gratuit</a>
+        <small>Conçu pour macOS · Intel &amp; Apple Silicon · Aucun compte requis</small>
       </div>
-    </div>
-    <div class="trust" aria-label="Points clés">
-      <span class="pill"><b>0 €</b> pour toujours</span>
-      <span class="pill">Open source <b>MIT</b></span>
-      <span class="pill">Données <b>100 % locales</b></span>
-      <span class="pill">Homebrew <b>&amp; DMG</b></span>
-      <span class="pill" id="version-badge">version <b>2026.09</b></span>
-    </div>
-  </section>
-
-  <!-- Features -->
-  <section class="alt" id="features">
-    <div class="wrap">
-      <div class="row">
-        <div>
-          <div class="kicker">La sparkline</div>
-          <h2>Voyez ce que fait votre Mac, en un coup d’œil.</h2>
-          <p class="intro">Une courbe d’activité compacte, posée dans la barre des menus. Chaque pic porte le nom de l’app qui l’a provoqué.</p>
-          <ul class="items">
-            <li><h3>Courbe en temps réel</h3><p>L’activité du système dessinée en continu, lisible même en coin d’écran.</p></li>
-            <li><h3>Les coupables nommés</h3><p>VS Code compile, Chrome s’emballe : les apps dominantes s’affichent sur leurs propres pics.</p></li>
-            <li><h3>Zéro dashboard</h3><p>Pas de fenêtre à ouvrir, pas de widget à surveiller. La barre des menus suffit.</p></li>
-          </ul>
-        </div>
-        <div class="media">
-          <div class="menubar">
-            <div class="menubar-strip">
-              <span class="gauge">CPU <b>34 %</b></span>
-              <span class="gauge">GPU <b>12 %</b></span>
-              <span class="gauge">RAM <b>62 %</b></span>
-              <span class="gauge">⇅ <b>1,2 Mo/s</b></span>
-            </div>
-            <div class="spark" aria-label="Courbe d'activité avec applications">
-              <svg viewBox="0 0 620 120" aria-hidden="true"><path d="M14 74 C48 74 42 34 68 35 C94 36 88 76 124 76 C160 76 166 82 204 82 C242 82 248 88 280 88 C316 88 322 76 352 76 C382 76 390 30 416 33 C440 36 450 74 480 75"/></svg>
-              <span class="app vscode"><img src="assets/app-icons/vscode.png" alt="Visual Studio Code"></span>
-              <span class="app whatsapp"><img src="assets/app-icons/whatsapp.png" alt="WhatsApp"></span>
-              <span class="app chrome"><img src="assets/app-icons/chrome.png" alt="Google Chrome"></span>
-            </div>
+      <div class="hero-media rv d4">
+        <div class="frame">
+          <div class="frame-inner">
+            <div class="tl" aria-hidden="true"><i></i></div>
+            <video autoplay muted loop playsinline preload="metadata" poster="assets/screenshots/cleanshot-2026-09-14-wide.png">
+              <source src="assets/videos/pkmonitor-cleanshot-demo.mp4" type="video/mp4">
+            </video>
           </div>
-          <div class="media-caption">La sparkline PKMonitor, avec les apps posées sur leurs pics.</div>
+        </div>
+      </div>
+      <div class="hero-foot rv d4">
+        <p class="hero-note">Une seule ligne dans la barre, <b>à la place d’un panneau Activity Monitor</b> qu’on n’ouvre jamais au bon moment.</p>
+        <div class="dock" aria-label="Apps surveillées par PKMonitor">
+          <div class="dock-item" data-name="Visual Studio Code"><img src="assets/app-icons/vscode.png" alt="Visual Studio Code"></div>
+          <div class="dock-item" data-name="Google Chrome"><img src="assets/app-icons/chrome.png" alt="Google Chrome"></div>
+          <div class="dock-item" data-name="WhatsApp"><img src="assets/app-icons/whatsapp.png" alt="WhatsApp"></div>
+          <div class="dock-item active" data-name="PKMonitor"><img src="../icon.png" alt="PKMonitor"></div>
         </div>
       </div>
     </div>
   </section>
 
-  <section>
+  <!-- ============ MARQUEE ============ -->
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee-track">
+      <span class="mq"><i></i><b>0 €</b> pour toujours</span><span class="mq"><i></i>Open source <b>MIT</b></span><span class="mq"><i></i>Données <b>100 % locales</b></span><span class="mq"><i></i>Homebrew <b>+ DMG</b></span><span class="mq"><i></i>macOS <b>13+</b></span><span class="mq"><i></i>Intel &amp; <b>Apple Silicon</b></span><span class="mq"><i></i>Aucun <b>compte</b></span><span class="mq"><i></i>Aucun <b>suivi</b></span>
+      <span class="mq"><i></i><b>0 €</b> pour toujours</span><span class="mq"><i></i>Open source <b>MIT</b></span><span class="mq"><i></i>Données <b>100 % locales</b></span><span class="mq"><i></i>Homebrew <b>+ DMG</b></span><span class="mq"><i></i>macOS <b>13+</b></span><span class="mq"><i></i>Intel &amp; <b>Apple Silicon</b></span><span class="mq"><i></i>Aucun <b>compte</b></span><span class="mq"><i></i>Aucun <b>suivi</b></span>
+    </div>
+  </div>
+
+  <!-- ============ FEATURE 1 ============ -->
+  <section id="features">
+    <div class="wrap row">
+      <div class="rv">
+        <div class="kicker">La sparkline</div>
+        <h2>Voyez ce que fait votre Mac, en un coup d’œil.</h2>
+        <p class="intro">Une courbe d’activité compacte, posée dans la barre des menus. Chaque pic porte le nom de l’app qui l’a provoqué.</p>
+        <ul class="items">
+          <li>Courbe en temps réel — lisible même en coin d’écran</li>
+          <li>Les coupables nommés : les apps dominantes s’affichent sur leurs pics</li>
+          <li>Zéro dashboard, zéro widget à surveiller</li>
+        </ul>
+      </div>
+      <div class="media rv d1">
+        <div class="menubar" id="menubar">
+          <div class="menubar-strip">
+            <span class="gauge">CPU <b data-count="34">0</b><span class="u">%</span></span>
+            <span class="gauge">GPU <b data-count="12">0</b><span class="u">%</span></span>
+            <span class="gauge">RAM <b data-count="62">0</b><span class="u">%</span></span>
+            <span class="gauge">⇅ <b data-count="1.2" data-dec="1">0</b><span class="u">Mo/s</span></span>
+          </div>
+          <div class="spark" aria-label="Courbe d'activité avec applications">
+            <svg viewBox="0 0 620 120" aria-hidden="true"><path d="M14 74 C48 74 42 34 68 35 C94 36 88 76 124 76 C160 76 166 82 204 82 C242 82 248 88 280 88 C316 88 322 76 352 76 C382 76 390 30 416 33 C440 36 450 74 480 75"/></svg>
+            <span class="app vscode"><img src="assets/app-icons/vscode.png" alt="Visual Studio Code"></span>
+            <span class="app whatsapp"><img src="assets/app-icons/whatsapp.png" alt="WhatsApp"></span>
+            <span class="app chrome"><img src="assets/app-icons/chrome.png" alt="Google Chrome"></span>
+          </div>
+        </div>
+        <div class="media-caption">La sparkline PKMonitor — les apps se posent sur leurs propres pics.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FEATURE 2 ============ -->
+  <section class="alt">
     <div class="wrap row flip">
-      <div>
+      <div class="rv">
         <div class="kicker">Le panneau de détail</div>
         <h2>Le contrôle sans interrompre votre travail.</h2>
         <p class="intro">Survolez la barre : le panneau révèle les processus gourmands et les actions utiles. Reprenez là où vous étiez, deux secondes plus tard.</p>
         <ul class="items">
-          <li><h3>Processus gourmands identifiés</h3><p>Les apps qui consomment, classées, avec le contexte qu’il faut pour décider.</p></li>
-          <li><h3>Quitter sans changer d’app</h3><p>Une app s’emballe ? Quittez-la directement depuis le panneau.</p></li>
-          <li><h3>Conseiller IA optionnel</h3><p>Un audit intelligent de l’état du système, uniquement si vous le demandez.</p></li>
+          <li>Processus gourmands identifiés et classés</li>
+          <li>Quitter une app qui s’emballe, sans changer d’app</li>
+          <li>Conseiller IA optionnel — audit à la demande, jamais sans vous</li>
         </ul>
       </div>
-      <div class="media shot">
+      <div class="media rv d1">
         <img src="assets/screenshots/cleanshot-2026-09-14-window.png" alt="Panneau de détail PKMonitor au survol de la barre des menus">
         <div class="media-caption">Les détails utiles arrivent au survol — rien à ouvrir, rien à chercher.</div>
       </div>
     </div>
   </section>
 
-  <section class="alt">
+  <!-- ============ FEATURE 3 ============ -->
+  <section>
     <div class="wrap row">
-      <div>
+      <div class="rv">
         <div class="kicker">Votre barre, vos règles</div>
         <h2>Composez une barre des menus qui vous ressemble.</h2>
-        <p class="intro">Jauges placées et colorées à votre goût, icônes secondaires rangées dans une seconde barre façon Bartender : vous gardez l’accès, sans l’encombrement.</p>
+        <p class="intro">Jauges placées et colorées à votre goût, icônes secondaires rangées dans une seconde barre façon Bartender : l’accès sans l’encombrement.</p>
         <ul class="items">
-          <li><h3>Tout est configurable</h3><p>CPU, GPU, RAM, disque, réseau : choisissez les jauges, leurs couleurs, leur ordre.</p></li>
-          <li><h3>Seconde barre intégrée</h3><p>Les icônes rares se replient, l’essentiel reste visible.</p></li>
-          <li><h3>Discret au repos, clair à l’usage</h3><p>Compact quand tout va bien, bavard au moment où ça compte.</p></li>
+          <li>CPU, GPU, RAM, disque, réseau : vous choisissez tout</li>
+          <li>Seconde barre intégrée — l’essentiel reste visible</li>
+          <li>Discret au repos, bavard au moment où ça compte</li>
         </ul>
       </div>
-      <div class="media shot">
+      <div class="media rv d1">
         <img src="assets/screenshots/cleanshot-2026-09-14-wide.png" alt="Vue large de PKMonitor dans la barre des menus">
         <div class="media-caption">Chaque élément à sa place, chaque métrique à votre main.</div>
       </div>
     </div>
   </section>
 
-  <!-- Download -->
-  <section id="download">
-    <div class="wrap" style="text-align:center">
-      <div class="kicker">Téléchargement</div>
-      <h2>Gratuit aujourd’hui, gratuit demain.</h2>
-      <p class="intro" style="margin:0 auto">Pas de compte, pas d’abonnement, pas de version pro. Un DMG, un cask Homebrew, et c’est installé.</p>
+  <!-- ============ DOWNLOAD ============ -->
+  <section class="alt" id="download">
+    <div class="wrap">
+      <div class="dl-head rv">
+        <div class="kicker">Téléchargement</div>
+        <h2>Gratuit aujourd’hui, gratuit demain.</h2>
+        <p class="intro">Pas de compte, pas d’abonnement, pas de version pro. Un DMG, un cask Homebrew, et c’est installé.</p>
+      </div>
       <div class="dl-grid">
-        <div class="card">
+        <div class="card rv d1">
           <span class="tag">Pour toujours</span>
           <div class="price">0 € <small>/ licence MIT</small></div>
           <ul class="items">
@@ -265,11 +352,12 @@
             <li>Aucune donnée collectée, tout reste local</li>
             <li>Mises à jour via GitHub Releases</li>
           </ul>
-          <a class="btn btn-light download-link" href="https://github.com/mondary/PKmonitor/releases/latest"><img src="../icon.png" alt="">Télécharger le DMG</a>
+          <a class="btn btn-lime download-link" href="https://github.com/mondary/PKmonitor/releases/latest"><img class="bicon" src="../icon.png" alt="">Télécharger le DMG</a>
+          <p class="fine" id="version-fine">Version <b>2026.09</b> · dernière release</p>
         </div>
-        <div class="card">
+        <div class="card rv d2">
           <span class="tag">En ligne de commande</span>
-          <div style="font-size:16px;font-weight:700;margin:6px 0 14px;letter-spacing:-.02em">Installez en une commande</div>
+          <div style="font-size:17px;font-weight:750;margin:4px 0 16px;letter-spacing:-.02em">Installez en une commande</div>
           <div class="cli"><label>Homebrew</label><code>brew install --cask mondary/tap/pkmonitor</code><button class="copy" type="button" data-copy="brew install --cask mondary/tap/pkmonitor">Copier</button></div>
           <div class="cli"><label>curl</label><code id="curl-command">curl -L -o PKMonitor.dmg https://github.com/mondary/PKmonitor/releases/latest/download/PKMonitor-2026.09.34.dmg</code><button class="copy" type="button" data-copy="curl -L -o PKMonitor.dmg https://github.com/mondary/PKmonitor/releases/latest/download/PKMonitor-2026.09.34.dmg" id="curl-copy">Copier</button></div>
           <div class="cli"><label>Mise à jour</label><code>brew upgrade --cask pkmonitor</code><button class="copy" type="button" data-copy="brew upgrade --cask pkmonitor">Copier</button></div>
@@ -279,31 +367,33 @@
     </div>
   </section>
 
-  <!-- FAQ -->
-  <section class="alt" id="faq">
+  <!-- ============ FAQ ============ -->
+  <section id="faq">
     <div class="wrap" style="text-align:center">
-      <div class="kicker">FAQ</div>
-      <h2>Questions fréquentes</h2>
+      <div class="rv">
+        <div class="kicker">FAQ</div>
+        <h2 style="margin-left:auto;margin-right:auto">Questions fréquentes</h2>
+      </div>
       <div class="faq">
-        <details><summary>PKMonitor est-il vraiment gratuit ?</summary><p>Oui, entièrement. Le code est open source sous licence MIT, le DMG est sur GitHub Releases, et il n’existe aucune version payante ni aucun compte à créer. <a href="https://github.com/mondary/PKmonitor" target="_blank" rel="noreferrer">Voir le code source ↗</a></p></details>
-        <details><summary>Quelles sont les configurations requises ?</summary><p>macOS 13 Ventura ou plus récent, sur Mac Intel comme Apple Silicon. L’app est légère et tourne en arrière-plan sans solliciter la machine qu’elle surveille.</p></details>
-        <details><summary>Mes données quittent-elles mon Mac ?</summary><p>Non. PKMonitor fonctionne entièrement en local. Le conseiller IA est optionnel : aucune requête n’est envoyée avant votre action explicite, et votre clé API reste dans le Trousseau macOS.</p></details>
-        <details><summary>Comment installer l’application ?</summary><p>Trois chemins : glisser-déposer depuis le <a class="download-link" href="https://github.com/mondary/PKmonitor/releases/latest">DMG</a>, <code>brew install --cask mondary/tap/pkmonitor</code>, ou la commande <code>curl</code> de la section téléchargement. Aucun redémarrage nécessaire.</p></details>
-        <details><summary>Comment mettre à jour ?</summary><p>Avec Homebrew : <code>brew upgrade --cask pkmonitor</code>. Sinon, re-téléchargez le DMG de la dernière release et remplacez l’app — vos réglages sont conservés.</p></details>
-        <details><summary>La sparkline ralentit-elle le Mac ?</summary><p>Non. La surveillance repose sur les API système natives et un rafraîchissement raisonné : quelques points de CPU au repos, rien de perceptible en usage normal.</p></details>
-        <details><summary>Puis-je proposer des améliorations ?</summary><p>Bienvenue : ouvrez une issue ou une pull request sur <a href="https://github.com/mondary/PKmonitor" target="_blank" rel="noreferrer">le dépôt GitHub</a>. Vous pouvez aussi soutenir le projet sur <a href="https://ko-fi.com/pouark" target="_blank" rel="noreferrer">Ko-fi</a>.</p></details>
+        <details class="rv"><summary>PKMonitor est-il vraiment gratuit ?</summary><p>Oui, entièrement. Le code est open source sous licence MIT, le DMG est sur GitHub Releases, et il n’existe aucune version payante ni aucun compte à créer. <a href="https://github.com/mondary/PKmonitor" target="_blank" rel="noreferrer">Voir le code source ↗</a></p></details>
+        <details class="rv"><summary>Quelles sont les configurations requises ?</summary><p>macOS 13 Ventura ou plus récent, sur Mac Intel comme Apple Silicon. L’app est légère et tourne en arrière-plan sans solliciter la machine qu’elle surveille.</p></details>
+        <details class="rv"><summary>Mes données quittent-elles mon Mac ?</summary><p>Non. PKMonitor fonctionne entièrement en local. Le conseiller IA est optionnel : aucune requête n’est envoyée avant votre action explicite, et votre clé API reste dans le Trousseau macOS.</p></details>
+        <details class="rv"><summary>Comment installer l’application ?</summary><p>Trois chemins : glisser-déposer depuis le <a class="download-link" href="https://github.com/mondary/PKmonitor/releases/latest">DMG</a>, <code>brew install --cask mondary/tap/pkmonitor</code>, ou la commande <code>curl</code> de la section téléchargement. Aucun redémarrage nécessaire.</p></details>
+        <details class="rv"><summary>Comment mettre à jour ?</summary><p>Avec Homebrew : <code>brew upgrade --cask pkmonitor</code>. Sinon, re-téléchargez le DMG de la dernière release et remplacez l’app — vos réglages sont conservés.</p></details>
+        <details class="rv"><summary>La sparkline ralentit-elle le Mac ?</summary><p>Non. La surveillance repose sur les API système natives et un rafraîchissement raisonné : quelques points de CPU au repos, rien de perceptible en usage normal.</p></details>
+        <details class="rv"><summary>Puis-je proposer des améliorations ?</summary><p>Bienvenue : ouvrez une issue ou une pull request sur <a href="https://github.com/mondary/PKmonitor" target="_blank" rel="noreferrer">le dépôt GitHub</a>. Vous pouvez aussi soutenir le projet sur <a href="https://ko-fi.com/pouark" target="_blank" rel="noreferrer">Ko-fi</a>.</p></details>
       </div>
     </div>
   </section>
 
-  <!-- Final CTA -->
+  <!-- ============ FINAL CTA ============ -->
   <section>
     <div class="wrap">
-      <div class="final">
+      <div class="final rv">
         <div class="kicker">Disponible maintenant</div>
         <h2>Un Mac plus calme commence ici.</h2>
         <p>Installez PKMonitor en quelques secondes. Gratuit, open source, fait pour macOS.</p>
-        <a class="btn btn-light download-link" href="https://github.com/mondary/PKmonitor/releases/latest"><img src="../icon.png" alt="">Télécharger PKMonitor (.dmg)</a>
+        <a class="btn btn-lime download-link" href="https://github.com/mondary/PKmonitor/releases/latest"><img class="bicon" src="../icon.png" alt="">Télécharger PKMonitor (.dmg)</a>
       </div>
     </div>
   </section>
@@ -314,8 +404,8 @@
   <div class="wrap">
     <div class="foot-grid">
       <div>
-        <a class="brand" href="#top" style="margin-bottom:12px"><img src="../icon.png" alt="">PKMonitor</a>
-        <p style="margin:10px 0 0;max-width:280px;line-height:1.5">Le moniteur macOS dans la barre des menus. Sparkline, panneau de détail, seconde barre et conseiller IA optionnel. Tout reste local.</p>
+        <a class="foot-brand" href="#top"><img src="../icon.png" alt="">PKMonitor</a>
+        <p class="foot-desc">Le moniteur macOS dans la barre des menus. Sparkline, panneau de détail, seconde barre et conseiller IA optionnel. Tout reste local.</p>
       </div>
       <div>
         <h4>Liens</h4>
@@ -344,9 +434,37 @@
 </footer>
 
 <script>
+  // Copy buttons
   document.querySelectorAll('.copy').forEach(b => b.addEventListener('click', async () => {
     try { await navigator.clipboard.writeText(b.dataset.copy); const l = b.textContent; b.textContent = 'Copié'; setTimeout(() => b.textContent = l, 1400); } catch (_) {}
   }));
+
+  // Scroll reveal
+  const io = new IntersectionObserver(entries => entries.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+  }), { threshold:.15, rootMargin:'0px 0px -40px 0px' });
+  document.querySelectorAll('.rv').forEach(el => io.observe(el));
+
+  // Animated gauges when menubar enters viewport
+  const mb = document.querySelector('#menubar');
+  if (mb) {
+    const cio = new IntersectionObserver(entries => entries.forEach(e => {
+      if (!e.isIntersecting) return;
+      cio.disconnect();
+      e.target.querySelectorAll('[data-count]').forEach(el => {
+        const target = parseFloat(el.dataset.count), dec = +(el.dataset.dec || 0), t0 = performance.now(), dur = 1600;
+        const step = t => {
+          const p = Math.min((t - t0) / dur, 1), ease = 1 - Math.pow(1 - p, 3);
+          el.textContent = (target * ease).toFixed(dec);
+          if (p < 1) requestAnimationFrame(step); else el.textContent = target.toFixed(dec);
+        };
+        requestAnimationFrame(step);
+      });
+    }), { threshold:.4 });
+    cio.observe(mb);
+  }
+
+  // Latest release: links, curl command, version badge
   fetch('https://api.github.com/repos/mondary/PKmonitor/releases/latest')
     .then(r => r.ok ? r.json() : Promise.reject())
     .then(release => {
@@ -357,8 +475,9 @@
         const code = document.querySelector('#curl-command'); if (code) code.textContent = curl;
         const copy = document.querySelector('#curl-copy'); if (copy) copy.dataset.copy = curl;
       }
-      const badge = document.querySelector('#version-badge');
-      if (badge && release.tag_name) badge.innerHTML = 'version <b>' + release.tag_name.replace(/^v/, '') + '</b>';
+      const v = release.tag_name ? release.tag_name.replace(/^v/, '') : '';
+      const fine = document.querySelector('#version-fine');
+      if (fine && v) fine.innerHTML = 'Version <b>' + v + '</b> · dernière release';
     })
     .catch(() => {});
 </script>

@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-ROOT=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
+ROOT=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
 VERSION=$(tr -d '[:space:]' < "$ROOT/VERSION")
 APP="$ROOT/dist/PKMonitor.app"
 
@@ -10,12 +10,12 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
 cp "$ROOT/.build/release/PKMonitor" "$APP/Contents/MacOS/PKMonitor"
 mkdir -p "$APP/Contents/Resources/ProjectIcons"
-cp "$ROOT/icon.png" "$APP/Contents/Resources/icon.png"
-cp "$ROOT/ProjectIcons/"*.png "$APP/Contents/Resources/ProjectIcons/"
+cp "$ROOT/packaging/icons/icon.png" "$APP/Contents/Resources/icon.png"
+cp "$ROOT/src/macos/Resources/ProjectIcons/"*.png "$APP/Contents/Resources/ProjectIcons/"
 mkdir -p "$APP/Contents/Resources/ProjectScreenshots"
-cp "$ROOT/ProjectScreenshots/"*.png "$APP/Contents/Resources/ProjectScreenshots/"
+cp "$ROOT/src/macos/Resources/ProjectScreenshots/"*.png "$APP/Contents/Resources/ProjectScreenshots/"
 
-cp "$ROOT/icon.icns" "$APP/Contents/Resources/icon.icns"
+cp "$ROOT/packaging/icons/icon.icns" "$APP/Contents/Resources/icon.icns"
 
 cat > "$APP/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>

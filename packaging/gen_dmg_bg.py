@@ -159,7 +159,7 @@ def make_overlay():
 OVERLAY, OVERLAY_MASK = make_overlay()
 
 # ---------- mini app icon ----------
-SRC = Image.open("/Users/clm/Documents/GitHub/PROJECTS/PKmonitor/icon.png").convert("RGBA")
+SRC = Image.open(__file__.rsplit("/", 2)[0] + "/packaging/icons/icon.png").convert("RGBA")
 def mini_icon(size):
     ic = SRC.resize((size, size), Image.LANCZOS)
     r = int(size * 0.225)

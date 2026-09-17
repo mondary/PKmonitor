@@ -12,7 +12,9 @@
     body { margin:0; overflow:hidden; background:#000; color:var(--ink); font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; -webkit-font-smoothing:antialiased; }
     main { position:relative; min-height:100svh; display:flex; flex-direction:column; justify-content:flex-end; padding:5rem 4rem; isolation:isolate; }
     .atmosphere { position:absolute; z-index:-1; inset:0 0 auto; height:19rem; overflow:hidden; pointer-events:none; -webkit-mask-image:linear-gradient(to bottom,#000 26%,transparent 100%); mask-image:linear-gradient(to bottom,#000 26%,transparent 100%); }
-    #grid { position:absolute; inset:0; width:100%; height:100%; }
+    .grid { position:absolute; top:-2rem; left:-4rem; width:calc(100% + 8rem); height:18rem; opacity:.7; background-image:linear-gradient(to right,var(--line) 1px,transparent 1px),linear-gradient(to bottom,var(--line) 1px,transparent 1px); background-size:84px 38px; transform:perspective(350px) rotateX(51deg) scale(1.14); transform-origin:center top; }
+    .grid::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg,transparent,rgba(255,255,255,.07),transparent); animation:scan 8s ease-in-out infinite; }
+    @keyframes scan { 0%,100% { transform:translateX(-50%); opacity:0; } 35%,65% { opacity:1; } 100% { transform:translateX(50%); } }
     .brand { display:flex; align-items:center; gap:.55rem; margin-bottom:1.8rem; }
     .mark { width:45px; height:45px; border-radius:22px; display:block; }
     .brand-name { margin:0; color:var(--muted); font-size:1.875rem; line-height:1; font-weight:700; letter-spacing:-.055em; }
@@ -27,15 +29,15 @@
     .button.secondary:hover { opacity:1; background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.32); }
     .button:focus-visible { outline:2px solid #fff; outline-offset:4px; }
     .icon { width:18px; height:18px; fill:currentColor; flex:none; }
-    @media (max-width:640px) { body { overflow:auto; } main { min-height:100svh; padding:2rem 1.25rem 2.5rem; } .atmosphere { height:16rem; } .brand { margin-bottom:1.55rem; } .brand-name { font-size:1.65rem; } h1 { max-width:22rem; font-size:clamp(2.45rem,12vw,3.2rem); } .actions { flex-wrap:wrap; margin-top:2rem; } }
-    @media (prefers-reduced-motion:reduce) { .button { transition:none; } }
+    @media (max-width:640px) { body { overflow:auto; } main { min-height:100svh; padding:2rem 1.25rem 2.5rem; } .atmosphere { height:16rem; } .grid { left:-10rem; width:calc(100% + 20rem); background-size:62px 32px; } .brand { margin-bottom:1.55rem; } .brand-name { font-size:1.65rem; } h1 { max-width:22rem; font-size:clamp(2.45rem,12vw,3.2rem); } .actions { flex-wrap:wrap; margin-top:2rem; } }
+    @media (prefers-reduced-motion:reduce) { .grid::after { animation:none; } .button { transition:none; } }
   </style>
 </head>
 <body>
   <main>
-    <div class="atmosphere" aria-hidden="true"><canvas id="grid"></canvas></div>
+    <div class="atmosphere" aria-hidden="true"><div class="grid"></div></div>
     <div class="brand">
-      <img class="mark" src="../../icon.png" alt="">
+      <img class="mark" src="../../packaging/icons/icon.png" alt="">
       <p class="brand-name">PKMonitor</p>
     </div>
     <h1>Les métriques de votre Mac. <span>Sur une ligne.</span></h1>
@@ -54,47 +56,6 @@
   </main>
   <script>
     fetch('https://api.github.com/repos/mondary/PKmonitor/releases/latest').then(r => r.ok ? r.json() : Promise.reject()).then(release => { const dmg = release.assets.find(a => /^PKMonitor-.+\.dmg$/i.test(a.name)); if (dmg) document.querySelectorAll('.download-link').forEach(l => l.href = dmg.browser_download_url); }).catch(() => {});
-  </script>
-  <script>
-    (() => {
-      const canvas = document.getElementById('grid');
-      const ctx = canvas.getContext('2d');
-      const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-      let w, h, dpr;
-      const CELL = 20, SQ = 16;
-      function resize() {
-        dpr = Math.min(devicePixelRatio || 1, 2);
-        w = canvas.clientWidth; h = canvas.clientHeight;
-        canvas.width = w * dpr; canvas.height = h * dpr;
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      }
-      let time = 0;
-      function value(col, row) {
-        const s1 = Math.sin(col * 0.32 + time * 0.022);
-        const s2 = Math.sin(row * 0.47 - time * 0.016);
-        const s3 = Math.sin((col - row) * 0.19 + time * 0.011);
-        return ((s1 + s2 + s3) / 3 + 1) / 2;
-      }
-      function draw() {
-        ctx.clearRect(0, 0, w, h);
-        const maxRow = Math.ceil(h / CELL);
-        for (let row = 0; row < maxRow; row++) {
-          const depth = 1 - row / maxRow;
-          for (let col = 0; col * CELL < w; col++) {
-            const lit = Math.pow(value(col, row), 4) * 0.5;
-            if (lit < 0.03) continue;
-            const a = lit * (0.2 + 0.8 * depth) * 0.85;
-            ctx.fillStyle = `rgba(255,255,255,${a.toFixed(3)})`;
-            ctx.fillRect(col * CELL + (CELL - SQ) / 2, row * CELL + (CELL - SQ) / 2, SQ, SQ);
-          }
-        }
-        time++;
-      }
-      function tick() { draw(); requestAnimationFrame(tick); }
-      resize();
-      addEventListener('resize', () => { resize(); if (reduced) draw(); });
-      if (reduced) draw(); else requestAnimationFrame(tick);
-    })();
   </script>
 </body>
 </html>

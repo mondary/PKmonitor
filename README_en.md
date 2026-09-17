@@ -40,18 +40,18 @@ The Settings window provides a live system dashboard (hardware and metrics), a c
 ## 🧾 Commands
 
 ```sh
-./run.sh
+./packaging/run.sh
 swift build
 swift run PKMonitor --self-test
 ```
 
 ## 📦 Build & Package
 
-`run.sh` builds `dist/PKMonitor.app` in production mode using the Xcode command-line tools.
+`packaging/run.sh` builds `dist/PKMonitor.app` in production mode using the Xcode command-line tools.
 
 ## 🧪 Installation
 
-Requires macOS 13+ and the Xcode command-line tools. Run `./run.sh`, then keep `dist/PKMonitor.app` or copy it to Applications.
+Requires macOS 13+ and the Xcode command-line tools. Run `./packaging/run.sh`, then keep `dist/PKMonitor.app` or copy it to Applications.
 
 ## 📋 History
 

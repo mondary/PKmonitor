@@ -6,6 +6,10 @@ let package = Package(
     name: "PKMonitor",
     platforms: [.macOS(.v13)],
     products: [.executable(name: "PKMonitor", targets: ["PKMonitor"])],
-    targets: [.executableTarget(name: "PKMonitor")],
+    targets: [.executableTarget(
+        name: "PKMonitor",
+        path: "src/macos",
+        exclude: ["Resources"]
+    )],
     swiftLanguageModes: [.v5]
 )

@@ -41,14 +41,14 @@ La fenêtre Settings propose un tableau de bord système en direct (matériel et
 ## 🧾 Commandes
 
 ```sh
-./run.sh
+./packaging/run.sh
 swift build
 swift run PKMonitor --self-test
 ```
 
 ## 📦 Build & Package
 
-`run.sh` construit `dist/PKMonitor.app` en mode production avec les outils de ligne de commande Xcode. Pour préparer l’archive distribuable, exécuter `./package_dmg.sh` : le DMG versionné est créé dans `dist/PKMonitor-<version>.dmg` et peut être joint à une release GitHub.
+`packaging/run.sh` construit `dist/PKMonitor.app` en mode production avec les outils de ligne de commande Xcode. Pour préparer l’archive distribuable, exécuter `./packaging/package_dmg.sh` : le DMG versionné est créé dans `dist/PKMonitor-<version>.dmg` et peut être joint à une release GitHub.
 
 ## 🌐 Page promotionnelle
 
@@ -58,7 +58,7 @@ Une fiche produit dédiée, pensée comme une page de store — carte applicatio
 
 ## 🧪 Installation
 
-Requiert macOS 13+ et les outils de ligne de commande Xcode. Exécuter `./run.sh`, puis conserver `dist/PKMonitor.app` ou le copier dans Applications.
+Requiert macOS 13+ et les outils de ligne de commande Xcode. Exécuter `./packaging/run.sh`, puis conserver `dist/PKMonitor.app` ou le copier dans Applications.
 
 ## 📋 Historique
 

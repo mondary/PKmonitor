@@ -1,14 +1,14 @@
 #!/bin/sh
 set -eu
 
-ROOT=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
+ROOT=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
 VERSION=$(tr -d '[:space:]' < "$ROOT/VERSION")
 APP="$ROOT/dist/PKMonitor.app"
 STAGE="$ROOT/dist/dmg-stage"
 DMG="$ROOT/dist/PKMonitor-$VERSION.dmg"
 BACKGROUND="$ROOT/packaging/dmg-background.gif"
 
-"$ROOT/build_app.sh"
+"$ROOT/packaging/build_app.sh"
 rm -rf "$STAGE" "$DMG"
 mkdir -p "$STAGE"
 cp -R "$APP" "$STAGE/PKMonitor.app"

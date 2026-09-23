@@ -1168,8 +1168,8 @@ struct DetailView: View {
                 .foregroundStyle(.secondary)
                 .help(settings.iconLocation == .menuBar ? "Move PKMonitor to the second bar" : "Move PKMonitor to the menu bar")
                 Spacer()
-                Text("PKMonitor v\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev")")
-                    .font(.system(size: 9, design: .monospaced))
+                Text("v\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev")")
+                    .font(.system(size: 10, design: .monospaced))
                     .foregroundStyle(.tertiary)
             }
         }
@@ -3321,9 +3321,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func statusBarClickPoint() -> NSPoint? {
-        guard let button = statusItem.button, let event = NSApp.currentEvent else { return nil }
-        let localPoint = button.convert(event.locationInWindow, from: nil)
-        return NSPoint(x: localPoint.x, y: button.bounds.height - localPoint.y)
+        guard let button = statusItem.button, let window = button.window, let image = button.image else { return nil }
+        let windowPoint = window.convertPoint(fromScreen: NSEvent.mouseLocation)
+        let localPoint = button.convert(windowPoint, from: nil)
+        let imageRect = button.cell?.imageRect(forBounds: button.bounds) ?? button.bounds
+        guard imageRect.width > 0 else { return nil }
+        let imageX = (localPoint.x - imageRect.minX) * image.size.width / imageRect.width
+        return NSPoint(x: imageX, y: 0)
     }
 
     private func underBarClickPoint() -> NSPoint? {
@@ -3646,6 +3650,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(login)
         menu.addItem(NSMenuItem(title: "About PKMonitor", action: #selector(showAbout), keyEquivalent: ""))
         menu.items.last?.target = self
+        let donate = NSMenuItem(title: "Donate on Ko-fi…", action: #selector(openKoFi), keyEquivalent: "")
+        if let logoPath = Bundle.main.path(forResource: "kofi-logo", ofType: "png"),
+           let logo = NSImage(contentsOfFile: logoPath) {
+            logo.isTemplate = false
+            logo.size = NSSize(width: 16, height: 16)
+            donate.image = logo
+        }
+        donate.target = self
+        menu.addItem(donate)
         menu.addItem(.separator())
         let quit = NSMenuItem(title: "Quit PKMonitor", action: #selector(quit), keyEquivalent: "q")
         quit.target = self
@@ -3657,6 +3670,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard let raw = sender.representedObject as? String, let metric = Metric(rawValue: raw) else { return }
         model.select(metric)
         refreshStatusItem()
+    }
+
+    @objc private func openKoFi() {
+        NSWorkspace.shared.open(ProjectLinks.koFi)
     }
 
     @objc private func openActivityMonitorFromMenu(_ sender: NSMenuItem) {
@@ -3963,7 +3980,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func metricForClick(at point: NSPoint) -> Metric? {
         guard settings.showGauges || settings.showDiskModule else { return nil }
         for (metric, rect) in gaugeRects {
-            if rect.contains(point) { return metric }
+            // Gauges occupy full-height columns; only horizontal position matters.
+            if point.x >= rect.minX && point.x < rect.maxX { return metric }
         }
         return nil
     }
@@ -4068,45 +4086,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         if !settings.showGauges { gaugeRects = moduleRects }
 
-        guard values.count > 1 else { return image }
-
-        let rect = NSRect(origin: .zero, size: size)
-        let sparkMargin: CGFloat = 3
-        let drawGraphW = graphW - sparkMargin * 2
-        let capacity = max(2, Int(settings.historySeconds / settings.updateInterval))
-        let scaledValues = MonitorModel.scaledHistory(values)
-        let path = NSBezierPath()
-        for (index, val) in scaledValues.enumerated() {
-            let point = NSPoint(
-                x: graphStartX + sparkMargin + drawGraphW * CGFloat(capacity - values.count + index) / CGFloat(capacity - 1),
-                y: 2 + (rect.height - 4) * CGFloat(max(0, min(1, val)))
-            )
-            index == 0 ? path.move(to: point) : path.line(to: point)
-        }
-        NSColor.labelColor.setStroke()
-        path.lineWidth = settings.lineWidth
-        path.lineCapStyle = .round
-        path.lineJoinStyle = .round
-        path.stroke()
-
-        for (index, marker) in markers.enumerated() {
-            guard let marker else { continue }
-            let x = graphStartX + sparkMargin + drawGraphW * CGFloat(capacity - markers.count + index) / CGFloat(capacity - 1)
-            let y = 2 + (rect.height - 4) * CGFloat(max(0, min(1, scaledValues[index])))
-            let iconSz = settings.iconSize
-            let iconRect = NSRect(
-                x: x - iconSz / 2,
-                y: max(0, min(rect.height - iconSz, y - iconSz / 2)),
-                width: iconSz,
-                height: iconSz
-            )
-            NSColor.windowBackgroundColor.setFill()
-            NSBezierPath(roundedRect: iconRect, xRadius: 4, yRadius: 4).fill()
-            if settings.showIconBorder {
-                NSColor.separatorColor.setStroke()
-                NSBezierPath(roundedRect: iconRect, xRadius: 4, yRadius: 4).stroke()
+        if values.count > 1, settings.showSparkline {
+            let rect = NSRect(origin: .zero, size: size)
+            let sparkMargin: CGFloat = 3
+            let drawGraphW = graphW - sparkMargin * 2
+            let capacity = max(2, Int(settings.historySeconds / settings.updateInterval))
+            let scaledValues = MonitorModel.scaledHistory(values)
+            let path = NSBezierPath()
+            for (index, val) in scaledValues.enumerated() {
+                let point = NSPoint(
+                    x: graphStartX + sparkMargin + drawGraphW * CGFloat(capacity - values.count + index) / CGFloat(capacity - 1),
+                    y: 2 + (rect.height - 4) * CGFloat(max(0, min(1, val)))
+                )
+                index == 0 ? path.move(to: point) : path.line(to: point)
             }
-            NSWorkspace.shared.icon(forFile: marker).draw(in: iconRect.insetBy(dx: 1, dy: 1))
+            NSColor.labelColor.setStroke()
+            path.lineWidth = settings.lineWidth
+            path.lineCapStyle = .round
+            path.lineJoinStyle = .round
+            path.stroke()
+
+            for (index, marker) in markers.enumerated() {
+                guard let marker else { continue }
+                let x = graphStartX + sparkMargin + drawGraphW * CGFloat(capacity - markers.count + index) / CGFloat(capacity - 1)
+                let y = 2 + (rect.height - 4) * CGFloat(max(0, min(1, scaledValues[index])))
+                let iconSz = settings.iconSize
+                let iconRect = NSRect(
+                    x: x - iconSz / 2,
+                    y: max(0, min(rect.height - iconSz, y - iconSz / 2)),
+                    width: iconSz,
+                    height: iconSz
+                )
+                NSColor.windowBackgroundColor.setFill()
+                NSBezierPath(roundedRect: iconRect, xRadius: 4, yRadius: 4).fill()
+                if settings.showIconBorder {
+                    NSColor.separatorColor.setStroke()
+                    NSBezierPath(roundedRect: iconRect, xRadius: 4, yRadius: 4).stroke()
+                }
+                NSWorkspace.shared.icon(forFile: marker).draw(in: iconRect.insetBy(dx: 1, dy: 1))
+            }
         }
 
         if settings.showGauges {

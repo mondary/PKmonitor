@@ -20,6 +20,30 @@ Statut : `2026.09.32` (prototype fonctionnel)
 
 ## Releases
 
+### [2026.09.39] - 2026-09-23
+#### Fixed
+- Fond blanc extérieur du logo Ko-fi supprimé avec transparence, tout en préservant le cœur blanc et le dessin de la tasse.
+
+### [2026.09.38] - 2026-09-23
+#### Changed
+- Logo officiel Ko-fi (tasse rouge avec cœur), repris de PKwindowsManagement, affiché dans le menu macOS.
+
+### [2026.09.37] - 2026-09-23
+#### Changed
+- Icône tasse orange « cup.and.saucer.fill » ajoutée au lien Ko-fi du menu.
+
+### [2026.09.36] - 2026-09-23
+#### Added
+- Lien « Donate on Ko-fi… » dans le menu contextuel de la barre de menu macOS et de la seconde barre.
+
+### [2026.09.35] - 2026-09-23
+#### Fixed
+- Clic sur les jauges dans la barre de menu macOS : repérage de la jauge selon la position réelle de l'image dans le bouton système.
+- Jauges visibles et cliquables immédiatement après un changement de métrique, pendant que l'historique du graphe se remplit.
+
+#### Changed
+- Version du panneau de détail affichée sous la forme `v2026.09.35`, sans répéter le nom de l'application.
+
 ### [2026.09.34] - 2026-09-10
 #### Changed
 - Libellé « Settings » affiché à côté du bouton réglages du panneau de survol, même style que « Audit »

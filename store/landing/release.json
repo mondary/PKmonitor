@@ -1,0 +1,8 @@
+{
+  "checked_on": "2026-09-24",
+  "version": "2026.09.32",
+  "tag_url": "https://github.com/mondary/PKmonitor/releases/tag/v2026.09.32",
+  "dmg_url": "https://github.com/mondary/PKmonitor/releases/download/v2026.09.32/PKMonitor-2026.09.32.dmg",
+  "dmg_bytes": 5004977,
+  "cask": "mondary/tap/pkmonitor"
+}

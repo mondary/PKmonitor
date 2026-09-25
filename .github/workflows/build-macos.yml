@@ -1,0 +1,37 @@
+name: Build macOS app
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "Package.swift"
+      - "VERSION"
+      - "src/macos/**"
+      - "packaging/build_app.sh"
+      - ".github/workflows/build-macos.yml"
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build app bundle
+        run: sh packaging/build_app.sh
+
+      - name: Verify version and archive app
+        shell: bash
+        run: |
+          expected="$(tr -d '[:space:]' < VERSION)"
+          actual="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' dist/PKMonitor.app/Contents/Info.plist)"
+          test "$actual" = "$expected"
+          test -x dist/PKMonitor.app/Contents/MacOS/PKMonitor
+          ditto -c -k --sequesterRsrc --keepParent dist/PKMonitor.app "PKMonitor-${expected}.app.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PKMonitor-${{ github.sha }}
+          path: PKMonitor-*.app.zip
+          if-no-files-found: error
+          retention-days: 7

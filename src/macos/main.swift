@@ -3995,7 +3995,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let valueColor = settings.colorForValue(model.reading.value(for: metric), for: metric)
         let valueAttrs: [NSAttributedString.Key: Any] = [.font: valueFont, .foregroundColor: valueColor]
         let valueSize = (value as NSString).size(withAttributes: valueAttrs)
-        let textW = valueSize.width + gap * 2
+        // Largeur de texte stable : la valeur vit dans un slot fixe (aligné à droite) pour
+        // éviter que la pastille ne change de taille à chaque échantillon réseau.
+        let valueReference = metric == .network ? "↓888.8 Mo/s" : metric == .disk ? value : "100%"
+        let textW = max(valueSize.width, (valueReference as NSString).size(withAttributes: valueAttrs).width) + gap * 2
         let labelW: CGFloat = settings.showSparkline && settings.showLabel ? labelCharSize.width + 4 : 0
         let gaugeW: CGFloat = settings.showGauges ? CGFloat(settings.enabledGaugeMetrics.count) * (CGFloat(settings.gaugeWidth) + 2) + 2 : 0
         let graphW = settings.showSparkline ? settings.sparklineWidth : 0
@@ -4046,11 +4049,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if !gaugesOnLeft { gaugeStartX = cursor; cursor += gaugeW }
         if !diskOnLeft { diskStartX = cursor; cursor += diskW }
 
-        if valueOnLeft {
-            (value as NSString).draw(at: NSPoint(x: valueX + textW - valueSize.width - gap, y: (size.height - valueSize.height) / 2), withAttributes: valueAttrs)
-        } else {
-            (value as NSString).draw(at: NSPoint(x: valueX + gap, y: (size.height - valueSize.height) / 2), withAttributes: valueAttrs)
-        }
+        (value as NSString).draw(at: NSPoint(x: valueX + textW - valueSize.width - gap, y: (size.height - valueSize.height) / 2), withAttributes: valueAttrs)
 
         if settings.showLabel {
             for (index, character) in label.enumerated() {

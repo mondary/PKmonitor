@@ -20,6 +20,10 @@ Statut : `2026.09.32` (prototype fonctionnel)
 
 ## Releases
 
+### [2026.09.40] - 2026-09-25
+#### Fixed
+- Pastille de la barre des menus à taille fixe : la valeur réseau vit dans un slot de largeur constante (aligné à droite), la pastille ne rebondit plus à chaque échantillon réseau.
+
 ### [2026.09.39] - 2026-09-23
 #### Fixed
 - Fond blanc extérieur du logo Ko-fi supprimé avec transparence, tout en préservant le cœur blanc et le dessin de la tasse.

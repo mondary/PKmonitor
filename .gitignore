@@ -20,4 +20,4 @@ __pycache__/
 *.log
 store/assets/videos/CleanShot*.cleanshotvideo/
 /store/archives/assets/videos/CleanShot*.cleanshotvideo/
-/store/website/pkmonitor/
+/store/website/

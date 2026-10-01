@@ -8,9 +8,9 @@
 
 Moniteur système macOS natif et discret dans la barre des menus.
 
-Version `2026.10.4` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
+Version `2026.10.5` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
-![Fenêtre de réglages de PK Monitor](src/macos/Resources/ProjectScreenshots/PKmonitor.png)
+![Fenêtre de réglages de PK Monitor](store/screenshots/01-reglages.png)
 
 ## ✅ Fonctionnalités
 
@@ -50,7 +50,7 @@ swift run PKMonitor --self-test
 
 ## 🌐 Page promotionnelle
 
-La landing est dans [`store/website/index.html`](store/website/index.html). Pour générer le dossier FTP autonome `store/website/pkmonitor/`, exécuter `sh scripts/website.sh` ; il contient uniquement `index.html`. Les liens de téléchargement se mettent à jour depuis l’API publique GitHub Releases.
+La landing bilingue est dans [`store/index.html`](store/index.html). Exécuter `sh scripts/website.sh` pour générer le dossier FTP autonome `store/website/`, qui contient directement `index.html` et se dépose tel quel sur le FTP. Les liens de téléchargement se mettent à jour depuis l’API publique GitHub Releases.
 
 ## 🧪 Installation
 

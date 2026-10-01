@@ -2,11 +2,22 @@
 
 Historique des évolutions de PKMonitor.
 
+## [2026.10.5] - 2026-10-01
+### Added
+- Sélecteur FR/EN accessible dans la landing, avec détection de `navigator.language` / `navigator.languages` et mémorisation facultative du choix manuel.
+
+### Changed
+- Dossier FTP aplati : le contenu publiable est directement dans `store/website/`, sans sous-dossier de projet.
+- Landing canonique déplacée à `store/index.html` ; bundle FTP généré à la racine de `store/website/`.
+
+### Fixed
+- Synchronisation des scripts de packaging et du workflow avec l’en-tête de version Keep a Changelog `## [version]`.
+
 ---
 
 ## TODO — Roadmap
 
-Statut : `2026.10.4` (prototype fonctionnel)
+Statut : `2026.10.5` (prototype fonctionnel)
 
 ### Prochaines étapes
 - [x] Mesures CPU, RAM et réseau locales

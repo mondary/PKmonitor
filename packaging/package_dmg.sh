@@ -2,7 +2,7 @@
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
-VERSION=$(sed -n 's/^### \[\([0-9][0-9.]*\)\].*/\1/p' "$ROOT/CHANGELOG.md" | sed -n '1p')
+VERSION=$(sed -nE 's/^##? \[([0-9]+\.[0-9]+\.[0-9]+)\].*/\1/p' "$ROOT/CHANGELOG.md" | sed -n '1p')
 test -n "$VERSION" || { echo "Could not read version from CHANGELOG.md" >&2; exit 1; }
 APP="$ROOT/dist/PKMonitor.app"
 STAGE="$ROOT/dist/dmg-stage"

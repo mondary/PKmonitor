@@ -6,7 +6,7 @@ Historique des évolutions de PKMonitor.
 
 ## TODO — Roadmap
 
-Statut : `2026.09.32` (prototype fonctionnel)
+Statut : `2026.10.4` (prototype fonctionnel)
 
 ### Prochaines étapes
 - [x] Mesures CPU, RAM et réseau locales
@@ -19,6 +19,25 @@ Statut : `2026.09.32` (prototype fonctionnel)
 ---
 
 ## Releases
+
+### [2026.10.4] - 2026-10-01
+#### Changed
+- Store réorganisé : landing active suivie dans `store/website/index.html`, anciennes pages et médias conservés sous `store/archives/`, bundle FTP toujours généré séparément.
+- README FR/EN et script FTP alignés sur la nouvelle arborescence.
+
+### [2026.10.3] - 2026-10-01
+#### Changed
+- Démo du hero et annotation repositionnées ensemble à gauche du Wi-Fi simulé dans la barre de menus.
+
+### [2026.10.2] - 2026-10-01
+#### Changed
+- Landing du store : lien Ko-fi ajouté aux appels à l’action du hero ; Ko-fi remonté en tête des README FR/EN.
+- Génération du bundle FTP autonome `store/website/pkmonitor/` limitée au seul `index.html`, désormais autoporté.
+
+### [2026.10.1] - 2026-10-01
+#### Changed
+- Réorganisation prudente de `store/` : conservation des pages et médias encore référencés, suppression des seuls répertoires vides.
+- Source de version ramenée au `CHANGELOG.md` pour les scripts de build et GitHub Actions, conformément à la suppression de `VERSION`.
 
 ### [2026.09.40] - 2026-09-25
 #### Fixed

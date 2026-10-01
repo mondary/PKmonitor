@@ -1,18 +1,16 @@
 # PKMonitor
 
-![PKMonitor — CPU, GPU, RAM, réseau et disque dans la barre des menus](store/assets/banner-1544x500.png)
+![Icône PKMonitor](icon.png)
 
 [🇫🇷 FR](README.md) · [🇬🇧 EN](README_en.md)
 
+❤️ [Soutenir PK Monitor sur Ko-fi](https://ko-fi.com/pouark)
+
 Moniteur système macOS natif et discret dans la barre des menus.
 
-Version `2026.09.40` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
+Version `2026.10.4` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
-![La barre des menus et la seconde barre](store/screenshots/01-barre-et-seconde-barre.png)
-
-![Démonstration animée de PKMonitor](store/gifs/pkmonitor-demo.gif)
-
-![Le panneau de détail au survol](store/screenshots/02-panneau-detail.png)
+![Fenêtre de réglages de PK Monitor](src/macos/Resources/ProjectScreenshots/PKmonitor.png)
 
 ## ✅ Fonctionnalités
 
@@ -52,9 +50,7 @@ swift run PKMonitor --self-test
 
 ## 🌐 Page promotionnelle
 
-La page de présentation est disponible dans [`store/index.html`](store/index.html). Elle est autonome, responsive et prête à être hébergée telle quelle. Ses boutons récupèrent automatiquement le DMG de la dernière release GitHub.
-
-Une fiche produit dédiée, pensée comme une page de store — carte application (catégorie, version, taille, compatibilité), maquette animée de la barre des menus avec panneau de détail au survol, captures réelles et installation Homebrew/curl — est disponible dans [`store/store_PKmonitor-v2.html`](store/store_PKmonitor-v2.html). Elle est également autonome et met à jour version, taille et lien DMG depuis l’API GitHub Releases.
+La landing est dans [`store/website/index.html`](store/website/index.html). Pour générer le dossier FTP autonome `store/website/pkmonitor/`, exécuter `sh scripts/website.sh` ; il contient uniquement `index.html`. Les liens de téléchargement se mettent à jour depuis l’API publique GitHub Releases.
 
 ## 🧪 Installation
 
@@ -68,5 +64,4 @@ Voir le [CHANGELOG](CHANGELOG.md) pour l’historique complet.
 
 - [GitHub](https://github.com/mondary/PKmonitor)
 - [Bibliothèque des projets](https://github.com/mondary?tab=repositories)
-- [Ko-fi](https://ko-fi.com/pouark)
 - [Store copy](store/description-store.md)

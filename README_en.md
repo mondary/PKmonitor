@@ -1,16 +1,16 @@
 # PKMonitor
 
-![PKMonitor — CPU, GPU, RAM, network and disk in the menu bar](store/assets/banner-1544x500.png)
+![PKMonitor icon](icon.png)
 
 [🇫🇷 FR](README.md) · [🇬🇧 EN](README_en.md)
 
+❤️ [Support PK Monitor on Ko-fi](https://ko-fi.com/pouark)
+
 A native, focused macOS system monitor in the menu bar.
 
-Version `2026.09.40` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
+Version `2026.10.4` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
-![The menu bar and the second bar](store/screenshots/01-barre-et-seconde-barre.png)
-
-![The hover detail panel](store/screenshots/02-panneau-detail.png)
+![PK Monitor settings window](src/macos/Resources/ProjectScreenshots/PKmonitor.png)
 
 ## ✅ Features
 
@@ -49,6 +49,10 @@ swift run PKMonitor --self-test
 
 `packaging/run.sh` builds `dist/PKMonitor.app` in production mode using the Xcode command-line tools.
 
+## 🌐 Product page
+
+The landing page source is [`store/website/index.html`](store/website/index.html). Run `sh scripts/website.sh` to generate the standalone FTP bundle at `store/website/pkmonitor/`; it contains only `index.html`. Download links resolve the latest release through GitHub's public API.
+
 ## 🧪 Installation
 
 Requires macOS 13+ and the Xcode command-line tools. Run `./packaging/run.sh`, then keep `dist/PKMonitor.app` or copy it to Applications.
@@ -61,5 +65,4 @@ See the [CHANGELOG](CHANGELOG.md) for full history.
 
 - [GitHub](https://github.com/mondary/PKmonitor)
 - [Project library](https://github.com/mondary?tab=repositories)
-- [Ko-fi](https://ko-fi.com/pouark)
 - [Store copy](store/description-store.md)

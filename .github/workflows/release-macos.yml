@@ -54,4 +54,7 @@ jobs:
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           git add appcast.xml
           git commit -m "MAJ: appcast $VERSION" || exit 0
+          # main peut avoir avancé pendant le build (appcast dev parallèle) : rebase puis push
+          git fetch origin main
+          git rebase origin/main
           git push "https://x-access-token:${GH_TOKEN}@github.com/mondary/PKmonitor.git" HEAD:main

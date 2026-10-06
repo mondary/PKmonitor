@@ -6,13 +6,13 @@
     <description>Builds automatiques du canal dev — item unique, toujours le plus récent.</description>
     <language>en</language>
     <item>
-      <title>PKMonitor 2026.10.13-dev.1908</title>
-      <pubDate>Tue, 06 Oct 2026 19:09:40 +0000</pubDate>
-      <sparkle:version>1791313701</sparkle:version>
-      <sparkle:shortVersionString>2026.10.13-dev.1908</sparkle:shortVersionString>
+      <title>PKMonitor 2026.10.14-dev.1915</title>
+      <pubDate>Tue, 06 Oct 2026 19:16:19 +0000</pubDate>
+      <sparkle:version>1791314104</sparkle:version>
+      <sparkle:shortVersionString>2026.10.14-dev.1915</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
       <description>Build dev automatique depuis main (canal dev : installation silencieuse).</description>
-      <enclosure url="https://github.com/mondary/PKmonitor/releases/download/dev/PKMonitor-dev.zip" type="application/octet-stream" sparkle:edSignature="8MOgkDgUJlgIrYbRVUCpawYw8+aXx1UPWuvdfaASJhfHsHvCjOs7IctiXZWnFrC2U6QB2LV9Qrt2qXEt1NPKAA==" length="5758587" />
+      <enclosure url="https://github.com/mondary/PKmonitor/releases/download/dev/PKMonitor-dev.zip" type="application/octet-stream" sparkle:edSignature="WWWA2oJICc9mJ41ZAIRjLrInGL6r2oqozCR6Rl6jljb/TaXv7LKmpsV5GqMvyZrCVfmGEabunIUS/KZ9FjDNDw==" length="5772858" />
     </item>
   </channel>
 </rss>

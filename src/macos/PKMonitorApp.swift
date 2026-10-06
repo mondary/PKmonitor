@@ -1582,9 +1582,9 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     case disk = "Disk"
     case panel = "Panel"
     case ai = "AI Advisor"
-    case about = "About"
-    case support = "Help & Support"
     case library = "Project Library"
+    case support = "Help & Support"
+    case about = "About"
 
     var id: String { rawValue }
     var icon: String {
@@ -1628,6 +1628,11 @@ private enum ProjectLinks {
     static let koFi = URL(string: "https://ko-fi.com/pouark")!
 }
 
+extension Notification.Name {
+    /// Demande à la fenêtre Réglages (si ouverte) d'afficher une section précise.
+    static let pkSelectSettingsSection = Notification.Name("PKSelectSettingsSection")
+}
+
 @MainActor
 enum AppIcon {
     private static var cache: [Int: NSImage] = [:]
@@ -1664,8 +1669,15 @@ struct SettingsView: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject var manager: MenuBarItemsManager
     @ObservedObject var model: MonitorModel
-    @State private var selection: SettingsSection? = .dashboard
+    @State private var selection: SettingsSection?
     @State private var searchText = ""
+
+    init(settings: AppSettings, manager: MenuBarItemsManager, model: MonitorModel, initialSection: SettingsSection = .dashboard) {
+        self.settings = settings
+        self.manager = manager
+        self.model = model
+        _selection = State(initialValue: initialSection)
+    }
 
     private var filteredSections: [SettingsSection] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -1766,7 +1778,7 @@ struct SettingsView: View {
                 case .disk: DiskSettingsView(settings: settings)
                 case .panel: PanelSettingsView(settings: settings)
                 case .ai: AISettingsView(settings: settings)
-                case .about: AboutSettingsView()
+                case .about: AboutSettingsView(settings: settings)
                 case .support: SupportSettingsView()
                 case .library: ProjectLibraryView()
                 }
@@ -1775,6 +1787,11 @@ struct SettingsView: View {
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .frame(minWidth: 980, minHeight: 650)
+        .onReceive(NotificationCenter.default.publisher(for: .pkSelectSettingsSection)) { note in
+            if let raw = note.object as? String, let section = SettingsSection(rawValue: raw) {
+                selection = section
+            }
+        }
     }
 }
 
@@ -1939,20 +1956,6 @@ struct GeneralSettingsView: View {
                     SettingLine("Top applications", detail: "Shown as markers on the sparkline") {
                         Stepper("\(settings.iconCount)", value: $settings.iconCount, in: 1...5).labelsHidden().frame(width: 100)
                     }
-                }
-
-                SettingsCard("Updates", icon: "arrow.triangle.down.circle", subtitle: "Automatic updates via Sparkle.") {
-                    SettingLine("Channel", detail: "Dev tracks every push on main") {
-                        Picker("Channel", selection: $settings.updateChannel) {
-                            Text("Stable").tag("stable")
-                            Text("Dev").tag("dev")
-                        }
-                        .labelsHidden().pickerStyle(.segmented).frame(width: 220)
-                    }
-                    Text(settings.updateChannel == "dev"
-                         ? "Dev builds are downloaded, installed and relaunched automatically. Switching back to Stable won't downgrade the app — reinstall the latest published release."
-                         : "You are notified when a new version is published.")
-                        .font(.caption).foregroundStyle(.secondary)
                 }
 
                 SettingsCard("Color Thresholds", icon: "exclamationmark.triangle", subtitle: "Change the warning colors used by the readout.") {
@@ -2391,8 +2394,19 @@ struct DiskSettingsView: View {
 }
 
 struct AboutSettingsView: View {
+    @ObservedObject var settings: AppSettings
+    @ObservedObject private var updater = UpdaterManager.shared
+
     private var version: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development"
+    }
+
+    private var isDevBuild: Bool {
+        version.localizedCaseInsensitiveContains("-dev")
+    }
+
+    private var kofiLogo: NSImage? {
+        Bundle.main.path(forResource: "kofi-logo", ofType: "png").flatMap(NSImage.init(contentsOfFile:))
     }
 
     var body: some View {
@@ -2422,6 +2436,10 @@ struct AboutSettingsView: View {
                     aboutText
                         .frame(maxWidth: 480)
                         .padding(.bottom, 32)
+
+                    updateSection
+                        .frame(maxWidth: 480)
+                        .padding(.bottom, 32)
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -2433,6 +2451,87 @@ struct AboutSettingsView: View {
                 .padding(.vertical, 14)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear { updater.refreshAvailableVersions() }
+    }
+
+    /// Gestion des mises à jour collée au À propos (pattern PKwindowsManagement) :
+    /// canal Stable/Dev, dernières versions publiées, vérification manuelle.
+    private var updateSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Updates")
+                .font(.headline)
+
+            HStack(spacing: 12) {
+                Text("Update channel")
+                    .font(.subheadline.weight(.medium))
+                Picker("Update channel", selection: $settings.updateChannel) {
+                    Text("Stable").tag("stable")
+                    Text("Dev").tag("dev")
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .accessibilityLabel("Update channel")
+                .frame(width: 190)
+                Spacer(minLength: 0)
+            }
+
+            Text(settings.updateChannel == "dev"
+                 ? "Dev builds are downloaded, installed and relaunched automatically. Switching back to Stable won't downgrade the app — reinstall the latest published release."
+                 : "Versioned releases only, tested. You are notified when a new version is published.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            HStack(alignment: .top, spacing: 0) {
+                versionColumn(
+                    title: "Stable version",
+                    value: updater.latestStableVersion ?? "Not published",
+                    symbol: "checkmark.seal",
+                    isInstalled: !isDevBuild
+                )
+                Divider().frame(height: 42)
+                versionColumn(
+                    title: "Dev version",
+                    value: updater.latestDevVersion ?? "Not published",
+                    symbol: "hammer",
+                    isInstalled: isDevBuild
+                )
+            }
+            .padding(.vertical, 12)
+            .background(RoundedRectangle(cornerRadius: 10).fill(Color.primary.opacity(0.045)))
+
+            Button {
+                updater.refreshAvailableVersions()
+                updater.checkForUpdates()
+            } label: {
+                Label("Check for Updates…", systemImage: "arrow.triangle.2.circlepath")
+            }
+            .buttonStyle(.bordered)
+        }
+        .padding(16)
+        .background(RoundedRectangle(cornerRadius: 14).fill(Color.primary.opacity(0.025)))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.primary.opacity(0.08), lineWidth: 1))
+    }
+
+    private func versionColumn(title: String, value: String, symbol: String, isInstalled: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Label(title, systemImage: symbol)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            Text(value)
+                .font(.system(size: 12, weight: .medium, design: .monospaced))
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .help(value)
+            if isInstalled {
+                Label("Installed version", systemImage: "checkmark.circle.fill")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.green)
+                    .padding(.top, 2)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 8)
     }
 
     private var aboutText: some View {
@@ -2477,9 +2576,16 @@ struct AboutSettingsView: View {
                     .foregroundStyle(.secondary)
             }
             Link(destination: ProjectLinks.koFi) {
-                Label("Buy Me a Coffee", systemImage: "cup.and.saucer")
-                    .font(.caption)
-                    .foregroundStyle(.orange)
+                HStack(spacing: 4) {
+                    if let logo = kofiLogo {
+                        Image(nsImage: logo)
+                            .resizable()
+                            .frame(width: 12, height: 12)
+                    }
+                    Text("Ko-fi")
+                }
+                .font(.caption)
+                .foregroundStyle(Color(red: 1.0, green: 0.37, blue: 0.36))
             }
             Spacer()
             Text("MIT License")
@@ -2530,15 +2636,24 @@ struct SupportSettingsView: View {
         }
     }
 
+    private var kofiLogo: NSImage? {
+        Bundle.main.path(forResource: "kofi-logo", ofType: "png").flatMap(NSImage.init(contentsOfFile:))
+    }
+
     private var coffeeCard: some View {
         HStack(spacing: 12) {
-            Image(systemName: "cup.and.saucer.fill")
-                .font(.system(size: 22))
-                .foregroundStyle(.orange)
-                .frame(width: 36)
+            Group {
+                if let logo = kofiLogo {
+                    Image(nsImage: logo).resizable().interpolation(.high)
+                } else {
+                    Image(systemName: "cup.and.saucer.fill").font(.system(size: 22))
+                }
+            }
+            .frame(width: 28, height: 28)
+            .frame(width: 36)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("Buy Me a Coffee")
+                Text("Ko-fi")
                     .font(.system(size: 14, weight: .semibold))
                 Text("Support the developer with a coffee")
                     .font(.system(size: 12))
@@ -2553,7 +2668,7 @@ struct SupportSettingsView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 6)
-                    .background(Color.orange)
+                    .background(Color(red: 1.0, green: 0.37, blue: 0.36))
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .buttonStyle(.plain)
@@ -3675,12 +3790,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         login.target = self
         login.state = settings.launchAtLogin ? .on : .off
         menu.addItem(login)
-        let updateItem = NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
-        updateItem.target = self
-        menu.addItem(updateItem)
-        menu.addItem(NSMenuItem(title: "About PKMonitor", action: #selector(showAbout), keyEquivalent: ""))
-        menu.items.last?.target = self
-        let donate = NSMenuItem(title: "Donate on Ko-fi…", action: #selector(openKoFi), keyEquivalent: "")
+        menu.addItem(.separator())
+        let donate = NSMenuItem(title: "Support on Ko-fi", action: #selector(openKoFi), keyEquivalent: "")
         if let logoPath = Bundle.main.path(forResource: "kofi-logo", ofType: "png"),
            let logo = NSImage(contentsOfFile: logoPath) {
             logo.isTemplate = false
@@ -3689,6 +3800,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         donate.target = self
         menu.addItem(donate)
+        menu.addItem(.separator())
+        // Gestion des mises à jour collée au À propos, lui toujours en dernier
+        // item avant Quit (pattern PKwindowsManagement).
+        let updateItem = NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
+        updateItem.target = self
+        menu.addItem(updateItem)
+        let aboutItem = NSMenuItem(title: "About PKMonitor", action: #selector(showAbout), keyEquivalent: "")
+        aboutItem.target = self
+        menu.addItem(aboutItem)
         menu.addItem(.separator())
         let quit = NSMenuItem(title: "Quit PKMonitor", action: #selector(quit), keyEquivalent: "q")
         quit.target = self
@@ -3810,8 +3930,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func openSettings() {
+        openSettings(section: nil)
+    }
+
+    private func openSettings(section: SettingsSection?) {
         if settingsWindow == nil {
-            let controller = NSHostingController(rootView: SettingsView(settings: settings, manager: menuBarItemsManager, model: model))
+            let controller = NSHostingController(rootView: SettingsView(
+                settings: settings,
+                manager: menuBarItemsManager,
+                model: model,
+                initialSection: section ?? .dashboard
+            ))
             let window = NSWindow(contentViewController: controller)
             window.title = "PKMonitor Settings"
             window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
@@ -3820,6 +3949,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             window.center()
             window.isReleasedWhenClosed = false
             settingsWindow = window
+        } else if let section {
+            NotificationCenter.default.post(name: .pkSelectSettingsSection, object: section.rawValue)
         }
         settingsWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -3998,13 +4129,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func showAbout() {
-        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development"
-        NSApp.orderFrontStandardAboutPanel(options: [
-            .applicationName: "PKMonitor",
-            .version: version,
-            .credits: NSAttributedString(string: "Local CPU, memory and network activity in one line.")
-        ])
-        NSApp.activate(ignoringOtherApps: true)
+        // L'onglet About des Réglages porte la version, les liens et la gestion
+        // des mises à jour : c'est lui qui s'ouvre, pas le panneau standard.
+        openSettings(section: .about)
     }
 
     @objc private func quit() { NSApp.terminate(nil) }

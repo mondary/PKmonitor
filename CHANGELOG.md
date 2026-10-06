@@ -2,6 +2,13 @@
 
 Historique des évolutions de PKMonitor.
 
+## [2026.10.10] - 2026-10-06
+### Changed
+- Menu barre de menus aligné sur le pattern PKwindowsManagement : « Support on Ko-fi » (logo Ko-fi) placé avant la section mises à jour, « Check for Updates… » collé à « About PKMonitor » désormais toujours en dernier item avant Quit.
+- « About PKMonitor » ouvre l'onglet À propos des Réglages (version, liens, mises à jour) au lieu du panneau standard.
+- Onglet À propos : About toujours en dernier dans la barre latérale ; la gestion des mises à jour (canal Stable/Dev, dernières versions publiées, vérification manuelle) déménage de General vers About, collée au À propos.
+- Branding Ko-fi unifié (About, Help & Support) : logo Ko-fi et rouge #FF5E5B officiel, fin du « Buy Me a Coffee ».
+
 ## [2026.10.9] - 2026-10-06
 ### Fixed
 - Notes de mise à jour Sparkle rendues en HTML lisible plutôt qu'en Markdown brut ; appcast de la version 2026.10.8 corrigé également.

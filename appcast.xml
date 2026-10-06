@@ -4,5 +4,15 @@
     <title>PKMonitor</title>
     <description>Most recent changes for PKMonitor.</description>
     <language>en</language>
+      <item>
+        <title>PKMonitor 2026.10.7</title>
+        <pubDate>Tue, 06 Oct 2026 09:19:04 +0000</pubDate>
+        <sparkle:version>2026.10.7</sparkle:version>
+        <sparkle:shortVersionString>2026.10.7</sparkle:shortVersionString>
+        <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+        <description>### Added
+- Mises à jour automatiques via Sparkle : vérification au lancement, entrée « Check for Updates… » dans le menu, appcast public signé EdDSA et généré par le workflow de release.</description>
+        <enclosure url="https://github.com/mondary/PKmonitor/releases/download/v2026.10.7/PKMonitor-2026.10.7.dmg" type="application/x-bzip2" sparkle:edSignature="0V4qT4tAOO0Sq4w4TUxtnn75YMQjTkHHAl6zFWRYr2AIdsjgwkzihxtZyvgLp0rbz7VVlBZMHreO4dnXMzAiBQ==" length="5830158" />
+      </item>
   </channel>
 </rss>

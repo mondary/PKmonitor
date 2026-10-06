@@ -24,7 +24,8 @@ def main() -> None:
 
     notes = pathlib.Path(notes_path).read_text().strip()
     pub_date = datetime.datetime.now(datetime.timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
-    url = f"https://github.com/mondary/PKmonitor/releases/download/v{version}/{dmg_path.name}"
+    dmg_name = pathlib.Path(dmg_path).name
+    url = f"https://github.com/mondary/PKmonitor/releases/download/v{version}/{dmg_name}"
     item = f"""      <item>
         <title>PKMonitor {version}</title>
         <pubDate>{pub_date}</pubDate>

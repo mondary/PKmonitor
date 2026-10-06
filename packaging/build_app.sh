@@ -10,6 +10,15 @@ swift build --package-path "$ROOT" -c release --disable-index-store
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
 cp "$ROOT/.build/release/PKMonitor" "$APP/Contents/MacOS/PKMonitor"
+# Frameworks binaires SPM (Sparkle) embarques dans le bundle.
+mkdir -p "$APP/Contents/Frameworks"
+for fw in "$ROOT"/.build/release/*.framework; do
+  [ -d "$fw" ] || continue
+  cp -R "$fw" "$APP/Contents/Frameworks/"
+done
+if [ -n "$(ls -A "$APP/Contents/Frameworks" 2>/dev/null)" ]; then
+  install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP/Contents/MacOS/PKMonitor" 2>/dev/null || true
+fi
 mkdir -p "$APP/Contents/Resources/ProjectIcons"
 cp "$ROOT/packaging/icons/icon.png" "$APP/Contents/Resources/icon.png"
 cp "$ROOT/src/macos/Resources/kofi-logo.png" "$APP/Contents/Resources/kofi-logo.png"
@@ -29,6 +38,9 @@ cat > "$APP/Contents/Info.plist" <<EOF
   <key>CFBundleIconFile</key><string>icon</string>
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
   <key>CFBundleVersion</key><string>$VERSION</string>
+  <key>SUFeedURL</key><string>https://raw.githubusercontent.com/mondary/PKmonitor/main/appcast.xml</string>
+  <key>SUPublicEDKey</key><string>OoygS0py6kkvRJBB8QAXiAli30SXSYvV7V54Z0Gtcj0=</string>
+  <key>SUEnableInstallerLauncherService</key><true/>
   <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>LSUIElement</key><true/>
 </dict></plist>

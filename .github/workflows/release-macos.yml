@@ -39,3 +39,18 @@ jobs:
             --notes "$NOTES" \
             --verify-tag || true
           gh release upload "v$VERSION" "dist/PKMonitor-$VERSION.dmg" --clobber
+
+      - name: Sign DMG and update appcast (Sparkle)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.ver.outputs.version }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          awk 'BEGIN{p=0} /^## \[/{if(p)exit; p=1; next} p&&/^## /{exit} p' CHANGELOG.md > /tmp/notes.md
+          python3 -m pip -q install cryptography
+          python3 packaging/sparkle_release.py "dist/PKMonitor-$VERSION.dmg" "$VERSION" /tmp/notes.md
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add appcast.xml
+          git commit -m "MAJ: appcast $VERSION" || exit 0
+          git push "https://x-access-token:${GH_TOKEN}@github.com/mondary/PKmonitor.git" HEAD:main

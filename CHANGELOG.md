@@ -2,6 +2,11 @@
 
 Historique des évolutions de PKMonitor.
 
+## [2026.10.7] - 2026-10-06
+### Added
+- Mises à jour automatiques via Sparkle : vérification au lancement, entrée « Check for Updates… » dans le menu, appcast public signé EdDSA et généré par le workflow de release.
+
+
 ## [2026.10.6] - 2026-10-06
 ### Fixed
 - Compteur de pourcentage de la barre de menus figé sur trois chiffres (`007%`, `100%`) : plus aucun tressautement du texte ni de la sparkline quand la valeur bascule entre 100 et 99.

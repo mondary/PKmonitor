@@ -3157,6 +3157,7 @@ final class UnderBarIconView: NSImageView {
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+    private let updaterManager = UpdaterManager.shared
     private let settings: AppSettings
     private let model: MonitorModel
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -3190,6 +3191,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        updaterManager.start()
         setupEditMenu()
         guard let button = statusItem.button else { return }
         button.target = self
@@ -3650,6 +3652,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         login.target = self
         login.state = settings.launchAtLogin ? .on : .off
         menu.addItem(login)
+        let updateItem = NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
+        updateItem.target = self
+        menu.addItem(updateItem)
         menu.addItem(NSMenuItem(title: "About PKMonitor", action: #selector(showAbout), keyEquivalent: ""))
         menu.items.last?.target = self
         let donate = NSMenuItem(title: "Donate on Ko-fi…", action: #selector(openKoFi), keyEquivalent: "")
@@ -3963,6 +3968,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if statusButtonFrame?.contains(location) == true { return }
         if detailPanel?.isVisible == true, detailPanel?.frame.contains(location) == true { return }
         hideAIPanel(animated: true)
+    }
+
+    @objc private func checkForUpdates() {
+        updaterManager.checkForUpdates()
     }
 
     @objc private func showAbout() {

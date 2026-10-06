@@ -2,6 +2,11 @@
 
 Historique des évolutions de PKMonitor.
 
+## [2026.10.9] - 2026-10-06
+### Fixed
+- Notes de mise à jour Sparkle rendues en HTML lisible plutôt qu'en Markdown brut ; appcast de la version 2026.10.8 corrigé également.
+
+
 ## [2026.10.8] - 2026-10-06
 ### Added
 - Canaux de mise à jour Stable / Dev dans les réglages (General → Updates) : le canal Dev suit chaque push sur main via `appcast-dev.xml` et installe silencieusement (télécharge, installe, relance) ; le canal Stable reste sur les versions publiées.

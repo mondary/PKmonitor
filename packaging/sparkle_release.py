@@ -15,6 +15,51 @@ import sys
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 
+def markdown_to_html(markdown: str) -> str:
+    """Convert the release-note Markdown subset used by CHANGELOG.md to HTML."""
+    lines = markdown.strip().splitlines()
+    out: list[str] = []
+    in_list = False
+
+    def inline(text: str) -> str:
+        text = html.escape(text, quote=False)
+        text = re.sub(r"`([^`]+)`", r"<code>\1</code>", text)
+        text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
+        text = re.sub(r"(?<!\*)\*([^*]+)\*(?!\*)", r"<em>\1</em>", text)
+        return text
+
+    for raw in lines:
+        line = raw.strip()
+        if not line:
+            if in_list:
+                out.append("</ul>")
+                in_list = False
+            continue
+
+        heading = re.match(r"^(#{1,6})\s+(.+)$", line)
+        bullet = re.match(r"^[-*+]\s+(.+)$", line)
+        if heading:
+            if in_list:
+                out.append("</ul>")
+                in_list = False
+            level = min(len(heading.group(1)) + 1, 6)  # RSS item title is h1
+            out.append(f"<h{level}>{inline(heading.group(2))}</h{level}>")
+        elif bullet:
+            if not in_list:
+                out.append("<ul>")
+                in_list = True
+            out.append(f"<li>{inline(bullet.group(1))}</li>")
+        else:
+            if in_list:
+                out.append("</ul>")
+                in_list = False
+            out.append(f"<p>{inline(line)}</p>")
+
+    if in_list:
+        out.append("</ul>")
+    return "".join(out).replace("]]>", "]]]]><![CDATA[>")
+
+
 def main() -> None:
     dmg_path, version, notes_path = sys.argv[1], sys.argv[2], sys.argv[3]
     dmg = pathlib.Path(dmg_path).read_bytes()
@@ -22,7 +67,7 @@ def main() -> None:
     key = Ed25519PrivateKey.from_private_bytes(key_bytes)
     signature = base64.b64encode(key.sign(dmg)).decode()
 
-    notes = pathlib.Path(notes_path).read_text().strip()
+    notes = markdown_to_html(pathlib.Path(notes_path).read_text())
     pub_date = datetime.datetime.now(datetime.timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
     dmg_name = pathlib.Path(dmg_path).name
     url = f"https://github.com/mondary/PKmonitor/releases/download/v{version}/{dmg_name}"
@@ -32,7 +77,7 @@ def main() -> None:
         <sparkle:version>{version}</sparkle:version>
         <sparkle:shortVersionString>{version}</sparkle:shortVersionString>
         <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-        <description>{html.escape(notes)}</description>
+        <description><![CDATA[{notes}]]></description>
         <enclosure url="{url}" type="application/x-bzip2" sparkle:edSignature="{signature}" length="{len(dmg)}" />
       </item>"""
 

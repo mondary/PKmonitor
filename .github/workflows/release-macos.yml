@@ -47,8 +47,9 @@ jobs:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
           awk 'BEGIN{p=0} /^## \[/{if(p)exit; p=1; next} p&&/^## /{exit} p' CHANGELOG.md > /tmp/notes.md
-          python3 -m pip -q install cryptography
-          python3 packaging/sparkle_release.py "dist/PKMonitor-$VERSION.dmg" "$VERSION" /tmp/notes.md
+          python3 -m venv /tmp/sv
+          /tmp/sv/bin/pip -q install cryptography
+          /tmp/sv/bin/python packaging/sparkle_release.py "dist/PKMonitor-$VERSION.dmg" "$VERSION" /tmp/notes.md
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           git add appcast.xml

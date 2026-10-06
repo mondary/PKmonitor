@@ -2,6 +2,12 @@
 
 Historique des évolutions de PKMonitor.
 
+## [2026.10.8] - 2026-10-06
+### Added
+- Canaux de mise à jour Stable / Dev dans les réglages (General → Updates) : le canal Dev suit chaque push sur main via `appcast-dev.xml` et installe silencieusement (télécharge, installe, relance) ; le canal Stable reste sur les versions publiées.
+- Workflow `dev-build.yml` : build automatique signé EdDSA à chaque push main, publié sur la release permanente `dev`.
+
+
 ## [2026.10.7] - 2026-10-06
 ### Added
 - Mises à jour automatiques via Sparkle : vérification au lancement, entrée « Check for Updates… » dans le menu, appcast public signé EdDSA et généré par le workflow de release.

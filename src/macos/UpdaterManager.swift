@@ -12,10 +12,11 @@ import Foundation
 import Sparkle
 
 @MainActor
-final class UpdaterManager: NSObject, ObservableObject {
+final class UpdaterManager: NSObject, ObservableObject, SPUUpdaterDelegate {
     static let shared = UpdaterManager()
 
     private let controller: SPUStandardUpdaterController
+    private var channelChangeObserver: NSObjectProtocol?
 
     @Published var canCheckForUpdates = false
 
@@ -28,7 +29,7 @@ final class UpdaterManager: NSObject, ObservableObject {
         // startingUpdater: false — start() est appelé explicitement au lancement.
         controller = SPUStandardUpdaterController(
             startingUpdater: false,
-            updaterDelegate: nil,
+            updaterDelegate: self,
             userDriverDelegate: nil
         )
         super.init()
@@ -40,8 +41,34 @@ final class UpdaterManager: NSObject, ObservableObject {
         #if DEBUG
         return
         #else
+        applyChannelPreference()
+        channelChangeObserver = NotificationCenter.default.addObserver(
+            forName: Notification.Name("PKUpdateChannelDidChange"),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.applyChannelPreference()
+        }
         controller.startUpdater()
         #endif
+    }
+
+    /// Canal choisi dans les réglages (clé "updateChannel" : "stable" ou "dev").
+    /// Sparkle consulte le delegate à chaque vérification : basculer de canal
+    /// prend donc effet immédiatement, sans relance.
+    /// Canal dev : feed appcast-dev.xml (builds de main signés EdDSA) et
+    /// installation automatique silencieuse — télécharge, installe, relance.
+    func feedURLString(for updater: SPUUpdater) -> String {
+        let isDev = UserDefaults.standard.string(forKey: "updateChannel") == "dev"
+        return isDev
+            ? "https://raw.githubusercontent.com/mondary/PKmonitor/main/appcast-dev.xml"
+            : "https://raw.githubusercontent.com/mondary/PKmonitor/main/appcast.xml"
+    }
+
+    /// Canal dev : installation silencieuse (SUAutomaticallyUpdate).
+    private func applyChannelPreference() {
+        let isDev = UserDefaults.standard.string(forKey: "updateChannel") == "dev"
+        controller.updater.automaticallyDownloadsUpdates = isDev
     }
 
     /// App menu-bar pure : bascule temporairement en .regular pour que la

@@ -4,6 +4,17 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
 VERSION=$(sed -nE 's/^##? \[([0-9]+\.[0-9]+\.[0-9]+)\].*/\1/p' "$ROOT/CHANGELOG.md" | sed -n '1p')
 test -n "$VERSION" || { echo "Could not read version from CHANGELOG.md" >&2; exit 1; }
+
+# Build dev (PK_DEV_BUILD=1) : CFBundleVersion = timestamp epoch, toujours
+# croissant et toujours supérieur aux versions stable CalVer -> Sparkle
+# propose bien la build dev à toute app installée (canal dev).
+if [ "${PK_DEV_BUILD:-0}" = "1" ]; then
+  BUNDLE_VERSION=$(date +%s)
+  MARKETING_VERSION="$VERSION-dev.$(date -u +%H%M)"
+else
+  BUNDLE_VERSION="$VERSION"
+  MARKETING_VERSION="$VERSION"
+fi
 APP="$ROOT/dist/PKMonitor.app"
 
 swift build --package-path "$ROOT" -c release --disable-index-store
@@ -36,8 +47,8 @@ cat > "$APP/Contents/Info.plist" <<EOF
   <key>CFBundleIdentifier</key><string>com.mondary.pkmonitor</string>
   <key>CFBundleName</key><string>PKMonitor</string>
   <key>CFBundleIconFile</key><string>icon</string>
-  <key>CFBundleShortVersionString</key><string>$VERSION</string>
-  <key>CFBundleVersion</key><string>$VERSION</string>
+  <key>CFBundleShortVersionString</key><string>$MARKETING_VERSION</string>
+  <key>CFBundleVersion</key><string>$BUNDLE_VERSION</string>
   <key>SUFeedURL</key><string>https://raw.githubusercontent.com/mondary/PKmonitor/main/appcast.xml</string>
   <key>SUPublicEDKey</key><string>OoygS0py6kkvRJBB8QAXiAli30SXSYvV7V54Z0Gtcj0=</string>
   <key>SUEnableInstallerLauncherService</key><true/>

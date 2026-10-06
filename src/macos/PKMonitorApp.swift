@@ -134,6 +134,14 @@ final class AppSettings: ObservableObject {
     @Published var aiEndpoint: String { didSet { defaults.set(aiEndpoint, forKey: "aiEndpoint") } }
     @Published var aiModel: String { didSet { defaults.set(aiModel, forKey: "aiModel") } }
     @Published var aiPresentation: AIPresentation { didSet { defaults.set(aiPresentation.rawValue, forKey: "aiPresentation") } }
+    @Published var updateChannel: String {
+        didSet {
+            defaults.set(updateChannel, forKey: "updateChannel")
+            if oldValue != updateChannel {
+                NotificationCenter.default.post(name: .init("PKUpdateChannelDidChange"), object: nil)
+            }
+        }
+    }
     @Published var warningThreshold: Double { didSet { defaults.set(warningThreshold, forKey: "warningThreshold") } }
     @Published var criticalThreshold: Double { didSet { defaults.set(criticalThreshold, forKey: "criticalThreshold") } }
     @Published var cpuColor: String { didSet { defaults.set(cpuColor, forKey: "cpuColor") } }
@@ -193,6 +201,7 @@ final class AppSettings: ObservableObject {
         aiEndpoint = defaults.string(forKey: "aiEndpoint") ?? "https://api.openai.com/v1"
         aiModel = defaults.string(forKey: "aiModel") ?? "gpt-4o-mini"
         aiPresentation = AIPresentation(rawValue: defaults.string(forKey: "aiPresentation") ?? "") ?? .rightPanel
+        updateChannel = defaults.string(forKey: "updateChannel") ?? "stable"
         warningThreshold = defaults.object(forKey: "warningThreshold") as? Double ?? 80
         criticalThreshold = defaults.object(forKey: "criticalThreshold") as? Double ?? 95
         cpuColor = defaults.string(forKey: "cpuColor") ?? ""
@@ -1930,6 +1939,20 @@ struct GeneralSettingsView: View {
                     SettingLine("Top applications", detail: "Shown as markers on the sparkline") {
                         Stepper("\(settings.iconCount)", value: $settings.iconCount, in: 1...5).labelsHidden().frame(width: 100)
                     }
+                }
+
+                SettingsCard("Updates", icon: "arrow.triangle.down.circle", subtitle: "Automatic updates via Sparkle.") {
+                    SettingLine("Channel", detail: "Dev tracks every push on main") {
+                        Picker("Channel", selection: $settings.updateChannel) {
+                            Text("Stable").tag("stable")
+                            Text("Dev").tag("dev")
+                        }
+                        .labelsHidden().pickerStyle(.segmented).frame(width: 220)
+                    }
+                    Text(settings.updateChannel == "dev"
+                         ? "Dev builds are downloaded, installed and relaunched automatically. Switching back to Stable won't downgrade the app — reinstall the latest published release."
+                         : "You are notified when a new version is published.")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
 
                 SettingsCard("Color Thresholds", icon: "exclamationmark.triangle", subtitle: "Change the warning colors used by the readout.") {

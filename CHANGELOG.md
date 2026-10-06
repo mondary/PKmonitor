@@ -2,6 +2,10 @@
 
 Historique des évolutions de PKMonitor.
 
+## [2026.10.11] - 2026-10-06
+### Fixed
+- Compilation : ambiguïté `#selector(openSettings)` introduite par la surcharge paramétrée, renommée `showSettings(section:)`.
+
 ## [2026.10.10] - 2026-10-06
 ### Changed
 - Menu barre de menus aligné sur le pattern PKwindowsManagement : « Support on Ko-fi » (logo Ko-fi) placé avant la section mises à jour, « Check for Updates… » collé à « About PKMonitor » désormais toujours en dernier item avant Quit.

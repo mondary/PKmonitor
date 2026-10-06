@@ -3930,10 +3930,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func openSettings() {
-        openSettings(section: nil)
+        showSettings(section: nil)
     }
 
-    private func openSettings(section: SettingsSection?) {
+    private func showSettings(section: SettingsSection?) {
         if settingsWindow == nil {
             let controller = NSHostingController(rootView: SettingsView(
                 settings: settings,
@@ -4131,7 +4131,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func showAbout() {
         // L'onglet About des Réglages porte la version, les liens et la gestion
         // des mises à jour : c'est lui qui s'ouvre, pas le panneau standard.
-        openSettings(section: .about)
+        showSettings(section: .about)
     }
 
     @objc private func quit() { NSApp.terminate(nil) }

@@ -11,8 +11,21 @@ import Combine
 import Foundation
 import Sparkle
 
+/// Fournit l'URL du feed selon le canal choisi dans les réglages
+/// (clé "updateChannel" : "stable" ou "dev"). Sparkle consulte le delegate
+/// à chaque vérification : basculer de canal prend effet immédiatement.
+/// Objet séparé : il est passé au controller à son init, sans capture de self.
+private final class ChannelFeedProvider: NSObject, SPUUpdaterDelegate {
+    nonisolated func feedURLString(for updater: SPUUpdater) -> String {
+        let isDev = UserDefaults.standard.string(forKey: "updateChannel") == "dev"
+        return isDev
+            ? "https://raw.githubusercontent.com/mondary/PKmonitor/main/appcast-dev.xml"
+            : "https://raw.githubusercontent.com/mondary/PKmonitor/main/appcast.xml"
+    }
+}
+
 @MainActor
-final class UpdaterManager: NSObject, ObservableObject, SPUUpdaterDelegate {
+final class UpdaterManager: NSObject, ObservableObject {
     static let shared = UpdaterManager()
 
     private let controller: SPUStandardUpdaterController
@@ -27,14 +40,12 @@ final class UpdaterManager: NSObject, ObservableObject, SPUUpdaterDelegate {
 
     private override init() {
         // startingUpdater: false — start() est appelé explicitement au lancement.
-        // Le delegate est assigné après super.init() (self indisponible avant).
         controller = SPUStandardUpdaterController(
             startingUpdater: false,
-            updaterDelegate: nil,
+            updaterDelegate: ChannelFeedProvider(),
             userDriverDelegate: nil
         )
         super.init()
-        controller.updater.delegate = self
         controller.updater.publisher(for: \.canCheckForUpdates)
             .assign(to: &$canCheckForUpdates)
     }
@@ -55,21 +66,8 @@ final class UpdaterManager: NSObject, ObservableObject, SPUUpdaterDelegate {
         #endif
     }
 
-    /// Canal choisi dans les réglages (clé "updateChannel" : "stable" ou "dev").
-    /// Sparkle consulte le delegate à chaque vérification : basculer de canal
-    /// prend donc effet immédiatement, sans relance.
-    /// Canal dev : feed appcast-dev.xml (builds de main signés EdDSA) et
-    /// installation automatique silencieuse — télécharge, installe, relance.
-    /// nonisolated : lecture UserDefaults uniquement, appelé hors MainActor
-    /// par Sparkle.
-    nonisolated func feedURLString(for updater: SPUUpdater) -> String {
-        let isDev = UserDefaults.standard.string(forKey: "updateChannel") == "dev"
-        return isDev
-            ? "https://raw.githubusercontent.com/mondary/PKmonitor/main/appcast-dev.xml"
-            : "https://raw.githubusercontent.com/mondary/PKmonitor/main/appcast.xml"
-    }
-
     /// Canal dev : installation silencieuse (SUAutomaticallyUpdate).
+    /// Le choix du feed lui-même est fait par ChannelFeedProvider (delegate).
     private func applyChannelPreference() {
         let isDev = UserDefaults.standard.string(forKey: "updateChannel") == "dev"
         controller.updater.automaticallyDownloadsUpdates = isDev

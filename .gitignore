@@ -24,3 +24,4 @@ __pycache__/
 store/assets/videos/CleanShot*.cleanshotvideo/
 /store/archives/assets/videos/CleanShot*.cleanshotvideo/
 /store/website/
+.github/.DS_Store

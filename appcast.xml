@@ -41,5 +41,14 @@
         <description><![CDATA[<h4>Fixed</h4><ul><li>Mises à jour Sparkle rejetées à l'installation (« improperly signed ») : l'app assemblée n'était pas signée (binaire « linker-signed » = signature bundle invalide). Le build signe désormais le bundle en ad-hoc, minimum requis par Sparkle même avec une EdDSA valide.</li></ul>]]></description>
         <enclosure url="https://github.com/mondary/PKmonitor/releases/download/v2026.10.13/PKMonitor-2026.10.13.dmg" type="application/x-bzip2" sparkle:edSignature="00YYxHCyQXZBZ8M0j6cbWK/wXn2YLZcA+8L+Hi3K/JnCWRTuA4Qo6GPiu5TspzCeN4/17VGnZ6BenDFmNP5/DQ==" length="5863543" />
       </item>
+      <item>
+        <title>PKMonitor 2026.10.14</title>
+        <pubDate>Tue, 06 Oct 2026 19:18:33 +0000</pubDate>
+        <sparkle:version>2026.10.14</sparkle:version>
+        <sparkle:shortVersionString>2026.10.14</sparkle:shortVersionString>
+        <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+        <description><![CDATA[<h4>Added</h4><ul><li>Onglet À propos bilingue : drapeaux FR/EN en haut à droite de la page, bascule instantanée (clé « app-language », défaut = langue système, pattern PKwindowsManagement en version légère sans bundle .lproj).</li></ul>]]></description>
+        <enclosure url="https://github.com/mondary/PKmonitor/releases/download/v2026.10.14/PKMonitor-2026.10.14.dmg" type="application/x-bzip2" sparkle:edSignature="0an5MBERGPDEpHL6bdCbtQW8oCqOxX8fzbIte9oYZ0R9RCLWFqeCSn98XQOri+1P0MBCapdX7MINHQSFaAk0BQ==" length="5878621" />
+      </item>
   </channel>
 </rss>

@@ -2,6 +2,12 @@
 
 Historique des évolutions de PKMonitor.
 
+## [2026.10.12] - 2026-10-06
+### Changed
+- Sidebar Réglages réorganisée : groupe APP en tête (General, Menu Bar Items), MONITORING recentré sur ses onglets (Dashboard, Sparkline, Gauges, Disk, Panel, AI Advisor), PK PROJECTS inchangé (Library, Support, About en dernier).
+- Icônes sidebar en couleur pour Help & Support (rouge Ko-fi) et About (accent), à l'image du don Ko-fi du menu.
+- Version affichée en bas de la sidebar en .secondary (medium) : plus lisible qu'avant en .tertiary.
+
 ## [2026.10.11] - 2026-10-06
 ### Fixed
 - Compilation : ambiguïté `#selector(openSettings)` introduite par la surcharge paramétrée, renommée `showSettings(section:)`.

@@ -1574,9 +1574,9 @@ struct SparklineShape: Shape {
 }
 
 enum SettingsSection: String, CaseIterable, Identifiable {
-    case dashboard = "Dashboard"
     case general = "General"
     case menuBarItems = "Menu Bar Items"
+    case dashboard = "Dashboard"
     case sparkline = "Sparkline"
     case gauges = "Gauges"
     case disk = "Disk"
@@ -1589,23 +1589,33 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var icon: String {
         switch self {
-        case .dashboard: "speedometer"
         case .general: "gearshape"
         case .menuBarItems: "dock.rectangle"
+        case .dashboard: "speedometer"
         case .sparkline: "waveform.path.ecg"
         case .gauges: "barometer"
         case .disk: "internaldrive"
         case .panel: "rectangle.on.rectangle"
         case .ai: "sparkles"
         case .about: "info.circle"
-        case .support: "heart"
+        case .support: "heart.fill"
         case .library: "square.grid.2x2"
         }
     }
     var category: String {
         switch self {
-        case .dashboard, .general, .menuBarItems, .sparkline, .gauges, .disk, .panel, .ai: "MONITORING"
+        case .general, .menuBarItems: "APP"
+        case .dashboard, .sparkline, .gauges, .disk, .panel, .ai: "MONITORING"
         case .about, .support, .library: "PK PROJECTS"
+        }
+    }
+    /// Couleur d'icône dans la sidebar : Support (rouge Ko-fi) et About
+    /// (accent) se détachent en couleur, comme le don Ko-fi du menu.
+    var iconTint: Color? {
+        switch self {
+        case .support: Color(red: 1.0, green: 0.37, blue: 0.36)
+        case .about: .accentColor
+        default: nil
         }
     }
     var keywords: String {
@@ -1686,7 +1696,7 @@ struct SettingsView: View {
     }
     private var groupedSections: [(String, [SettingsSection])] {
         let grouped = Dictionary(grouping: filteredSections, by: \.category)
-        return ["MONITORING", "PK PROJECTS"].compactMap { key in
+        return ["APP", "MONITORING", "PK PROJECTS"].compactMap { key in
             guard let values = grouped[key], !values.isEmpty else { return nil }
             return (key, values)
         }
@@ -1741,6 +1751,7 @@ struct SettingsView: View {
                                 Image(systemName: section.icon)
                                     .font(.system(size: 14, weight: .medium))
                                     .frame(width: 20)
+                                    .foregroundStyle(section.iconTint ?? (selection == section ? Color.primary : Color.secondary))
                                 Text(section.rawValue)
                                     .font(.system(size: 13, weight: selection == section ? .semibold : .regular))
                                 Spacer()
@@ -1758,8 +1769,8 @@ struct SettingsView: View {
                 }
                 Spacer()
                 Text("PKMonitor \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development")")
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(.tertiary)
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .foregroundStyle(.secondary)
                     .padding(.horizontal, 20)
                     .padding(.bottom, 18)
             }

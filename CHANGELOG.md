@@ -2,6 +2,10 @@
 
 Historique des évolutions de PKMonitor.
 
+## [2026.10.13] - 2026-10-06
+### Fixed
+- Mises à jour Sparkle rejetées à l'installation (« improperly signed ») : l'app assemblée n'était pas signée (binaire « linker-signed » = signature bundle invalide). Le build signe désormais le bundle en ad-hoc, minimum requis par Sparkle même avec une EdDSA valide.
+
 ## [2026.10.12] - 2026-10-06
 ### Changed
 - Sidebar Réglages réorganisée : groupe APP en tête (General, Menu Bar Items), MONITORING recentré sur ses onglets (Dashboard, Sparkline, Gauges, Disk, Panel, AI Advisor), PK PROJECTS inchangé (Library, Support, About en dernier).

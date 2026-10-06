@@ -57,4 +57,11 @@ cat > "$APP/Contents/Info.plist" <<EOF
 </dict></plist>
 EOF
 
+# Signature ad-hoc du bundle assemblé. Sans cette étape, le binaire SPM reste
+# « linker-signed » : signature invalide en tant que bundle (resources non
+# scellées), et Sparkle REJETTE la mise à jour à l'installation (« improperly
+# signed ») même quand la signature EdDSA du DMG est valide. Sparkle accepte
+# l'ad-hoc : c'est le minimum requis.
+codesign --force --sign - --timestamp=none "$APP"
+
 echo "Built $APP"

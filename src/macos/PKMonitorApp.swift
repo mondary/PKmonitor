@@ -1641,6 +1641,119 @@ private enum ProjectLinks {
 extension Notification.Name {
     /// Demande à la fenêtre Réglages (si ouverte) d'afficher une section précise.
     static let pkSelectSettingsSection = Notification.Name("PKSelectSettingsSection")
+    /// La langue de l'app a changé (choix drapeau FR/EN dans About).
+    static let appLanguageDidChange = Notification.Name("PKAppLanguageDidChange")
+}
+
+/// Langue de l'app — pattern PKwindowsManagement en version légère (deux
+/// langues, table de chaînes inline, pas de bundle .lproj). Le choix se fait
+/// directement dans l'onglet About avec des drapeaux, clé UserDefaults
+/// "app-language" identique aux autres apps PK.
+enum AppLanguage: String, CaseIterable, Identifiable {
+    case system
+    case french = "fr"
+    case english = "en"
+
+    var id: String { rawValue }
+
+    var flagEmoji: String {
+        switch self {
+        case .system: "🌐"
+        case .french: "🇫🇷"
+        case .english: "🇬🇧"
+        }
+    }
+
+    /// Code effectif : la position « système » résout via la locale macOS.
+    var resolvedCode: String {
+        guard self == .system else { return rawValue }
+        let preferred = Locale.preferredLanguages.first ?? "en"
+        let code = Locale(identifier: preferred).language.languageCode?.identifier ?? "en"
+        return code == "fr" ? "fr" : "en"
+    }
+
+    static var current: AppLanguage {
+        AppLanguage(rawValue: UserDefaults.standard.string(forKey: "app-language") ?? "") ?? .system
+    }
+
+    static func set(_ language: AppLanguage) {
+        guard language != current else { return }
+        UserDefaults.standard.set(language.rawValue, forKey: "app-language")
+        NotificationCenter.default.post(name: .appLanguageDidChange, object: nil)
+    }
+}
+
+/// Chaînes localisées FR/EN (clé → langue → texte). Anglais = fallback.
+/// Le périmètre actuel est l'onglet About ; le reste de l'app suivra.
+enum L10n {
+    static let table: [String: [String: String]] = [
+        "about.greeting": [
+            "en": "Hey friend,",
+            "fr": "Salut l'ami,",
+        ],
+        "about.pitch": [
+            "en": "PKMonitor was born from a simple frustration: keeping an eye on your Mac without cluttering the screen or drowning in dashboards.",
+            "fr": "PKMonitor est né d'une frustration simple : garder un œil sur votre Mac sans encombrer l'écran ni se noyer dans les tableaux de bord.",
+        ],
+        "about.body": [
+            "en": "One quiet line in the menu bar — CPU, GPU, memory, network and disk at a glance, with the apps behind the numbers one hover away. Native binary, zero dependencies, everything stays local.",
+            "fr": "Une ligne discrète dans la barre de menus — CPU, GPU, mémoire, réseau et disque d'un coup d'œil, avec les apps derrière les chiffres à un survol. Binaire natif, zéro dépendance, tout reste local.",
+        ],
+        "about.care": [
+            "en": "Built with care for the Mac community. Discreet when you don't need it, right there when you look.",
+            "fr": "Conçu avec soin pour la communauté Mac. Discret quand vous n'en avez pas besoin, présent quand vous le regardez.",
+        ],
+        "about.thanks": [
+            "en": "Thanks for being part of it.",
+            "fr": "Merci d'en faire partie.",
+        ],
+        "about.byPK": [
+            "en": "By PK",
+            "fr": "Par PK",
+        ],
+        "about.updates": [
+            "en": "Updates",
+            "fr": "Mises à jour",
+        ],
+        "about.updateChannel": [
+            "en": "Update channel",
+            "fr": "Canal de mise à jour",
+        ],
+        "about.channelDevCaption": [
+            "en": "Dev builds are downloaded, installed and relaunched automatically. Switching back to Stable won't downgrade the app — reinstall the latest published release.",
+            "fr": "Les builds Dev sont téléchargées, installées et relancées automatiquement. Revenir en Stable ne rétrograde pas l'app — réinstallez la dernière version publiée.",
+        ],
+        "about.channelStableCaption": [
+            "en": "Versioned releases only, tested. You are notified when a new version is published.",
+            "fr": "Versions publiées uniquement, testées. Vous êtes averti quand une nouvelle version paraît.",
+        ],
+        "about.stableVersion": [
+            "en": "Stable version",
+            "fr": "Version Stable",
+        ],
+        "about.devVersion": [
+            "en": "Dev version",
+            "fr": "Version Dev",
+        ],
+        "about.notPublished": [
+            "en": "Not published",
+            "fr": "Non publiée",
+        ],
+        "about.installedVersion": [
+            "en": "Installed version",
+            "fr": "Version installée",
+        ],
+        "about.checkForUpdates": [
+            "en": "Check for Updates…",
+            "fr": "Rechercher des mises à jour…",
+        ],
+    ]
+
+    static func string(_ key: String) -> String {
+        let code = AppLanguage.current.resolvedCode
+        let entry = table[key]
+        return entry?[code] ?? entry?["en"] ?? key
+    }
 }
 
 @MainActor
@@ -2407,6 +2520,7 @@ struct DiskSettingsView: View {
 struct AboutSettingsView: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject private var updater = UpdaterManager.shared
+    @State private var language = AppLanguage.current
 
     private var version: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development"
@@ -2438,7 +2552,7 @@ struct AboutSettingsView: View {
                         .font(.system(size: 13))
                         .foregroundStyle(.secondary)
                         .padding(.top, 4)
-                    Text("By PK")
+                    Text(L10n.string("about.byPK"))
                         .font(.system(size: 13))
                         .foregroundStyle(.secondary)
                         .padding(.top, 2)
@@ -2462,47 +2576,85 @@ struct AboutSettingsView: View {
                 .padding(.vertical, 14)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onAppear { updater.refreshAvailableVersions() }
+        .overlay(alignment: .topTrailing) { languageFlags.padding(.top, 14).padding(.trailing, 18) }
+        .onAppear {
+            language = AppLanguage.current
+            updater.refreshAvailableVersions()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .appLanguageDidChange)) { _ in
+            language = AppLanguage.current
+        }
+    }
+
+    /// Drapeaux FR/EN : bascule directe de la langue de la page About.
+    private var languageFlags: some View {
+        HStack(spacing: 6) {
+            flagButton(.french, label: "Français")
+            flagButton(.english, label: "English")
+        }
+    }
+
+    private func flagButton(_ lang: AppLanguage, label: String) -> some View {
+        let isSelected = language.resolvedCode == lang.resolvedCode
+        return Button {
+            AppLanguage.set(lang)
+            language = lang
+        } label: {
+            Text(lang.flagEmoji)
+                .font(.system(size: 17))
+                .frame(width: 32, height: 25)
+                .background(
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(isSelected ? Color.accentColor.opacity(0.18) : Color(nsColor: .controlBackgroundColor))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .strokeBorder(isSelected ? Color.accentColor : Color.primary.opacity(0.12), lineWidth: isSelected ? 1.5 : 1)
+                )
+        }
+        .buttonStyle(.plain)
+        .help(label)
+        .accessibilityLabel(label)
     }
 
     /// Gestion des mises à jour collée au À propos (pattern PKwindowsManagement) :
     /// canal Stable/Dev, dernières versions publiées, vérification manuelle.
     private var updateSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Updates")
+            Text(L10n.string("about.updates"))
                 .font(.headline)
 
             HStack(spacing: 12) {
-                Text("Update channel")
+                Text(L10n.string("about.updateChannel"))
                     .font(.subheadline.weight(.medium))
-                Picker("Update channel", selection: $settings.updateChannel) {
+                Picker(L10n.string("about.updateChannel"), selection: $settings.updateChannel) {
                     Text("Stable").tag("stable")
                     Text("Dev").tag("dev")
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
-                .accessibilityLabel("Update channel")
+                .accessibilityLabel(L10n.string("about.updateChannel"))
                 .frame(width: 190)
                 Spacer(minLength: 0)
             }
 
             Text(settings.updateChannel == "dev"
-                 ? "Dev builds are downloaded, installed and relaunched automatically. Switching back to Stable won't downgrade the app — reinstall the latest published release."
-                 : "Versioned releases only, tested. You are notified when a new version is published.")
+                 ? L10n.string("about.channelDevCaption")
+                 : L10n.string("about.channelStableCaption"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
             HStack(alignment: .top, spacing: 0) {
                 versionColumn(
-                    title: "Stable version",
-                    value: updater.latestStableVersion ?? "Not published",
+                    title: L10n.string("about.stableVersion"),
+                    value: updater.latestStableVersion ?? L10n.string("about.notPublished"),
                     symbol: "checkmark.seal",
                     isInstalled: !isDevBuild
                 )
                 Divider().frame(height: 42)
                 versionColumn(
-                    title: "Dev version",
-                    value: updater.latestDevVersion ?? "Not published",
+                    title: L10n.string("about.devVersion"),
+                    value: updater.latestDevVersion ?? L10n.string("about.notPublished"),
                     symbol: "hammer",
                     isInstalled: isDevBuild
                 )
@@ -2514,7 +2666,7 @@ struct AboutSettingsView: View {
                 updater.refreshAvailableVersions()
                 updater.checkForUpdates()
             } label: {
-                Label("Check for Updates…", systemImage: "arrow.triangle.2.circlepath")
+                Label(L10n.string("about.checkForUpdates"), systemImage: "arrow.triangle.2.circlepath")
             }
             .buttonStyle(.bordered)
         }
@@ -2535,7 +2687,7 @@ struct AboutSettingsView: View {
                 .minimumScaleFactor(0.75)
                 .help(value)
             if isInstalled {
-                Label("Installed version", systemImage: "checkmark.circle.fill")
+                Label(L10n.string("about.installedVersion"), systemImage: "checkmark.circle.fill")
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(.green)
                     .padding(.top, 2)
@@ -2547,23 +2699,23 @@ struct AboutSettingsView: View {
 
     private var aboutText: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Hey friend,")
+            Text(L10n.string("about.greeting"))
                 .italic()
                 .font(.system(size: 13))
 
-            Text("PKMonitor was born from a simple frustration: keeping an eye on your Mac without cluttering the screen or drowning in dashboards.")
+            Text(L10n.string("about.pitch"))
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
 
-            Text("One quiet line in the menu bar — CPU, GPU, memory, network and disk at a glance, with the apps behind the numbers one hover away. Native binary, zero dependencies, everything stays local.")
+            Text(L10n.string("about.body"))
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
 
-            Text("Built with care for the Mac community. Discreet when you don't need it, right there when you look.")
+            Text(L10n.string("about.care"))
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
 
-            Text("Thanks for being part of it.")
+            Text(L10n.string("about.thanks"))
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
                 .padding(.top, 8)

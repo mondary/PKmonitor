@@ -2,6 +2,10 @@
 
 Historique des évolutions de PKMonitor.
 
+## [2026.10.14] - 2026-10-06
+### Added
+- Onglet À propos bilingue : drapeaux FR/EN en haut à droite de la page, bascule instantanée (clé « app-language », défaut = langue système, pattern PKwindowsManagement en version légère sans bundle .lproj).
+
 ## [2026.10.13] - 2026-10-06
 ### Fixed
 - Mises à jour Sparkle rejetées à l'installation (« improperly signed ») : l'app assemblée n'était pas signée (binaire « linker-signed » = signature bundle invalide). Le build signe désormais le bundle en ad-hoc, minimum requis par Sparkle même avec une EdDSA valide.

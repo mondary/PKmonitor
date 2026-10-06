@@ -12,6 +12,9 @@ dist/
 /GLM.md
 /OPENCODE.md
 .*
+!.gitignore
+!.github/
+!.github/**
 node_modules/
 build/
 .env

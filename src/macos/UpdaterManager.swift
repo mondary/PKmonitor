@@ -27,12 +27,14 @@ final class UpdaterManager: NSObject, ObservableObject, SPUUpdaterDelegate {
 
     private override init() {
         // startingUpdater: false — start() est appelé explicitement au lancement.
+        // Le delegate est assigné après super.init() (self indisponible avant).
         controller = SPUStandardUpdaterController(
             startingUpdater: false,
-            updaterDelegate: self,
+            updaterDelegate: nil,
             userDriverDelegate: nil
         )
         super.init()
+        controller.updater.delegate = self
         controller.updater.publisher(for: \.canCheckForUpdates)
             .assign(to: &$canCheckForUpdates)
     }
@@ -47,7 +49,7 @@ final class UpdaterManager: NSObject, ObservableObject, SPUUpdaterDelegate {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.applyChannelPreference()
+            Task { @MainActor in self?.applyChannelPreference() }
         }
         controller.startUpdater()
         #endif
@@ -58,7 +60,9 @@ final class UpdaterManager: NSObject, ObservableObject, SPUUpdaterDelegate {
     /// prend donc effet immédiatement, sans relance.
     /// Canal dev : feed appcast-dev.xml (builds de main signés EdDSA) et
     /// installation automatique silencieuse — télécharge, installe, relance.
-    func feedURLString(for updater: SPUUpdater) -> String {
+    /// nonisolated : lecture UserDefaults uniquement, appelé hors MainActor
+    /// par Sparkle.
+    nonisolated func feedURLString(for updater: SPUUpdater) -> String {
         let isDev = UserDefaults.standard.string(forKey: "updateChannel") == "dev"
         return isDev
             ? "https://raw.githubusercontent.com/mondary/PKmonitor/main/appcast-dev.xml"

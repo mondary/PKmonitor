@@ -2,6 +2,12 @@
 
 Historique des évolutions de PKMonitor.
 
+## [2026.10.6] - 2026-10-06
+### Fixed
+- Compteur de pourcentage de la barre de menus figé sur trois chiffres (`007%`, `100%`) : plus aucun tressautement du texte ni de la sparkline quand la valeur bascule entre 100 et 99.
+- Slot de valeur disque et module disque calculés sur une largeur de référence stable plutôt que sur la valeur courante.
+
+
 ## [2026.10.5] - 2026-10-01
 ### Added
 - Sélecteur FR/EN accessible dans la landing, avec détection de `navigator.language` / `navigator.languages` et mémorisation facultative du choix manuel.

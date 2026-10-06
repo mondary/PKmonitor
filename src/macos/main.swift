@@ -554,7 +554,9 @@ final class MonitorModel: ObservableObject {
         case .disk:
             let free = settings.diskValueMode == .free ? reading.pureFreeDisk : reading.freeDisk
             return "\(Self.formatBytes(Double(free))) free"
-        default: return "\(Int(reading.value(for: displayedMetric).rounded()))%"
+        // Trois chiffres en permanence : le compteur garde exactement la même largeur
+        // quand il bascule entre 100 % et 99 %, la sparkline ne bouge plus d'un pixel.
+        default: return String(format: "%03d%%", Int(reading.value(for: displayedMetric).rounded()))
         }
     }
 
@@ -3997,7 +3999,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let valueSize = (value as NSString).size(withAttributes: valueAttrs)
         // Largeur de texte stable : la valeur vit dans un slot fixe (aligné à droite) pour
         // éviter que la pastille ne change de taille à chaque échantillon réseau.
-        let valueReference = metric == .network ? "↓888.8 Mo/s" : metric == .disk ? value : "100%"
+        let valueReference = metric == .network ? "↓888.8 Mo/s" : metric == .disk ? "888.8 Go free" : "100%"
         let textW = max(valueSize.width, (valueReference as NSString).size(withAttributes: valueAttrs).width) + gap * 2
         let labelW: CGFloat = settings.showSparkline && settings.showLabel ? labelCharSize.width + 4 : 0
         let gaugeW: CGFloat = settings.showGauges ? CGFloat(settings.enabledGaugeMetrics.count) * (CGFloat(settings.gaugeWidth) + 2) + 2 : 0
@@ -4009,8 +4011,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let diskFreeText = MonitorModel.formatBytes(Double(settings.diskValueMode == .free ? model.reading.pureFreeDisk : model.reading.freeDisk))
         let diskTotalText = MonitorModel.formatBytes(Double(model.reading.totalDisk))
         let diskStacked = settings.showDiskModule && settings.diskLayout == .stacked
-        let diskFreeW = (diskFreeText as NSString).size(withAttributes: diskFreeAttrs).width
-        let diskTotalW = (diskTotalText as NSString).size(withAttributes: diskTotalAttrs).width
+        // Largeurs de référence stables pour le module disque : la pastille ne se redimensionne
+        // pas quand l'espace libre passe par exemple de 100 Go à 99,9 Go.
+        let diskRefAttrs: [NSAttributedString.Key: Any] = [.font: diskFont]
+        let diskRefW = ("888.8 Go" as NSString).size(withAttributes: diskRefAttrs).width
+        let diskFreeW = max((diskFreeText as NSString).size(withAttributes: diskFreeAttrs).width, diskRefW)
+        let diskTotalW = max((diskTotalText as NSString).size(withAttributes: diskTotalAttrs).width, diskRefW)
         let diskSepW = (" / " as NSString).size(withAttributes: diskSepAttrs).width
         let diskW: CGFloat = {
             guard settings.showDiskModule else { return 0 }

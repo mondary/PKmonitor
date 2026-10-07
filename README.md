@@ -8,7 +8,7 @@
 
 Moniteur système macOS natif et discret dans la barre des menus.
 
-Version `2026.10.23` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
+Version `2026.10.24` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
 ![Fenêtre de réglages de PK Monitor](store/screenshots/01-reglages.png)
 

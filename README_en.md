@@ -8,7 +8,7 @@
 
 A native, focused macOS system monitor in the menu bar.
 
-Version `2026.10.23` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
+Version `2026.10.24` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
 ![PK Monitor settings window](store/screenshots/01-reglages.png)
 

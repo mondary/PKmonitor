@@ -2,6 +2,10 @@
 
 Historique des évolutions de PKMonitor.
 
+## [2026.10.24] - 2026-10-07
+### Changed
+- Les crédits ont leur propre page dans les réglages, séparée d’À propos, avec des groupes Dépendances/Inspiration, pictogrammes, auteur, rôle et badge comme dans PKwindowsManagement.
+
 ## [2026.10.23] - 2026-10-07
 ### Fixed
 - Le fournisseur de flux Sparkle est maintenant conservé en mémoire : le delegate ne se désalloue plus et les builds Dev vérifient bien l’appcast Dev au lieu de retomber sur Stable.

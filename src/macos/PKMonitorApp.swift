@@ -1583,6 +1583,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     case panel = "Panel"
     case ai = "AI Advisor"
     case library = "Project Library"
+    case credits = "Credits"
     case support = "Help & Support"
     case about = "About"
 
@@ -1598,6 +1599,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .panel: "rectangle.on.rectangle"
         case .ai: "sparkles"
         case .about: "info.circle"
+        case .credits: "quote.opening"
         case .support: "heart.fill"
         case .library: "square.grid.2x2"
         }
@@ -1616,13 +1618,14 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .library: L10n.string("sidebar.library")
         case .support: L10n.string("sidebar.support")
         case .about: L10n.string("sidebar.about")
+        case .credits: L10n.string("sidebar.credits")
         }
     }
     var category: String {
         switch self {
         case .general, .menuBarItems: "APP"
         case .dashboard, .sparkline, .gauges, .disk, .panel, .ai: "MONITORING"
-        case .about, .support, .library: "PK PROJECTS"
+        case .about, .credits, .support, .library: "PK PROJECTS"
         }
     }
     var groupKey: String {
@@ -1637,7 +1640,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     var iconTint: Color? {
         switch self {
         case .support: Color(red: 1.0, green: 0.37, blue: 0.36)
-        case .about: .accentColor
+        case .about, .credits: .accentColor
         default: nil
         }
     }
@@ -1913,6 +1916,48 @@ enum L10n {
             "es": "Acerca de",
             "de": "Über",
         ],
+        "sidebar.credits": [
+            "en": "Credits",
+            "fr": "Crédits",
+            "es": "Créditos",
+            "de": "Credits",
+        ],
+        "credits.dependencies": [
+            "en": "Tools and dependencies",
+            "fr": "Outils et dépendances",
+            "es": "Herramientas y dependencias",
+            "de": "Tools und Abhängigkeiten",
+        ],
+        "credits.inspirations": [
+            "en": "Inspirations",
+            "fr": "Inspirations",
+            "es": "Inspiraciones",
+            "de": "Inspirationen",
+        ],
+        "credits.subtitle": [
+            "en": "Projects and tools that inform or power PKMonitor.",
+            "fr": "Projets et outils qui inspirent PKMonitor ou contribuent à son fonctionnement.",
+            "es": "Proyectos y herramientas que inspiran o hacen funcionar PKMonitor.",
+            "de": "Projekte und Tools, die PKMonitor inspirieren oder antreiben.",
+        ],
+        "credits.sparkleRole": [
+            "en": "Stable and Dev software updates.",
+            "fr": "Gestion des mises à jour Stable et Dev.",
+            "es": "Gestión de actualizaciones Stable y Dev.",
+            "de": "Verwaltung von Stable- und Dev-Updates.",
+        ],
+        "credits.activityLineRole": [
+            "en": "Menu-bar activity line design inspiration, reinterpreted and customized for PKMonitor.",
+            "fr": "Inspiration pour le design de la ligne d’activité, réinterprétée et personnalisée pour PKMonitor.",
+            "es": "Inspiración para el diseño de la línea de actividad, reinterpretada y adaptada para PKMonitor.",
+            "de": "Inspiration für das Aktivitätszeilen-Design, für PKMonitor neu interpretiert und angepasst.",
+        ],
+        "credits.nativeFrameworks": [
+            "en": "Built with Apple's native frameworks: SwiftUI, AppKit and the Accessibility API.",
+            "fr": "Conçu avec les frameworks natifs d’Apple : SwiftUI, AppKit et l’API Accessibilité.",
+            "es": "Desarrollado con frameworks nativos de Apple: SwiftUI, AppKit y la API de Accesibilidad.",
+            "de": "Entwickelt mit Apples nativen Frameworks: SwiftUI, AppKit und der Bedienungshilfen-API.",
+        ],
         "group.app": [
             "en": "APP",
             "fr": "APP",
@@ -2027,30 +2072,6 @@ enum L10n {
             "fr": "Rechercher les mises à jour…",
             "es": "Buscar actualizaciones…",
             "de": "Nach Updates suchen…",
-        ],
-        "about.credits": [
-            "en": "Credits & inspirations",
-            "fr": "Crédits et inspirations",
-            "es": "Créditos e inspiraciones",
-            "de": "Credits & Inspirationen",
-        ],
-        "about.openCredits": [
-            "en": "Credits",
-            "fr": "Crédits",
-            "es": "Créditos",
-            "de": "Credits",
-        ],
-        "about.creditSparkle": [
-            "en": "Sparkle — software updates framework (MIT License).",
-            "fr": "Sparkle — framework de mises à jour (licence MIT).",
-            "es": "Sparkle — framework de actualizaciones (licencia MIT).",
-            "de": "Sparkle — Framework für Software-Updates (MIT-Lizenz).",
-        ],
-        "about.creditActivityLine": [
-            "en": "ActivityLine — inspiration for the menu-bar activity line design, reworked and customized for PKMonitor.",
-            "fr": "ActivityLine — inspiration pour le design de la ligne d’activité en barre des menus, réinterprété et personnalisé pour PKMonitor.",
-            "es": "ActivityLine — inspiración para el diseño de la línea de actividad en la barra de menús, reinterpretado y personalizado para PKMonitor.",
-            "de": "ActivityLine — Inspiration für das Design der Aktivitätszeile in der Menüleiste, für PKMonitor neu interpretiert und angepasst.",
         ],
         // MARK: Support
         "support.title": [
@@ -2486,6 +2507,7 @@ struct SettingsView: View {
                 case .panel: PanelSettingsView(settings: settings)
                 case .ai: AISettingsView(settings: settings)
                 case .about: AboutSettingsView(settings: settings)
+                case .credits: CreditsInspirationsSettingsView()
                 case .support: SupportSettingsView()
                 case .library: ProjectLibraryView()
                 }
@@ -3109,7 +3131,6 @@ struct AboutSettingsView: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject private var updater = UpdaterManager.shared
     @State private var language = AppLanguage.current
-    @State private var showCredits = false
 
     private var version: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development"
@@ -3180,12 +3201,6 @@ struct AboutSettingsView: View {
                 .padding(.vertical, 14)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .sheet(isPresented: $showCredits) {
-            creditsSection
-                .frame(width: 440)
-                .padding(24)
-                .fixedSize(horizontal: false, vertical: true)
-        }
         .onAppear {
             language = AppLanguage.current
             updater.refreshAvailableVersions()
@@ -3305,28 +3320,6 @@ struct AboutSettingsView: View {
         }
     }
 
-    private var creditsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(L10n.string("about.credits"))
-                .font(.title3.weight(.semibold))
-            VStack(alignment: .leading, spacing: 14) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Link("Sparkle", destination: URL(string: "https://github.com/sparkle-project/Sparkle")!)
-                        .font(.system(size: 13, weight: .semibold))
-                    Text(L10n.string("about.creditSparkle"))
-                        .font(.system(size: 12)).foregroundStyle(.secondary)
-                }
-                VStack(alignment: .leading, spacing: 4) {
-                    Link("ActivityLine", destination: URL(string: "https://activityline.app")!)
-                        .font(.system(size: 13, weight: .semibold))
-                    Text(L10n.string("about.creditActivityLine"))
-                        .font(.system(size: 12)).foregroundStyle(.secondary)
-                }
-            }
-        }
-        .padding(22)
-    }
-
     private var footer: some View {
         HStack(alignment: .center, spacing: 16) {
             Link(destination: ProjectLinks.github) {
@@ -3339,10 +3332,6 @@ struct AboutSettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            Button(L10n.string("about.openCredits")) { showCredits = true }
-                .buttonStyle(.plain)
-                .font(.caption)
-                .foregroundStyle(.secondary)
             Link(destination: ProjectLinks.koFi) {
                 HStack(spacing: 4) {
                     if let logo = kofiLogo {
@@ -3366,6 +3355,129 @@ struct AboutSettingsView: View {
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }
+    }
+}
+
+struct CreditsInspirationsSettingsView: View {
+    private struct CreditEntry: Identifiable {
+        let id: String
+        let author: String
+        let roleKey: String
+        let badge: String
+        let symbol: String
+        let tint: Color
+        let url: URL
+    }
+
+    private let dependencies = [
+        CreditEntry(
+            id: "Sparkle",
+            author: "Sparkle project",
+            roleKey: "credits.sparkleRole",
+            badge: "MIT",
+            symbol: "sparkles",
+            tint: Color(red: 0.96, green: 0.68, blue: 0.18),
+            url: URL(string: "https://github.com/sparkle-project/Sparkle")!
+        )
+    ]
+
+    private let inspirations = [
+        CreditEntry(
+            id: "ActivityLine",
+            author: "Jake Manger",
+            roleKey: "credits.activityLineRole",
+            badge: "DESIGN",
+            symbol: "waveform.path",
+            tint: Color(red: 0.25, green: 0.62, blue: 0.86),
+            url: URL(string: "https://activityline.app")!
+        )
+    ]
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                pageHeader
+                VStack(alignment: .leading, spacing: 22) {
+                    creditGroup(title: L10n.string("credits.dependencies"), entries: dependencies)
+                    creditGroup(title: L10n.string("credits.inspirations"), entries: inspirations)
+                }
+                .frame(maxWidth: 480, alignment: .leading)
+
+                Text(L10n.string("credits.nativeFrameworks"))
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .frame(maxWidth: 480, alignment: .leading)
+            }
+            .frame(maxWidth: 560)
+            .padding(.horizontal, 36)
+            .padding(.top, 36)
+            .padding(.bottom, 32)
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private var pageHeader: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "quote.opening")
+                .font(.system(size: 36, weight: .medium))
+                .foregroundStyle(Color.accentColor)
+            Text(L10n.string("sidebar.credits"))
+                .font(.system(size: 20, weight: .bold))
+            Text(L10n.string("credits.subtitle"))
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func creditGroup(title: String, entries: [CreditEntry]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title).font(.headline)
+            VStack(spacing: 0) {
+                ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
+                    creditRow(entry)
+                    if index < entries.count - 1 { Divider().padding(.horizontal, 2) }
+                }
+            }
+            .padding(.horizontal, 14)
+            .background(RoundedRectangle(cornerRadius: 14).fill(Color.primary.opacity(0.025)))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.primary.opacity(0.08), lineWidth: 1))
+        }
+    }
+
+    private func creditRow(_ entry: CreditEntry) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            Image(systemName: entry.symbol)
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(entry.tint)
+                .frame(width: 38, height: 38)
+                .background(entry.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Link(entry.id, destination: entry.url)
+                        .font(.subheadline.weight(.semibold))
+                    Text(entry.author)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Text(L10n.string(entry.roleKey))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 8)
+            Text(entry.badge)
+                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 2)
+                .background(Capsule().fill(Color.primary.opacity(0.05)))
+                .overlay(Capsule().stroke(Color.primary.opacity(0.12), lineWidth: 1))
+        }
+        .padding(.vertical, 11)
+        .accessibilityElement(children: .combine)
     }
 }
 

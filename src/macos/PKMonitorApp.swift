@@ -1987,10 +1987,10 @@ enum L10n {
             "de": "Update-Kanal",
         ],
         "about.channelDevCaption": [
-            "en": "Dev builds are downloaded, installed and relaunched automatically. Switching back to Stable won't downgrade the app — reinstall the latest published release.",
-            "fr": "Les builds Dev sont téléchargées, installées et relancées automatiquement. Revenir en Stable ne rétrograde pas l'app — réinstallez la dernière version publiée.",
-            "es": "Las builds Dev se descargan, instalan y relanzan automáticamente. Volver a Stable no degrada la app — reinstala la última versión publicada.",
-            "de": "Dev-Builds werden automatisch geladen, installiert und neu gestartet. Ein Wechsel zurück zu Stable stuft die App nicht herab — installiere die neueste Veröffentlichung neu.",
+            "en": "Dev builds check the Dev feed and install/relaunch automatically. To return to Stable, reinstall the latest published release.",
+            "fr": "Les builds Dev vérifient le canal Dev et s'installent/redémarrent automatiquement. Pour revenir en Stable, réinstallez la dernière version publiée.",
+            "es": "Las builds Dev consultan el canal Dev y se instalan/reinician automáticamente. Para volver a Stable, reinstala la última versión publicada.",
+            "de": "Dev-Builds prüfen den Dev-Kanal und werden automatisch installiert/neu gestartet. Für Stable die neueste veröffentlichte Version neu installieren.",
         ],
         "about.channelStableCaption": [
             "en": "Versioned releases only, tested. You are notified when a new version is published.",
@@ -3098,6 +3098,17 @@ struct AboutSettingsView: View {
         version.localizedCaseInsensitiveContains("-dev")
     }
 
+    private var effectiveUpdateChannel: String {
+        isDevBuild ? "dev" : settings.updateChannel
+    }
+
+    private var updateChannelSelection: Binding<String> {
+        Binding(
+            get: { effectiveUpdateChannel },
+            set: { if !isDevBuild { settings.updateChannel = $0 } }
+        )
+    }
+
     private var kofiLogo: NSImage? {
         Bundle.main.path(forResource: "kofi-logo", ofType: "png").flatMap(NSImage.init(contentsOfFile:))
     }
@@ -3163,7 +3174,7 @@ struct AboutSettingsView: View {
             HStack(spacing: 12) {
                 Text(L10n.string("about.updateChannel"))
                     .font(.subheadline.weight(.medium))
-                Picker(L10n.string("about.updateChannel"), selection: $settings.updateChannel) {
+                Picker(L10n.string("about.updateChannel"), selection: updateChannelSelection) {
                     Text("Stable").tag("stable")
                     Text("Dev").tag("dev")
                 }
@@ -3171,10 +3182,11 @@ struct AboutSettingsView: View {
                 .labelsHidden()
                 .accessibilityLabel(L10n.string("about.updateChannel"))
                 .frame(width: 190)
+                .disabled(isDevBuild)
                 Spacer(minLength: 0)
             }
 
-            Text(settings.updateChannel == "dev"
+            Text(effectiveUpdateChannel == "dev"
                  ? L10n.string("about.channelDevCaption")
                  : L10n.string("about.channelStableCaption"))
                 .font(.caption)
@@ -4013,7 +4025,7 @@ final class UnderBarIconView: NSImageView {
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
     private let updaterManager = UpdaterManager.shared
     private let settings: AppSettings
     private let model: MonitorModel
@@ -4233,6 +4245,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func updateHoverState() {
         updateUnderBarTick()
         updateUnderBarStyle()
+        // Ne jamais rouvrir le panneau de monitoring derrière les Réglages.
+        if settingsWindow?.isVisible == true {
+            if detailPanel?.isVisible == true { hideDetailPanel() }
+            return
+        }
         guard settings.showOnHover else {
             if detailPanel?.isVisible == true { hideDetailPanel() }
             return
@@ -4492,6 +4509,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return image
     }
 
+    /// Dans le menu contextuel du status item, NSMenuItem.image n'était pas
+    /// rendu de façon fiable. Une attachment dans le titre rend l'icône visible
+    /// et réserve exactement la même largeur que le logo Ko-fi.
+    private static func setInlineMenuIcon(_ image: NSImage?, on item: NSMenuItem) {
+        guard let image else { return }
+        let attachment = NSTextAttachment()
+        attachment.image = image
+        attachment.bounds = NSRect(x: 0, y: -3, width: 16, height: 16)
+        let title = NSMutableAttributedString(attachment: attachment)
+        title.append(NSAttributedString(string: "  \(item.title)"))
+        item.image = nil
+        item.attributedTitle = title
+    }
+
     private func makeMenu() -> NSMenu {
         let menu = NSMenu(title: "PKMonitor")
         // Ordre canonique (revu 2026.10.18) : la DONNÉE d'abord — métriques,
@@ -4512,8 +4543,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             item.target = self
             item.representedObject = metric.rawValue
             item.state = model.selectedMetric == metric ? .on : .off
-            item.image = Self.menuSymbol(metricSymbols[metric] ?? "circle")
             if metric != .auto { item.title += "    \(model.format(metric))" }
+            Self.setInlineMenuIcon(Self.menuSymbol(metricSymbols[metric] ?? "circle"), on: item)
             menu.addItem(item)
         }
         if !model.displayedApps.isEmpty {
@@ -4522,8 +4553,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 let item = NSMenuItem(title: "\(app.name)    \(model.format(app))", action: #selector(openActivityMonitorFromMenu(_:)), keyEquivalent: "")
                 item.target = self
                 item.representedObject = Int(app.pid)
-                item.image = NSWorkspace.shared.icon(forFile: app.path)
-                item.image?.size = NSSize(width: 16, height: 16)
+                let appIcon = NSWorkspace.shared.icon(forFile: app.path)
+                appIcon.size = NSSize(width: 16, height: 16)
+                Self.setInlineMenuIcon(appIcon, on: item)
                 menu.addItem(item)
             }
         }
@@ -4531,13 +4563,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
         settingsItem.target = self
-        settingsItem.image = Self.menuSymbol("gearshape.fill")
+        Self.setInlineMenuIcon(Self.menuSymbol("gearshape.fill"), on: settingsItem)
         menu.addItem(settingsItem)
 
         let login = NSMenuItem(title: "Launch at Login", action: #selector(toggleLogin(_:)), keyEquivalent: "")
         login.target = self
         login.state = settings.launchAtLogin ? .on : .off
-        login.image = Self.menuSymbol("power.circle.fill")
+        Self.setInlineMenuIcon(Self.menuSymbol("power.circle.fill"), on: login)
         menu.addItem(login)
 
         let donate = NSMenuItem(title: "Support on Ko-fi", action: #selector(openKoFi), keyEquivalent: "")
@@ -4545,7 +4577,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
            let logo = NSImage(contentsOfFile: logoPath) {
             logo.isTemplate = false
             logo.size = NSSize(width: 16, height: 16)
-            donate.image = logo
+            Self.setInlineMenuIcon(logo, on: donate)
         }
         donate.target = self
         menu.addItem(donate)
@@ -4554,17 +4586,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // item avant Quit (pattern PKwindowsManagement).
         let updateItem = NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
         updateItem.target = self
-        updateItem.image = Self.menuSymbol("arrow.clockwise.circle.fill")
+        Self.setInlineMenuIcon(Self.menuSymbol("arrow.clockwise.circle.fill"), on: updateItem)
         menu.addItem(updateItem)
         let aboutItem = NSMenuItem(title: "About PKMonitor", action: #selector(showAbout), keyEquivalent: "")
         aboutItem.target = self
-        aboutItem.image = Self.menuSymbol("info.circle.fill")
+        Self.setInlineMenuIcon(Self.menuSymbol("info.circle.fill"), on: aboutItem)
         menu.addItem(aboutItem)
 
         menu.addItem(.separator())
         let quit = NSMenuItem(title: "Quit PKMonitor", action: #selector(quit), keyEquivalent: "q")
         quit.target = self
-        quit.image = Self.menuSymbol("rectangle.portrait.and.arrow.right")
+        Self.setInlineMenuIcon(Self.menuSymbol("rectangle.portrait.and.arrow.right"), on: quit)
         menu.addItem(quit)
         return menu
     }
@@ -4687,6 +4719,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func showSettings(section: SettingsSection?) {
+        hideDetailPanel()
         if settingsWindow == nil {
             let controller = NSHostingController(rootView: SettingsView(
                 settings: settings,
@@ -4701,12 +4734,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             window.minSize = NSSize(width: 900, height: 620)
             window.center()
             window.isReleasedWhenClosed = false
+            window.delegate = self
             settingsWindow = window
         } else if let section {
             NotificationCenter.default.post(name: .pkSelectSettingsSection, object: section.rawValue)
         }
         settingsWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow,
+              window === settingsWindow,
+              settings.showPanel else { return }
+        DispatchQueue.main.async { [weak self] in
+            self?.showDetailPanel()
+        }
     }
 
     private func openAIAdvisor() {

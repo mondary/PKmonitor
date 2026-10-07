@@ -17,7 +17,11 @@ import Sparkle
 /// Objet séparé : il est passé au controller à son init, sans capture de self.
 private final class ChannelFeedProvider: NSObject, SPUUpdaterDelegate {
     nonisolated func feedURLString(for updater: SPUUpdater) -> String {
-        let isDev = UserDefaults.standard.string(forKey: "updateChannel") == "dev"
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+        // Une build suffixée -dev suit toujours le feed Dev : sinon Sparkle
+        // compare une build Dev plus récente à Stable et annonce un état trompeur.
+        let isDevBuild = version.localizedCaseInsensitiveContains("-dev")
+        let isDev = isDevBuild || UserDefaults.standard.string(forKey: "updateChannel") == "dev"
         return isDev
             ? "https://raw.githubusercontent.com/mondary/PKmonitor/main/appcast-dev.xml"
             : "https://raw.githubusercontent.com/mondary/PKmonitor/main/appcast.xml"

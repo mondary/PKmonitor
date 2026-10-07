@@ -2,6 +2,12 @@
 
 Historique des évolutions de PKMonitor.
 
+## [2026.10.20] - 2026-10-07
+### Fixed
+- Canal Sparkle cohérent avec le bundle : une build `-dev` consulte le feed Dev au lieu de comparer sa version au canal Stable.
+- Icônes du menu contextuel rendues en attachments inline pour qu'elles apparaissent et s'alignent avec Ko-fi.
+- Ouverture des Réglages : le panneau de monitoring compact se masque et revient à la fermeture, sans deux fenêtres visibles en même temps.
+
 ## [2026.10.19] - 2026-10-07
 ### Changed
 - Menu contextuel au clic droit : pictos SF Symbols plus visibles (remplis, poids medium, taille cohérente 16×16) pour Settings, Launch at Login, Check for Updates et About, alignés dans la colonne d'icônes avec Ko-fi.

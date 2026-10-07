@@ -36,6 +36,9 @@ final class UpdaterManager: NSObject, ObservableObject {
     static let devFeedURL = "https://raw.githubusercontent.com/mondary/PKmonitor/main/appcast-dev.xml"
 
     private let controller: SPUStandardUpdaterController
+    // Sparkle garde son updaterDelegate faiblement : conserver le fournisseur,
+    // sinon il est libéré après init et Sparkle retombe sur SUFeedURL (Stable).
+    private let channelFeedProvider: ChannelFeedProvider
     private var channelChangeObserver: NSObjectProtocol?
 
     @Published var canCheckForUpdates = false
@@ -49,9 +52,11 @@ final class UpdaterManager: NSObject, ObservableObject {
 
     private override init() {
         // startingUpdater: false — start() est appelé explicitement au lancement.
+        let feedProvider = ChannelFeedProvider()
+        channelFeedProvider = feedProvider
         controller = SPUStandardUpdaterController(
             startingUpdater: false,
-            updaterDelegate: ChannelFeedProvider(),
+            updaterDelegate: feedProvider,
             userDriverDelegate: nil
         )
         super.init()

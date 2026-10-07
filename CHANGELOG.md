@@ -2,6 +2,10 @@
 
 Historique des évolutions de PKMonitor.
 
+## [2026.10.23] - 2026-10-07
+### Fixed
+- Le fournisseur de flux Sparkle est maintenant conservé en mémoire : le delegate ne se désalloue plus et les builds Dev vérifient bien l’appcast Dev au lieu de retomber sur Stable.
+
 ## [2026.10.22] - 2026-10-07
 ### Changed
 - Crédits déplacés de la page À propos vers une feuille séparée, accessible par un lien discret dans le pied de page.

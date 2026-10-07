@@ -2,6 +2,10 @@
 
 Historique des évolutions de PKMonitor.
 
+## [2026.10.18] - 2026-10-07
+### Changed
+- Ordre du menu barre de menus revu : la donnée d'abord (métriques puis applications actives), puis un bloc d'actions unique en bas — Settings, Launch at Login, Support on Ko-fi, Check for Updates…, About — et Quit sous séparateur. Fini le Settings en tête et les séparateurs superflus.
+
 ## [2026.10.17] - 2026-10-07
 ### Changed
 - Menu barre de menus : picto devant chaque item (SF Symbols template 16×16 — métriques, Settings, Launch at Login, Updates, About, Quit) pour un texte toujours aligné, pattern PKwindowsManagement ; logo Ko-fi remplacé par la version mieux détourée de PKwindowsManagement.

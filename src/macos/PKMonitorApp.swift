@@ -4492,14 +4492,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func makeMenu() -> NSMenu {
         let menu = NSMenu(title: "PKMonitor")
-        // Règle d'alignement (pattern validé sur PKwindowsManagement) : chaque
-        // item porte un picto 16×16 — les textes restent alignés même pour les
-        // lignes sans icône spécifique.
-        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
-        settingsItem.target = self
-        settingsItem.image = Self.menuSymbol("gearshape")
-        menu.addItem(settingsItem)
-        menu.addItem(.separator())
+        // Ordre canonique (revu 2026.10.18) : la DONNÉE d'abord — métriques,
+        // puis les applications qui consomment les ressources. Les actions
+        // forment un bloc unique en bas, sans séparateur entre elles :
+        // Settings, Launch at Login, Ko-fi, Updates+About (collés), Quit.
+        // Chaque item porte un picto 16×16 (pattern PKwindowsManagement).
         let metricSymbols: [Metric: String] = [
             .auto: "wand.and.stars",
             .cpu: "cpu",
@@ -4517,22 +4514,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             if metric != .auto { item.title += "    \(model.format(metric))" }
             menu.addItem(item)
         }
-        menu.addItem(.separator())
-        for app in model.displayedApps {
-            let item = NSMenuItem(title: "\(app.name)    \(model.format(app))", action: #selector(openActivityMonitorFromMenu(_:)), keyEquivalent: "")
-            item.target = self
-            item.representedObject = Int(app.pid)
-            item.image = NSWorkspace.shared.icon(forFile: app.path)
-            item.image?.size = NSSize(width: 16, height: 16)
-            menu.addItem(item)
+        if !model.displayedApps.isEmpty {
+            menu.addItem(.separator())
+            for app in model.displayedApps {
+                let item = NSMenuItem(title: "\(app.name)    \(model.format(app))", action: #selector(openActivityMonitorFromMenu(_:)), keyEquivalent: "")
+                item.target = self
+                item.representedObject = Int(app.pid)
+                item.image = NSWorkspace.shared.icon(forFile: app.path)
+                item.image?.size = NSSize(width: 16, height: 16)
+                menu.addItem(item)
+            }
         }
         menu.addItem(.separator())
+
+        let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        settingsItem.target = self
+        settingsItem.image = Self.menuSymbol("gearshape")
+        menu.addItem(settingsItem)
+
         let login = NSMenuItem(title: "Launch at Login", action: #selector(toggleLogin(_:)), keyEquivalent: "")
         login.target = self
         login.state = settings.launchAtLogin ? .on : .off
         login.image = Self.menuSymbol("power")
         menu.addItem(login)
-        menu.addItem(.separator())
+
         let donate = NSMenuItem(title: "Support on Ko-fi", action: #selector(openKoFi), keyEquivalent: "")
         if let logoPath = Bundle.main.path(forResource: "kofi-logo", ofType: "png"),
            let logo = NSImage(contentsOfFile: logoPath) {
@@ -4542,7 +4547,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         donate.target = self
         menu.addItem(donate)
-        menu.addItem(.separator())
+
         // Gestion des mises à jour collée au À propos, lui toujours en dernier
         // item avant Quit (pattern PKwindowsManagement).
         let updateItem = NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
@@ -4553,6 +4558,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         aboutItem.target = self
         aboutItem.image = Self.menuSymbol("info.circle")
         menu.addItem(aboutItem)
+
         menu.addItem(.separator())
         let quit = NSMenuItem(title: "Quit PKMonitor", action: #selector(quit), keyEquivalent: "q")
         quit.target = self

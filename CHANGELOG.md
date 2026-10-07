@@ -2,6 +2,12 @@
 
 Historique des évolutions de PKMonitor.
 
+## [2026.10.15] - 2026-10-07
+### Changed
+- Drapeaux de langue FR/EN déplacés en bas de la barre latérale des Réglages (emplacement canonique PKwindowsManagement) : drapeau actif surligné en accent, inactifs à 65 % d'opacité.
+- Page Help & Support traduite FR/EN (titre, carte Ko-fi, liens), réactive au drapeau.
+- About : numéro de build affiché à côté de la version (« Version x (build) »), comme PKwindowsManagement.
+
 ## [2026.10.14] - 2026-10-06
 ### Added
 - Onglet À propos bilingue : drapeaux FR/EN en haut à droite de la page, bascule instantanée (clé « app-language », défaut = langue système, pattern PKwindowsManagement en version légère sans bundle .lproj).

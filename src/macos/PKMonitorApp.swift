@@ -1747,6 +1747,42 @@ enum L10n {
             "en": "Check for Updates…",
             "fr": "Rechercher des mises à jour…",
         ],
+        "support.title": [
+            "en": "Support PKMonitor",
+            "fr": "Soutenir PKMonitor",
+        ],
+        "support.subtitle": [
+            "en": "If you enjoy using this app, consider supporting its development.",
+            "fr": "Si vous appréciez cette app, pensez à soutenir son développement.",
+        ],
+        "support.kofi.subtitle": [
+            "en": "Support the developer with a coffee",
+            "fr": "Offrir un café au développeur",
+        ],
+        "support.donate": [
+            "en": "Donate",
+            "fr": "Faire un don",
+        ],
+        "support.github.subtitle": [
+            "en": "Source code and releases",
+            "fr": "Code source et versions",
+        ],
+        "support.issues.title": [
+            "en": "Report an Issue",
+            "fr": "Signaler un problème",
+        ],
+        "support.issues.subtitle": [
+            "en": "Bugs, feature requests, feedback",
+            "fr": "Bugs, demandes de fonctionnalités, retours",
+        ],
+        "support.profile.title": [
+            "en": "PK on GitHub",
+            "fr": "PK sur GitHub",
+        ],
+        "support.profile.subtitle": [
+            "en": "The rest of the project collection",
+            "fr": "Le reste de la collection de projets",
+        ],
     ]
 
     static func string(_ key: String) -> String {
@@ -1794,12 +1830,44 @@ struct SettingsView: View {
     @ObservedObject var model: MonitorModel
     @State private var selection: SettingsSection?
     @State private var searchText = ""
+    @State private var language = AppLanguage.current
 
     init(settings: AppSettings, manager: MenuBarItemsManager, model: MonitorModel, initialSection: SettingsSection = .dashboard) {
         self.settings = settings
         self.manager = manager
         self.model = model
         _selection = State(initialValue: initialSection)
+    }
+
+    /// Drapeau de langue en bas de sidebar (pattern PKwindowsManagement) :
+    /// actif = fond accent + opacité pleine, inactif = 0.65.
+    private func isActiveLanguage(_ lang: AppLanguage) -> Bool {
+        if language == .system { return language.resolvedCode == lang.rawValue }
+        return language == lang
+    }
+
+    private func languageFlag(_ language: AppLanguage) -> some View {
+        let isActive = isActiveLanguage(language)
+        return Button {
+            AppLanguage.set(language)
+            self.language = language
+        } label: {
+            Text(language.flagEmoji)
+                .font(.system(size: 15))
+                .padding(3)
+                .background(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(isActive ? Color.accentColor.opacity(0.15) : .clear)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .stroke(isActive ? Color.accentColor : .clear, lineWidth: 1)
+                )
+                .opacity(isActive ? 1 : 0.65)
+        }
+        .buttonStyle(.plain)
+        .help(language == .french ? "Français" : "English")
+        .accessibilityLabel(language == .french ? "Français" : "English")
     }
 
     private var filteredSections: [SettingsSection] {
@@ -1881,6 +1949,15 @@ struct SettingsView: View {
                     }
                 }
                 Spacer()
+                HStack(spacing: 6) {
+                    ForEach([AppLanguage.french, .english]) { language in
+                        languageFlag(language)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 10)
+
                 Text("PKMonitor \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development")")
                     .font(.system(size: 11, weight: .medium, design: .monospaced))
                     .foregroundStyle(.secondary)
@@ -1915,6 +1992,9 @@ struct SettingsView: View {
             if let raw = note.object as? String, let section = SettingsSection(rawValue: raw) {
                 selection = section
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .appLanguageDidChange)) { _ in
+            language = AppLanguage.current
         }
     }
 }
@@ -2526,6 +2606,10 @@ struct AboutSettingsView: View {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development"
     }
 
+    private var build: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
+    }
+
     private var isDevBuild: Bool {
         version.localizedCaseInsensitiveContains("-dev")
     }
@@ -2548,7 +2632,7 @@ struct AboutSettingsView: View {
                         .padding(.bottom, 16)
 
                     Text("PKMonitor").font(.system(size: 24, weight: .bold))
-                    Text("Version \(version)")
+                    Text("Version \(version) (\(build))")
                         .font(.system(size: 13))
                         .foregroundStyle(.secondary)
                         .padding(.top, 4)
@@ -2576,7 +2660,6 @@ struct AboutSettingsView: View {
                 .padding(.vertical, 14)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .overlay(alignment: .topTrailing) { languageFlags.padding(.top, 14).padding(.trailing, 18) }
         .onAppear {
             language = AppLanguage.current
             updater.refreshAvailableVersions()
@@ -2584,37 +2667,6 @@ struct AboutSettingsView: View {
         .onReceive(NotificationCenter.default.publisher(for: .appLanguageDidChange)) { _ in
             language = AppLanguage.current
         }
-    }
-
-    /// Drapeaux FR/EN : bascule directe de la langue de la page About.
-    private var languageFlags: some View {
-        HStack(spacing: 6) {
-            flagButton(.french, label: "Français")
-            flagButton(.english, label: "English")
-        }
-    }
-
-    private func flagButton(_ lang: AppLanguage, label: String) -> some View {
-        let isSelected = language.resolvedCode == lang.resolvedCode
-        return Button {
-            AppLanguage.set(lang)
-            language = lang
-        } label: {
-            Text(lang.flagEmoji)
-                .font(.system(size: 17))
-                .frame(width: 32, height: 25)
-                .background(
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(isSelected ? Color.accentColor.opacity(0.18) : Color(nsColor: .controlBackgroundColor))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .strokeBorder(isSelected ? Color.accentColor : Color.primary.opacity(0.12), lineWidth: isSelected ? 1.5 : 1)
-                )
-        }
-        .buttonStyle(.plain)
-        .help(label)
-        .accessibilityLabel(label)
     }
 
     /// Gestion des mises à jour collée au À propos (pattern PKwindowsManagement) :
@@ -2765,6 +2817,8 @@ struct AboutSettingsView: View {
 }
 
 struct SupportSettingsView: View {
+    @State private var language = AppLanguage.current
+
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
@@ -2781,6 +2835,10 @@ struct SupportSettingsView: View {
             }
             .frame(maxWidth: .infinity)
         }
+        .onAppear { language = AppLanguage.current }
+        .onReceive(NotificationCenter.default.publisher(for: .appLanguageDidChange)) { _ in
+            language = AppLanguage.current
+        }
     }
 
     private var header: some View {
@@ -2789,10 +2847,10 @@ struct SupportSettingsView: View {
                 .font(.system(size: 36))
                 .foregroundStyle(.red)
 
-            Text("Support PKMonitor")
+            Text(L10n.string("support.title"))
                 .font(.system(size: 20, weight: .bold))
 
-            Text("If you enjoy using this app, consider supporting its development.")
+            Text(L10n.string("support.subtitle"))
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -2818,7 +2876,7 @@ struct SupportSettingsView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Ko-fi")
                     .font(.system(size: 14, weight: .semibold))
-                Text("Support the developer with a coffee")
+                Text(L10n.string("support.kofi.subtitle"))
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             }
@@ -2826,7 +2884,7 @@ struct SupportSettingsView: View {
             Spacer()
 
             Link(destination: ProjectLinks.koFi) {
-                Text("Donate")
+                Text(L10n.string("support.donate"))
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 16)
@@ -2843,11 +2901,11 @@ struct SupportSettingsView: View {
 
     private var linksCard: some View {
         VStack(spacing: 0) {
-            linkRow(icon: "network", title: "GitHub", subtitle: "Source code and releases", url: ProjectLinks.github)
+            linkRow(icon: "network", title: "GitHub", subtitle: L10n.string("support.github.subtitle"), url: ProjectLinks.github)
             Divider().padding(.leading, 52)
-            linkRow(icon: "exclamationmark.bubble", title: "Report an Issue", subtitle: "Bugs, feature requests, feedback", url: ProjectLinks.issues)
+            linkRow(icon: "exclamationmark.bubble", title: L10n.string("support.issues.title"), subtitle: L10n.string("support.issues.subtitle"), url: ProjectLinks.issues)
             Divider().padding(.leading, 52)
-            linkRow(icon: "person.crop.circle", title: "PK on GitHub", subtitle: "The rest of the project collection", url: ProjectLinks.githubProfile)
+            linkRow(icon: "person.crop.circle", title: L10n.string("support.profile.title"), subtitle: L10n.string("support.profile.subtitle"), url: ProjectLinks.githubProfile)
         }
         .background(Color(NSColor.controlBackgroundColor))
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))

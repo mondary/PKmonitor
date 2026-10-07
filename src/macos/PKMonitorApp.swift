@@ -4484,7 +4484,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// Picto de menu : SF Symbol en template (adapte dark/light), 16×16 pour
     /// s'aligner sur les icônes d'app et le logo Ko-fi.
     private static func menuSymbol(_ name: String) -> NSImage? {
-        let image = NSImage(systemSymbolName: name, accessibilityDescription: nil)
+        let configuration = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+        let image = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
+            .withSymbolConfiguration(configuration)
         image?.isTemplate = true
         image?.size = NSSize(width: 16, height: 16)
         return image
@@ -4529,13 +4531,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
         settingsItem.target = self
-        settingsItem.image = Self.menuSymbol("gearshape")
+        settingsItem.image = Self.menuSymbol("gearshape.fill")
         menu.addItem(settingsItem)
 
         let login = NSMenuItem(title: "Launch at Login", action: #selector(toggleLogin(_:)), keyEquivalent: "")
         login.target = self
         login.state = settings.launchAtLogin ? .on : .off
-        login.image = Self.menuSymbol("power")
+        login.image = Self.menuSymbol("power.circle.fill")
         menu.addItem(login)
 
         let donate = NSMenuItem(title: "Support on Ko-fi", action: #selector(openKoFi), keyEquivalent: "")
@@ -4552,11 +4554,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // item avant Quit (pattern PKwindowsManagement).
         let updateItem = NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
         updateItem.target = self
-        updateItem.image = Self.menuSymbol("arrow.triangle.2.circlepath")
+        updateItem.image = Self.menuSymbol("arrow.clockwise.circle.fill")
         menu.addItem(updateItem)
         let aboutItem = NSMenuItem(title: "About PKMonitor", action: #selector(showAbout), keyEquivalent: "")
         aboutItem.target = self
-        aboutItem.image = Self.menuSymbol("info.circle")
+        aboutItem.image = Self.menuSymbol("info.circle.fill")
         menu.addItem(aboutItem)
 
         menu.addItem(.separator())

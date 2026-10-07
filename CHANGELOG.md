@@ -2,6 +2,10 @@
 
 Historique des évolutions de PKMonitor.
 
+## [2026.10.19] - 2026-10-07
+### Changed
+- Menu contextuel au clic droit : pictos SF Symbols plus visibles (remplis, poids medium, taille cohérente 16×16) pour Settings, Launch at Login, Check for Updates et About, alignés dans la colonne d'icônes avec Ko-fi.
+
 ## [2026.10.18] - 2026-10-07
 ### Changed
 - Ordre du menu barre de menus revu : la donnée d'abord (métriques puis applications actives), puis un bloc d'actions unique en bas — Settings, Launch at Login, Support on Ko-fi, Check for Updates…, About — et Quit sous séparateur. Fini le Settings en tête et les séparateurs superflus.

@@ -2034,6 +2034,12 @@ enum L10n {
             "es": "Créditos e inspiraciones",
             "de": "Credits & Inspirationen",
         ],
+        "about.openCredits": [
+            "en": "Credits",
+            "fr": "Crédits",
+            "es": "Créditos",
+            "de": "Credits",
+        ],
         "about.creditSparkle": [
             "en": "Sparkle — software updates framework (MIT License).",
             "fr": "Sparkle — framework de mises à jour (licence MIT).",
@@ -3103,6 +3109,7 @@ struct AboutSettingsView: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject private var updater = UpdaterManager.shared
     @State private var language = AppLanguage.current
+    @State private var showCredits = false
 
     private var version: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development"
@@ -3159,10 +3166,6 @@ struct AboutSettingsView: View {
                         .frame(maxWidth: 480)
                         .padding(.bottom, 32)
 
-                    creditsSection
-                        .frame(maxWidth: 480)
-                        .padding(.bottom, 32)
-
                     updateSection
                         .frame(maxWidth: 480)
                         .padding(.bottom, 32)
@@ -3177,6 +3180,12 @@ struct AboutSettingsView: View {
                 .padding(.vertical, 14)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .sheet(isPresented: $showCredits) {
+            creditsSection
+                .frame(width: 440)
+                .padding(24)
+                .fixedSize(horizontal: false, vertical: true)
+        }
         .onAppear {
             language = AppLanguage.current
             updater.refreshAvailableVersions()
@@ -3297,31 +3306,25 @@ struct AboutSettingsView: View {
     }
 
     private var creditsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             Text(L10n.string("about.credits"))
-                .font(.headline)
-
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                .font(.title3.weight(.semibold))
+            VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 4) {
                     Link("Sparkle", destination: URL(string: "https://github.com/sparkle-project/Sparkle")!)
                         .font(.system(size: 13, weight: .semibold))
                     Text(L10n.string("about.creditSparkle"))
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 12)).foregroundStyle(.secondary)
                 }
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                VStack(alignment: .leading, spacing: 4) {
                     Link("ActivityLine", destination: URL(string: "https://activityline.app")!)
                         .font(.system(size: 13, weight: .semibold))
                     Text(L10n.string("about.creditActivityLine"))
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 12)).foregroundStyle(.secondary)
                 }
             }
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 14).fill(Color.primary.opacity(0.025)))
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.primary.opacity(0.08), lineWidth: 1))
+        .padding(22)
     }
 
     private var footer: some View {
@@ -3336,6 +3339,10 @@ struct AboutSettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            Button(L10n.string("about.openCredits")) { showCredits = true }
+                .buttonStyle(.plain)
+                .font(.caption)
+                .foregroundStyle(.secondary)
             Link(destination: ProjectLinks.koFi) {
                 HStack(spacing: 4) {
                     if let logo = kofiLogo {

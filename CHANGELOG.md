@@ -2,6 +2,10 @@
 
 Historique des évolutions de PKMonitor.
 
+## [2026.10.22] - 2026-10-07
+### Changed
+- Crédits déplacés de la page À propos vers une feuille séparée, accessible par un lien discret dans le pied de page.
+
 ## [2026.10.21] - 2026-10-07
 ### Added
 - Section « Crédits et inspirations » dans À propos : Sparkle (dépendance de mise à jour) et ActivityLine (inspiration de design explicitement adaptée).

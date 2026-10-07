@@ -1951,10 +1951,10 @@ enum L10n {
             "de": "PKMonitor entstand aus einer einfachen Frustration: den Mac im Blick behalten, ohne den Bildschirm zu überladen oder in Dashboards zu ertrinken.",
         ],
         "about.body": [
-            "en": "One quiet line in the menu bar — CPU, GPU, memory, network and disk at a glance, with the apps behind the numbers one hover away. Native binary, zero dependencies, everything stays local.",
-            "fr": "Une ligne discrète dans la barre de menus — CPU, GPU, mémoire, réseau et disque d'un coup d'œil, avec les apps derrière les chiffres à un survol. Binaire natif, zéro dépendance, tout reste local.",
-            "es": "Una línea discreta en la barra de menús — CPU, GPU, memoria, red y disco de un vistazo, con las apps detrás de los números a un hover. Binario nativo, cero dependencias, todo queda en local.",
-            "de": "Eine ruhige Zeile in der Menüleiste — CPU, GPU, Arbeitsspeicher, Netzwerk und Festplatte auf einen Blick, mit den Apps hinter den Zahlen nur einen Hover entfernt. Native Binary, null Abhängigkeiten, alles bleibt lokal.",
+            "en": "One quiet line in the menu bar — CPU, GPU, memory, network and disk at a glance, with the apps behind the numbers one hover away. Native app; Sparkle powers updates, while monitoring stays local.",
+            "fr": "Une ligne discrète dans la barre de menus — CPU, GPU, mémoire, réseau et disque d'un coup d'œil, avec les apps derrière les chiffres à un survol. App native ; Sparkle gère les mises à jour, tandis que la surveillance reste locale.",
+            "es": "Una línea discreta en la barra de menús — CPU, GPU, memoria, red y disco de un vistazo, con las apps detrás de los números a un hover. App nativa; Sparkle gestiona las actualizaciones y la monitorización permanece local.",
+            "de": "Eine ruhige Zeile in der Menüleiste — CPU, GPU, Arbeitsspeicher, Netzwerk und Festplatte auf einen Blick, mit den Apps hinter den Zahlen nur einen Hover entfernt. Native App; Sparkle übernimmt Updates, die Überwachung bleibt lokal.",
         ],
         "about.care": [
             "en": "Built with care for the Mac community. Discreet when you don't need it, right there when you look.",
@@ -2027,6 +2027,24 @@ enum L10n {
             "fr": "Rechercher les mises à jour…",
             "es": "Buscar actualizaciones…",
             "de": "Nach Updates suchen…",
+        ],
+        "about.credits": [
+            "en": "Credits & inspirations",
+            "fr": "Crédits et inspirations",
+            "es": "Créditos e inspiraciones",
+            "de": "Credits & Inspirationen",
+        ],
+        "about.creditSparkle": [
+            "en": "Sparkle — software updates framework (MIT License).",
+            "fr": "Sparkle — framework de mises à jour (licence MIT).",
+            "es": "Sparkle — framework de actualizaciones (licencia MIT).",
+            "de": "Sparkle — Framework für Software-Updates (MIT-Lizenz).",
+        ],
+        "about.creditActivityLine": [
+            "en": "ActivityLine — inspiration for the menu-bar activity line design, reworked and customized for PKMonitor.",
+            "fr": "ActivityLine — inspiration pour le design de la ligne d’activité en barre des menus, réinterprété et personnalisé pour PKMonitor.",
+            "es": "ActivityLine — inspiración para el diseño de la línea de actividad en la barra de menús, reinterpretado y personalizado para PKMonitor.",
+            "de": "ActivityLine — Inspiration für das Design der Aktivitätszeile in der Menüleiste, für PKMonitor neu interpretiert und angepasst.",
         ],
         // MARK: Support
         "support.title": [
@@ -3141,6 +3159,10 @@ struct AboutSettingsView: View {
                         .frame(maxWidth: 480)
                         .padding(.bottom, 32)
 
+                    creditsSection
+                        .frame(maxWidth: 480)
+                        .padding(.bottom, 32)
+
                     updateSection
                         .frame(maxWidth: 480)
                         .padding(.bottom, 32)
@@ -3272,6 +3294,34 @@ struct AboutSettingsView: View {
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
         }
+    }
+
+    private var creditsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(L10n.string("about.credits"))
+                .font(.headline)
+
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Link("Sparkle", destination: URL(string: "https://github.com/sparkle-project/Sparkle")!)
+                        .font(.system(size: 13, weight: .semibold))
+                    Text(L10n.string("about.creditSparkle"))
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                }
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Link("ActivityLine", destination: URL(string: "https://activityline.app")!)
+                        .font(.system(size: 13, weight: .semibold))
+                    Text(L10n.string("about.creditActivityLine"))
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 14).fill(Color.primary.opacity(0.025)))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.primary.opacity(0.08), lineWidth: 1))
     }
 
     private var footer: some View {

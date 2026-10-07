@@ -2,6 +2,10 @@
 
 Historique des évolutions de PKMonitor.
 
+## [2026.10.21] - 2026-10-07
+### Added
+- Section « Crédits et inspirations » dans À propos : Sparkle (dépendance de mise à jour) et ActivityLine (inspiration de design explicitement adaptée).
+
 ## [2026.10.20] - 2026-10-07
 ### Fixed
 - Canal Sparkle cohérent avec le bundle : une build `-dev` consulte le feed Dev au lieu de comparer sa version au canal Stable.

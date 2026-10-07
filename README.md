@@ -8,7 +8,7 @@
 
 Moniteur système macOS natif et discret dans la barre des menus.
 
-Version `2026.10.24` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
+Version `2026.10.25` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
 ![Fenêtre de réglages de PK Monitor](store/screenshots/01-reglages.png)
 
@@ -34,7 +34,7 @@ Version `2026.10.24` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
 ## ⚙️ Réglages
 
-La fenêtre Settings propose un tableau de bord système en direct (matériel et métriques), une sidebar par catégories, un champ de recherche et un onglet par module : sparkline, jauges, disque, panneau, icônes de la menu bar, conseiller IA (endpoint compatible OpenAI, placement en panneau ou fenêtre, clé API dans le Keychain et analyse déclenchée volontairement). Elle contient également les pages Help & Support et Project Library.
+La fenêtre Settings propose un tableau de bord système en direct (matériel et métriques), une sidebar par catégories, un champ de recherche et un onglet par module : sparkline, jauges, disque, panneau, icônes de la menu bar, conseiller IA (endpoint compatible OpenAI, placement en panneau ou fenêtre, clé API dans le Keychain et analyse déclenchée volontairement). Elle contient également les pages Help & Support et Project Library. À propos affiche la version installée, compare les builds Stable/Dev avec un statut exact et permet de vérifier les mises à jour depuis un flux actualisé ; une mise à jour disponible est signalée dans la sidebar.
 
 ## 🧾 Commandes
 

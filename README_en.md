@@ -8,7 +8,7 @@
 
 A native, focused macOS system monitor in the menu bar.
 
-Version `2026.10.24` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
+Version `2026.10.25` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
 ![PK Monitor settings window](store/screenshots/01-reglages.png)
 
@@ -35,7 +35,7 @@ Version `2026.10.24` · [Roadmap](ROADMAP.md) · [Changelog](CHANGELOG.md)
 
 ## ⚙️ Settings
 
-The Settings window provides a live system dashboard (hardware and metrics), a categorized sidebar, search and one tab per module: sparkline, gauges, disk, panel, menu bar icons and the AI advisor (OpenAI-compatible endpoint, panel or window placement, Keychain API key and user-triggered analysis). It also includes Help & Support and Project Library sections.
+The Settings window provides a live system dashboard (hardware and metrics), a categorized sidebar, search and one tab per module: sparkline, gauges, disk, panel, menu bar icons and the AI advisor (OpenAI-compatible endpoint, panel or window placement, Keychain API key and user-triggered analysis). It also includes Help & Support and Project Library sections. About shows the installed version, compares Stable/Dev builds with accurate status, and checks a freshly fetched feed; the sidebar flags an available update.
 
 ## 🧾 Commands
 

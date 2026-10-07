@@ -2073,6 +2073,12 @@ enum L10n {
             "es": "Buscar actualizaciones…",
             "de": "Nach Updates suchen…",
         ],
+        "about.statusUpdateAvailable": ["en": "Update available", "fr": "Mise à jour disponible", "es": "Actualización disponible", "de": "Update verfügbar"],
+        "about.statusUpToDate": ["en": "Up to date", "fr": "À jour", "es": "Actualizado", "de": "Aktuell"],
+        "about.statusInstalledAhead": ["en": "Installed version is newer", "fr": "Version installée plus récente", "es": "La versión instalada es más reciente", "de": "Installierte Version ist neuer"],
+        "about.statusOtherChannel": ["en": "Other channel", "fr": "Autre canal", "es": "Otro canal", "de": "Anderer Kanal"],
+        "about.statusUnavailable": ["en": "Version unavailable", "fr": "Version indisponible", "es": "Versión no disponible", "de": "Version nicht verfügbar"],
+        "about.installVersion": ["en": "Install %@", "fr": "Installer %@", "es": "Instalar %@", "de": "%@ installieren"],
         // MARK: Support
         "support.title": [
             "en": "Support PKMonitor",
@@ -2282,6 +2288,7 @@ struct SettingsView: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject var manager: MenuBarItemsManager
     @ObservedObject var model: MonitorModel
+    @ObservedObject private var updater = UpdaterManager.shared
     @State private var selection: SettingsSection?
     @State private var searchText = ""
     @State private var language = AppLanguage.current
@@ -2485,11 +2492,26 @@ struct SettingsView: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 10)
 
-                Text("PKMonitor \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development")")
-                    .font(.system(size: 11, weight: .medium, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 18)
+                HStack(spacing: 5) {
+                    Text("PKMonitor \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development")")
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    if let available = updater.availableUpdateVersion {
+                        Button { updater.checkForUpdates() } label: {
+                            Label(available, systemImage: "arrow.down.circle.fill")
+                                .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(Color.accentColor)
+                        .help(String(format: L10n.string("about.installVersion"), available))
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.bottom, 18)
             }
             .frame(width: 220)
             .background(.regularMaterial)
@@ -2524,6 +2546,7 @@ struct SettingsView: View {
         .onReceive(NotificationCenter.default.publisher(for: .appLanguageDidChange)) { _ in
             language = AppLanguage.current
         }
+        .onAppear { updater.refreshAvailableVersions() }
     }
 }
 
@@ -3173,7 +3196,7 @@ struct AboutSettingsView: View {
                         .padding(.bottom, 16)
 
                     Text("PKMonitor").font(.system(size: 24, weight: .bold))
-                    Text("Version \(version) (\(build))")
+                    Text("\(L10n.string("about.installedVersion")) \(version) (\(build))")
                         .font(.system(size: 13))
                         .foregroundStyle(.secondary)
                         .padding(.top, 4)
@@ -3187,12 +3210,16 @@ struct AboutSettingsView: View {
                         .frame(maxWidth: 480)
                         .padding(.bottom, 32)
 
-                    updateSection
-                        .frame(maxWidth: 480)
-                        .padding(.bottom, 32)
                 }
                 .frame(maxWidth: .infinity)
             }
+
+            Divider()
+
+            updateSection
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
 
             Divider()
 
@@ -3217,9 +3244,20 @@ struct AboutSettingsView: View {
             Text(L10n.string("about.updates"))
                 .font(.headline)
 
+            HStack(spacing: 10) {
+                versionColumn(
+                    title: L10n.string("about.stableVersion"),
+                    value: updater.latestStableVersion ?? L10n.string("about.notPublished"),
+                    status: updater.versionStatus(for: "stable")
+                )
+                versionColumn(
+                    title: L10n.string("about.devVersion"),
+                    value: updater.latestDevVersion ?? L10n.string("about.notPublished"),
+                    status: updater.versionStatus(for: "dev")
+                )
+            }
+
             HStack(spacing: 12) {
-                Text(L10n.string("about.updateChannel"))
-                    .font(.subheadline.weight(.medium))
                 Picker(L10n.string("about.updateChannel"), selection: updateChannelSelection) {
                     Text("Stable").tag("stable")
                     Text("Dev").tag("dev")
@@ -3230,6 +3268,12 @@ struct AboutSettingsView: View {
                 .frame(width: 190)
                 .disabled(isDevBuild)
                 Spacer(minLength: 0)
+                Button { updater.checkForUpdates() } label: {
+                    Label(updateButtonTitle, systemImage: updater.availableUpdateVersion == nil
+                        ? "arrow.triangle.2.circlepath"
+                        : "arrow.down.circle.fill")
+                }
+                .buttonStyle(.borderedProminent)
             }
 
             Text(effectiveUpdateChannel == "dev"
@@ -3238,57 +3282,34 @@ struct AboutSettingsView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            HStack(alignment: .top, spacing: 0) {
-                versionColumn(
-                    title: L10n.string("about.stableVersion"),
-                    value: updater.latestStableVersion ?? L10n.string("about.notPublished"),
-                    symbol: "checkmark.seal",
-                    isInstalled: !isDevBuild
-                )
-                Divider().frame(height: 42)
-                versionColumn(
-                    title: L10n.string("about.devVersion"),
-                    value: updater.latestDevVersion ?? L10n.string("about.notPublished"),
-                    symbol: "hammer",
-                    isInstalled: isDevBuild
-                )
-            }
-            .padding(.vertical, 12)
-            .background(RoundedRectangle(cornerRadius: 10).fill(Color.primary.opacity(0.045)))
-
-            Button {
-                updater.refreshAvailableVersions()
-                updater.checkForUpdates()
-            } label: {
-                Label(L10n.string("about.checkForUpdates"), systemImage: "arrow.triangle.2.circlepath")
-            }
-            .buttonStyle(.bordered)
         }
         .padding(16)
         .background(RoundedRectangle(cornerRadius: 14).fill(Color.primary.opacity(0.025)))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.primary.opacity(0.08), lineWidth: 1))
     }
 
-    private func versionColumn(title: String, value: String, symbol: String, isInstalled: Bool) -> some View {
+    private var updateButtonTitle: String {
+        guard let available = updater.availableUpdateVersion else { return L10n.string("about.checkForUpdates") }
+        return String(format: L10n.string("about.installVersion"), available)
+    }
+
+    private func versionColumn(title: String, value: String, status: MonitorChannelVersionStatus) -> some View {
         VStack(alignment: .leading, spacing: 5) {
-            Label(title, systemImage: symbol)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+            Text(title).font(.system(size: 10, weight: .semibold)).foregroundStyle(.secondary).lineLimit(1)
             Text(value)
-                .font(.system(size: 12, weight: .medium, design: .monospaced))
+                .font(.system(size: 14, weight: .semibold, design: .monospaced))
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
                 .help(value)
-            if isInstalled {
-                Label(L10n.string("about.installedVersion"), systemImage: "checkmark.circle.fill")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.green)
-                    .padding(.top, 2)
-            }
+            Label(L10n.string(status.localizationKey), systemImage: status.symbol)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(status.color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 8)
+        .padding(10)
+        .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
     private var aboutText: some View {

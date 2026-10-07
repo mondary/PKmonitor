@@ -2,6 +2,11 @@
 
 Historique des évolutions de PKMonitor.
 
+## [2026.10.25] - 2026-10-07
+### Changed
+- À propos distingue les builds Stable/Dev réellement installées, compare les numéros de build publiés et affiche l’indicateur de mise à jour disponible dans la sidebar.
+- La vérification manuelle demande un appcast frais, avec cache-busting, avant de solliciter Sparkle.
+
 ## [2026.10.24] - 2026-10-07
 ### Changed
 - Les crédits ont leur propre page dans les réglages, séparée d’À propos, avec des groupes Dépendances/Inspiration, pictogrammes, auteur, rôle et badge comme dans PKwindowsManagement.

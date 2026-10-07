@@ -59,5 +59,14 @@
         <description><![CDATA[<h4>Changed</h4><ul><li>Drapeaux de langue FR/EN déplacés en bas de la barre latérale des Réglages (emplacement canonique PKwindowsManagement) : drapeau actif surligné en accent, inactifs à 65 % d'opacité.</li><li>Page Help &amp; Support traduite FR/EN (titre, carte Ko-fi, liens), réactive au drapeau.</li><li>About : numéro de build affiché à côté de la version (« Version x (build) »), comme PKwindowsManagement.</li></ul>]]></description>
         <enclosure url="https://github.com/mondary/PKmonitor/releases/download/v2026.10.15/PKMonitor-2026.10.15.dmg" type="application/x-bzip2" sparkle:edSignature="VyYHPBJCG5tyGL8Acee/ilwUrHkhpr0BJ3iNn288dgvAl82T7QNqXgebpgMFfaSgywPavROO0e605pWMmmFMDg==" length="5885846" />
       </item>
+      <item>
+        <title>PKMonitor 2026.10.16</title>
+        <pubDate>Wed, 07 Oct 2026 08:27:25 +0000</pubDate>
+        <sparkle:version>2026.10.16</sparkle:version>
+        <sparkle:shortVersionString>2026.10.16</sparkle:shortVersionString>
+        <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+        <description><![CDATA[<h4>Added</h4><ul><li>Quatre langues comme PKwindowsManagement : 🇫🇷 🇬🇧 🇪🇸 🇩🇪 en bas de la sidebar, avec fallback anglais et détection système.</li><li>Recherche intelligente des Réglages : index profond bilingue (ex. « api », « connexion », « historique ») — résultats en liste sous le champ, Entrée/clic navigue vers l'onglet concerné et surligne le réglage exact.</li></ul><h4>Changed</h4><ul><li>Libellés de la sidebar localisés (sections, groupes APP/SURVEILLANCE/PROJETS PK, en-tête, champ de recherche).</li><li>Footer de l'About : « Soutenir sur Ko-fi » localisé (fin du « Ko-fi » nu) ; section renommée Support/Soutenir comme PKwm.</li><li>Project Library synchronisée avec PKwindowsManagement (9 projets, dont PKbrain et PKMediaDownloader) : titre, sous-titre, descriptions et types traduits en 4 langues, icônes manquantes ajoutées.</li></ul>]]></description>
+        <enclosure url="https://github.com/mondary/PKmonitor/releases/download/v2026.10.16/PKMonitor-2026.10.16.dmg" type="application/x-bzip2" sparkle:edSignature="sO2sf/Bk6cPmS+GNQ0pos+yDKdTjABHEv41nroEAnhk/63zd2rRVrOmCtx3aJdMjh7RocF3zkZmZlHDv5+lrAg==" length="6912749" />
+      </item>
   </channel>
 </rss>

@@ -36,7 +36,7 @@ def main() -> None:
       <sparkle:version>{bundle_version}</sparkle:version>
       <sparkle:shortVersionString>{short_version}</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <description>Build dev automatique depuis main (canal dev : installation silencieuse).</description>
+      <description>Build dev automatique depuis la branche dev (canal dev : installation silencieuse).</description>
       <enclosure url="https://github.com/mondary/PKmonitor/releases/download/dev/PKMonitor-dev.zip" type="application/octet-stream" sparkle:edSignature="{signature}" length="{len(data)}" />
     </item>
   </channel>

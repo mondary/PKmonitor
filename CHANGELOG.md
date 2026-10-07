@@ -2,6 +2,12 @@
 
 Historique des évolutions de PKMonitor.
 
+## [2026.10.26] - 2026-10-07
+### Fixed
+- Traduction française de « Project Library » harmonisée en « Bibliothèque de projets » dans la sidebar et dans l’en-tête de la page.
+### Changed
+- Les builds du canal Dev sont désormais produits depuis la branche `dev`.
+
 ## [2026.10.25] - 2026-10-07
 ### Changed
 - À propos distingue les builds Stable/Dev réellement installées, compare les numéros de build publiés et affiche l’indicateur de mise à jour disponible dans la sidebar.

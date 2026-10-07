@@ -1900,7 +1900,7 @@ enum L10n {
         ],
         "sidebar.library": [
             "en": "Project Library",
-            "fr": "Project Library",
+            "fr": "Bibliothèque de projets",
             "es": "Biblioteca de proyectos",
             "de": "Projekt-Bibliothek",
         ],
@@ -2137,7 +2137,7 @@ enum L10n {
         // MARK: Project Library
         "library.title": [
             "en": "Project Library",
-            "fr": "Project Library",
+            "fr": "Bibliothèque de projets",
             "es": "Biblioteca de proyectos",
             "de": "Projekt-Bibliothek",
         ],

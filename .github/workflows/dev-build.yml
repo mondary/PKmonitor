@@ -1,13 +1,13 @@
 name: Dev build
 
-# Canal dev : chaque push sur main produit un build signé, publié sur la
+# Canal dev : chaque push sur dev produit un build signé, publié sur la
 # release permanente `dev` et annoncé via appcast-dev.xml (commité sur main).
 # Les apps en canal "dev" l'installent silencieusement via Sparkle.
 
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [dev]
 
 permissions:
   contents: write
@@ -19,6 +19,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Build app (dev)
         env:
@@ -42,7 +44,7 @@ jobs:
         run: |
           gh release create dev --prerelease \
             --title "PKMonitor dev" \
-            --notes "Build automatique du canal dev (main). Installé silencieusement par les apps en canal dev." || true
+            --notes "Build automatique du canal dev (branche dev). Installé silencieusement par les apps en canal dev." || true
           gh release upload dev dist/PKMonitor-dev.zip --clobber
 
       - name: Sign and publish appcast-dev.xml

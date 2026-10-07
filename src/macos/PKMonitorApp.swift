@@ -2144,6 +2144,12 @@ enum L10n {
             "es": "App de notas con cálculo integrado, paleta de comandos y atajos de teclado primero.",
             "de": "Notizen-App mit integrierter Berechnung, Befehlspalette und Tastatur-first-Kürzeln.",
         ],
+        "desc.MonoCodePK": [
+            "en": "All your coding-agent subscriptions in one native app — Claude Code, Codex, Cursor, OpenCode and more. Tabs are sessions, the composer is the input.",
+            "fr": "Tous vos abonnements d'agents de code dans une app native — Claude Code, Codex, Cursor, OpenCode et plus. Les onglets sont des sessions, le compositeur est l'entrée.",
+            "es": "Todas tus suscripciones de agentes de código en una app nativa — Claude Code, Codex, Cursor, OpenCode y más. Las pestañas son sesiones, el compositor es la entrada.",
+            "de": "Alle Coding-Agent-Abos in einer nativen App — Claude Code, Codex, Cursor, OpenCode und mehr. Tabs sind Sitzungen, der Composer ist die Eingabe.",
+        ],
         "desc.PKMediaDownloader": [
             "en": "Video downloader powered by yt-dlp — YouTube, Instagram, X, TikTok and thousands more.",
             "fr": "Téléchargeur de vidéos propulsé par yt-dlp — YouTube, Instagram, X, TikTok et des milliers d'autres.",
@@ -3442,6 +3448,7 @@ struct ProjectLibraryView: View {
         Project(id: "PKmonitor", title: "PKMonitor", kindKey: "kind.macos", descKey: "desc.PKmonitor", iconAsset: "PKmonitor", screenshot: "PKmonitor", tint: NSColor(hex: "#0EA5E9")!),
         Project(id: "PKwindowsManagement", title: "PKwindowsManagement", kindKey: "kind.macos", descKey: "desc.PKwindowsManagement", iconAsset: "PKwindowsManagement", screenshot: nil, tint: NSColor(hex: "#F97316")!),
         Project(id: "PKbrain", title: "PKbrain", kindKey: "kind.macos", descKey: "desc.PKbrain", iconAsset: "PKbrain", screenshot: nil, tint: NSColor(hex: "#6366F1")!),
+        Project(id: "monocode", title: "MonoCode PK", kindKey: "kind.macos", descKey: "desc.MonoCodePK", iconAsset: "MonoCodePK", screenshot: nil, tint: NSColor(hex: "#22D3EE")!),
         Project(id: "media-downloader", title: "PKMediaDownloader", kindKey: "kind.macos", descKey: "desc.PKMediaDownloader", iconAsset: "PKMediaDownloader", screenshot: nil, tint: NSColor(hex: "#F43F5E")!),
         Project(id: "Macos_PKarchives", title: "PKarchives", kindKey: "kind.macos", descKey: "desc.PKarchives", iconAsset: "PKarchives", screenshot: "PKarchives", tint: NSColor(hex: "#8B5CF6")!),
         Project(id: "Macos_PKpowerlines", title: "PKpowerlines", kindKey: "kind.macos", descKey: "desc.PKpowerlines", iconAsset: "PKpowerlines", screenshot: "PKpowerlines", tint: NSColor(hex: "#10B981")!),
@@ -4474,17 +4481,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
+    /// Picto de menu : SF Symbol en template (adapte dark/light), 16×16 pour
+    /// s'aligner sur les icônes d'app et le logo Ko-fi.
+    private static func menuSymbol(_ name: String) -> NSImage? {
+        let image = NSImage(systemSymbolName: name, accessibilityDescription: nil)
+        image?.isTemplate = true
+        image?.size = NSSize(width: 16, height: 16)
+        return image
+    }
+
     private func makeMenu() -> NSMenu {
         let menu = NSMenu(title: "PKMonitor")
+        // Règle d'alignement (pattern validé sur PKwindowsManagement) : chaque
+        // item porte un picto 16×16 — les textes restent alignés même pour les
+        // lignes sans icône spécifique.
         let settingsItem = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
         settingsItem.target = self
+        settingsItem.image = Self.menuSymbol("gearshape")
         menu.addItem(settingsItem)
         menu.addItem(.separator())
+        let metricSymbols: [Metric: String] = [
+            .auto: "wand.and.stars",
+            .cpu: "cpu",
+            .gpu: "display",
+            .ram: "memorychip",
+            .disk: "internaldrive",
+            .network: "network",
+        ]
         for metric in Metric.allCases {
             let item = NSMenuItem(title: metric.rawValue, action: #selector(selectMetric(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = metric.rawValue
             item.state = model.selectedMetric == metric ? .on : .off
+            item.image = Self.menuSymbol(metricSymbols[metric] ?? "circle")
             if metric != .auto { item.title += "    \(model.format(metric))" }
             menu.addItem(item)
         }
@@ -4501,6 +4530,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let login = NSMenuItem(title: "Launch at Login", action: #selector(toggleLogin(_:)), keyEquivalent: "")
         login.target = self
         login.state = settings.launchAtLogin ? .on : .off
+        login.image = Self.menuSymbol("power")
         menu.addItem(login)
         menu.addItem(.separator())
         let donate = NSMenuItem(title: "Support on Ko-fi", action: #selector(openKoFi), keyEquivalent: "")
@@ -4517,13 +4547,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // item avant Quit (pattern PKwindowsManagement).
         let updateItem = NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
         updateItem.target = self
+        updateItem.image = Self.menuSymbol("arrow.triangle.2.circlepath")
         menu.addItem(updateItem)
         let aboutItem = NSMenuItem(title: "About PKMonitor", action: #selector(showAbout), keyEquivalent: "")
         aboutItem.target = self
+        aboutItem.image = Self.menuSymbol("info.circle")
         menu.addItem(aboutItem)
         menu.addItem(.separator())
         let quit = NSMenuItem(title: "Quit PKMonitor", action: #selector(quit), keyEquivalent: "q")
         quit.target = self
+        quit.image = Self.menuSymbol("rectangle.portrait.and.arrow.right")
         menu.addItem(quit)
         return menu
     }

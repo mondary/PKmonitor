@@ -2,6 +2,11 @@
 
 Historique des évolutions de PKMonitor.
 
+## [2026.10.17] - 2026-10-07
+### Changed
+- Menu barre de menus : picto devant chaque item (SF Symbols template 16×16 — métriques, Settings, Launch at Login, Updates, About, Quit) pour un texte toujours aligné, pattern PKwindowsManagement ; logo Ko-fi remplacé par la version mieux détourée de PKwindowsManagement.
+- Project Library rapprochée du référentiel central `-projects` : ajout de MonoCode PK (projets phares vérifiés dans `Macos_GithubProjects/projects.md`, liens 200).
+
 ## [2026.10.16] - 2026-10-07
 ### Added
 - Quatre langues comme PKwindowsManagement : 🇫🇷 🇬🇧 🇪🇸 🇩🇪 en bas de la sidebar, avec fallback anglais et détection système.

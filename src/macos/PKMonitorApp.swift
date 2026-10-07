@@ -1602,11 +1602,34 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .library: "square.grid.2x2"
         }
     }
+    /// Titre affiché, localisé (rawValue reste l'identifiant stable).
+    var title: String {
+        switch self {
+        case .general: L10n.string("sidebar.general")
+        case .menuBarItems: L10n.string("sidebar.menuBarItems")
+        case .dashboard: L10n.string("sidebar.dashboard")
+        case .sparkline: L10n.string("sidebar.sparkline")
+        case .gauges: L10n.string("sidebar.gauges")
+        case .disk: L10n.string("sidebar.disk")
+        case .panel: L10n.string("sidebar.panel")
+        case .ai: L10n.string("sidebar.ai")
+        case .library: L10n.string("sidebar.library")
+        case .support: L10n.string("sidebar.support")
+        case .about: L10n.string("sidebar.about")
+        }
+    }
     var category: String {
         switch self {
         case .general, .menuBarItems: "APP"
         case .dashboard, .sparkline, .gauges, .disk, .panel, .ai: "MONITORING"
         case .about, .support, .library: "PK PROJECTS"
+        }
+    }
+    var groupKey: String {
+        switch category {
+        case "APP": "group.app"
+        case "MONITORING": "group.monitoring"
+        default: "group.projects"
         }
     }
     /// Couleur d'icône dans la sidebar : Support (rouge Ko-fi) et About
@@ -1643,24 +1666,133 @@ extension Notification.Name {
     static let pkSelectSettingsSection = Notification.Name("PKSelectSettingsSection")
     /// La langue de l'app a changé (choix drapeau FR/EN dans About).
     static let appLanguageDidChange = Notification.Name("PKAppLanguageDidChange")
+    /// Demande à surligner un réglage précis (titre exact du SettingLine/Card).
+    static let pkHighlightSetting = Notification.Name("PKHighlightSetting")
 }
 
-/// Langue de l'app — pattern PKwindowsManagement en version légère (deux
+/// Une entrée de la recherche profonde des Réglages : un réglage individuel
+/// (titre exact d'un SettingLine/SettingsCard, pour le surlignage) rattaché
+/// à sa section, avec des mots-clés bilingues (EN + FR, ES/DE pour les plus
+/// courants). `settingTitle` reste en anglais : c'est l'identifiant stable
+/// qui matche le libellé des vues.
+struct SettingsSearchEntry: Identifiable {
+    let settingTitle: String
+    let section: SettingsSection
+    let keywords: String
+    var id: String { "\(section.rawValue)/\(settingTitle)" }
+}
+
+/// Index statique des réglages recherchables. « api » ou « connexion »
+/// amène au champ Endpoint de l'AI Advisor avec surlignage, etc.
+enum SettingsSearch {
+    private static let entries: [SettingsSearchEntry] = [
+        // AI Advisor
+        .init(settingTitle: "Connection", section: .ai, keywords: "connection connexion endpoint api server serveur openai ollama openrouter lm studio modelo"),
+        .init(settingTitle: "Endpoint", section: .ai, keywords: "endpoint url api connexion server serveur openai ollama openrouter"),
+        .init(settingTitle: "Model", section: .ai, keywords: "model modèle ia ai llm chatgpt gpt"),
+        .init(settingTitle: "API key", section: .ai, keywords: "api key clé token secret auth"),
+        .init(settingTitle: "Test", section: .ai, keywords: "test connexion endpoint vérifier verify"),
+        .init(settingTitle: "Placement", section: .ai, keywords: "placement position panel panneau advisor conseiller fenêtre window"),
+        .init(settingTitle: "Privacy", section: .ai, keywords: "privacy vie privée données data local"),
+        // General
+        .init(settingTitle: "Monitoring", section: .general, keywords: "monitoring refresh rate taux rafraîchissement fréquence frequency interval"),
+        .init(settingTitle: "Refresh rate", section: .general, keywords: "refresh rate taux rafraîchissement fréquence frequency actualización"),
+        .init(settingTitle: "History duration", section: .general, keywords: "history historique durée duration samples échantillons"),
+        .init(settingTitle: "Top applications", section: .general, keywords: "top applications apps marqueurs markers processes processus"),
+        .init(settingTitle: "Color Thresholds", section: .general, keywords: "thresholds seuils couleurs colors warning critical alerte critique"),
+        .init(settingTitle: "System", section: .general, keywords: "system login lancement session startup démarrage autostart"),
+        .init(settingTitle: "Launch at login", section: .general, keywords: "login lancement session startup démarrage autostart inicio sesión"),
+        .init(settingTitle: "Icon Location", section: .general, keywords: "icon location emplacement icône menu bar barre second underbar dessous"),
+        .init(settingTitle: "Background", section: .general, keywords: "background fond arrière-plan blur flou tint teinte"),
+        // Menu Bar Items
+        .init(settingTitle: "Detected icons", section: .menuBarItems, keywords: "detected icons icônes bartender hidden cachées second bar deuxième barre lowered"),
+        .init(settingTitle: "Accessibility permission", section: .menuBarItems, keywords: "accessibility accessibilité permission autorisation ax"),
+        .init(settingTitle: "Screen Recording permission", section: .menuBarItems, keywords: "screen recording enregistrement écran permission autorisation capture"),
+        // Sparkline
+        .init(settingTitle: "Graph", section: .sparkline, keywords: "graph sparkline courbe width largeur line ligne"),
+        .init(settingTitle: "Width", section: .sparkline, keywords: "width largeur graph sparkline pill pastille"),
+        .init(settingTitle: "Line thickness", section: .sparkline, keywords: "line thickness épaisseur trait courbe"),
+        .init(settingTitle: "App Markers", section: .sparkline, keywords: "markers marqueurs apps icon size taille icône"),
+        .init(settingTitle: "Labels", section: .sparkline, keywords: "labels libellés étiquettes metric name position"),
+        // Gauges
+        .init(settingTitle: "Gauge Display", section: .gauges, keywords: "gauge jauges display affichage metrics"),
+        .init(settingTitle: "Gauge width", section: .gauges, keywords: "gauge width largeur jauge"),
+        .init(settingTitle: "Gauge Colors", section: .gauges, keywords: "gauge colors couleurs jauges base critical critique"),
+        .init(settingTitle: "Gauge Order", section: .gauges, keywords: "gauge order ordre jauges drag glisser réordonner"),
+        // Disk
+        .init(settingTitle: "Disk Module", section: .disk, keywords: "disk disque module free libre disponible space espace"),
+        .init(settingTitle: "Value", section: .disk, keywords: "value valeur available disponible free purgeable libre"),
+        .init(settingTitle: "Layout", section: .disk, keywords: "layout disposition one line two lines une ligne deux lignes"),
+        .init(settingTitle: "Font size", section: .disk, keywords: "font size taille police disque"),
+        // Panel
+        .init(settingTitle: "Detail Panel", section: .panel, keywords: "detail panel panneau détail inspect hover survol"),
+        .init(settingTitle: "Appearance", section: .panel, keywords: "appearance apparence dark light sombre clair suit follows"),
+        // About / Support
+        .init(settingTitle: "Updates", section: .about, keywords: "updates mises à jour canal channel stable dev versions sparkle"),
+        .init(settingTitle: "Check for Updates…", section: .about, keywords: "check updates vérifier rechercher mises à jour sparkle"),
+    ]
+
+    static func match(_ query: String) -> [SettingsSearchEntry] {
+        let words = query.split(separator: " ").map(String.init)
+        return entries.filter { entry in
+            let haystack = "\(entry.settingTitle) \(entry.section.title) \(entry.keywords)".lowercased()
+            return words.allSatisfy { haystack.contains($0) }
+        }
+    }
+}
+
+/// Surlignage temporaire d'un SettingLine/SettingsCard dont le titre correspond
+/// à l'entrée choisie dans la recherche : fond accent qui s'estompe.
+struct SettingHighlight: ViewModifier {
+    let title: String
+    @State private var flash = false
+
+    func body(content: Content) -> some View {
+        content
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(flash ? Color.accentColor.opacity(0.25) : .clear)
+            )
+            .onReceive(NotificationCenter.default.publisher(for: .pkHighlightSetting)) { note in
+                guard let target = note.object as? String, target == title else { return }
+                withAnimation(.easeIn(duration: 0.12)) { flash = true }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
+                    withAnimation(.easeOut(duration: 0.7)) { flash = false }
+                }
+            }
+    }
+}
+
+/// Langue de l'app — pattern PKwindowsManagement en version légère (quatre
 /// langues, table de chaînes inline, pas de bundle .lproj). Le choix se fait
-/// directement dans l'onglet About avec des drapeaux, clé UserDefaults
+/// avec les drapeaux en bas de la sidebar des Réglages, clé UserDefaults
 /// "app-language" identique aux autres apps PK.
 enum AppLanguage: String, CaseIterable, Identifiable {
     case system
     case french = "fr"
     case english = "en"
+    case spanish = "es"
+    case german = "de"
 
     var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .system: L10n.string("language.automatic")
+        case .french: "Français"
+        case .english: "English"
+        case .spanish: "Español"
+        case .german: "Deutsch"
+        }
+    }
 
     var flagEmoji: String {
         switch self {
         case .system: "🌐"
         case .french: "🇫🇷"
         case .english: "🇬🇧"
+        case .spanish: "🇪🇸"
+        case .german: "🇩🇪"
         }
     }
 
@@ -1669,8 +1801,10 @@ enum AppLanguage: String, CaseIterable, Identifiable {
         guard self == .system else { return rawValue }
         let preferred = Locale.preferredLanguages.first ?? "en"
         let code = Locale(identifier: preferred).language.languageCode?.identifier ?? "en"
-        return code == "fr" ? "fr" : "en"
+        return Self.supportedCodes.contains(code) ? code : "en"
     }
+
+    private static let supportedCodes: Set<String> = ["fr", "en", "es", "de"]
 
     static var current: AppLanguage {
         AppLanguage(rawValue: UserDefaults.standard.string(forKey: "app-language") ?? "") ?? .system
@@ -1683,105 +1817,374 @@ enum AppLanguage: String, CaseIterable, Identifiable {
     }
 }
 
-/// Chaînes localisées FR/EN (clé → langue → texte). Anglais = fallback.
-/// Le périmètre actuel est l'onglet About ; le reste de l'app suivra.
+/// Chaînes localisées (clé → langue → texte), valeurs FR/ES/DE alignées sur
+/// les Localizable.strings de PKwindowsManagement quand la clé existe là-bas.
+/// Anglais = fallback. Périmètre : sidebar, About, Support, Project Library.
 enum L10n {
     static let table: [String: [String: String]] = [
+        "language.automatic": [
+            "en": "Automatic (System)",
+            "fr": "Automatique (système)",
+            "es": "Automático (sistema)",
+            "de": "Automatisch (System)",
+        ],
+        "footer.supportOnKofi": [
+            "en": "Support on Ko-fi",
+            "fr": "Soutenir sur Ko-fi",
+            "es": "Apoyar en Ko-fi",
+            "de": "Auf Ko-fi unterstützen",
+        ],
+        // MARK: Sidebar
+        "sidebar.settings": [
+            "en": "Settings",
+            "fr": "Réglages",
+            "es": "Ajustes",
+            "de": "Einstellungen",
+        ],
+        "sidebar.searchPlaceholder": [
+            "en": "Search settings",
+            "fr": "Rechercher",
+            "es": "Buscar",
+            "de": "Suchen",
+        ],
+        "sidebar.general": [
+            "en": "General",
+            "fr": "Général",
+            "es": "General",
+            "de": "Allgemein",
+        ],
+        "sidebar.menuBarItems": [
+            "en": "Menu Bar Items",
+            "fr": "Éléments de barre de menus",
+            "es": "Elementos de la barra de menús",
+            "de": "Menüleisten-Objekte",
+        ],
+        "sidebar.dashboard": [
+            "en": "Dashboard",
+            "fr": "Tableau de bord",
+            "es": "Panel",
+            "de": "Übersicht",
+        ],
+        "sidebar.sparkline": [
+            "en": "Sparkline",
+            "fr": "Sparkline",
+            "es": "Sparkline",
+            "de": "Sparkline",
+        ],
+        "sidebar.gauges": [
+            "en": "Gauges",
+            "fr": "Jauges",
+            "es": "Medidores",
+            "de": "Anzeigen",
+        ],
+        "sidebar.disk": [
+            "en": "Disk",
+            "fr": "Disque",
+            "es": "Disco",
+            "de": "Festplatte",
+        ],
+        "sidebar.panel": [
+            "en": "Panel",
+            "fr": "Panneau",
+            "es": "Panel",
+            "de": "Panel",
+        ],
+        "sidebar.ai": [
+            "en": "AI Advisor",
+            "fr": "Conseiller IA",
+            "es": "Asesor IA",
+            "de": "KI-Berater",
+        ],
+        "sidebar.library": [
+            "en": "Project Library",
+            "fr": "Project Library",
+            "es": "Biblioteca de proyectos",
+            "de": "Projekt-Bibliothek",
+        ],
+        "sidebar.support": [
+            "en": "Support",
+            "fr": "Soutenir",
+            "es": "Apoyar",
+            "de": "Unterstützen",
+        ],
+        "sidebar.about": [
+            "en": "About",
+            "fr": "À propos",
+            "es": "Acerca de",
+            "de": "Über",
+        ],
+        "group.app": [
+            "en": "APP",
+            "fr": "APP",
+            "es": "APP",
+            "de": "APP",
+        ],
+        "group.monitoring": [
+            "en": "MONITORING",
+            "fr": "SURVEILLANCE",
+            "es": "SUPERVISIÓN",
+            "de": "ÜBERWACHUNG",
+        ],
+        "group.projects": [
+            "en": "PK PROJECTS",
+            "fr": "PROJETS PK",
+            "es": "PROYECTOS PK",
+            "de": "PK-PROJEKTE",
+        ],
+        "search.noResults": [
+            "en": "No setting found",
+            "fr": "Aucun réglage trouvé",
+            "es": "Ningún ajuste encontrado",
+            "de": "Keine Einstellung gefunden",
+        ],
+        // MARK: About
         "about.greeting": [
             "en": "Hey friend,",
             "fr": "Salut l'ami,",
+            "es": "Hola, amigo:",
+            "de": "Hallo Freund,",
         ],
         "about.pitch": [
             "en": "PKMonitor was born from a simple frustration: keeping an eye on your Mac without cluttering the screen or drowning in dashboards.",
             "fr": "PKMonitor est né d'une frustration simple : garder un œil sur votre Mac sans encombrer l'écran ni se noyer dans les tableaux de bord.",
+            "es": "PKMonitor nació de una frustración simple: vigilar tu Mac sin saturar la pantalla ni ahogarte en paneles.",
+            "de": "PKMonitor entstand aus einer einfachen Frustration: den Mac im Blick behalten, ohne den Bildschirm zu überladen oder in Dashboards zu ertrinken.",
         ],
         "about.body": [
             "en": "One quiet line in the menu bar — CPU, GPU, memory, network and disk at a glance, with the apps behind the numbers one hover away. Native binary, zero dependencies, everything stays local.",
             "fr": "Une ligne discrète dans la barre de menus — CPU, GPU, mémoire, réseau et disque d'un coup d'œil, avec les apps derrière les chiffres à un survol. Binaire natif, zéro dépendance, tout reste local.",
+            "es": "Una línea discreta en la barra de menús — CPU, GPU, memoria, red y disco de un vistazo, con las apps detrás de los números a un hover. Binario nativo, cero dependencias, todo queda en local.",
+            "de": "Eine ruhige Zeile in der Menüleiste — CPU, GPU, Arbeitsspeicher, Netzwerk und Festplatte auf einen Blick, mit den Apps hinter den Zahlen nur einen Hover entfernt. Native Binary, null Abhängigkeiten, alles bleibt lokal.",
         ],
         "about.care": [
             "en": "Built with care for the Mac community. Discreet when you don't need it, right there when you look.",
             "fr": "Conçu avec soin pour la communauté Mac. Discret quand vous n'en avez pas besoin, présent quand vous le regardez.",
+            "es": "Hecho con cariño para la comunidad Mac. Discreto cuando no lo necesitas, ahí cuando lo miras.",
+            "de": "Mit Sorgfalt für die Mac-Community gebaut. Diskret, wenn du es nicht brauchst, da, wenn du hinschaust.",
         ],
         "about.thanks": [
             "en": "Thanks for being part of it.",
             "fr": "Merci d'en faire partie.",
+            "es": "Gracias por formar parte de esto.",
+            "de": "Danke, dass du dabei bist.",
         ],
         "about.byPK": [
             "en": "By PK",
             "fr": "Par PK",
+            "es": "Por PK",
+            "de": "Von PK",
         ],
         "about.updates": [
             "en": "Updates",
             "fr": "Mises à jour",
+            "es": "Actualizaciones",
+            "de": "Aktualisierungen",
         ],
         "about.updateChannel": [
             "en": "Update channel",
             "fr": "Canal de mise à jour",
+            "es": "Canal de actualización",
+            "de": "Update-Kanal",
         ],
         "about.channelDevCaption": [
             "en": "Dev builds are downloaded, installed and relaunched automatically. Switching back to Stable won't downgrade the app — reinstall the latest published release.",
             "fr": "Les builds Dev sont téléchargées, installées et relancées automatiquement. Revenir en Stable ne rétrograde pas l'app — réinstallez la dernière version publiée.",
+            "es": "Las builds Dev se descargan, instalan y relanzan automáticamente. Volver a Stable no degrada la app — reinstala la última versión publicada.",
+            "de": "Dev-Builds werden automatisch geladen, installiert und neu gestartet. Ein Wechsel zurück zu Stable stuft die App nicht herab — installiere die neueste Veröffentlichung neu.",
         ],
         "about.channelStableCaption": [
             "en": "Versioned releases only, tested. You are notified when a new version is published.",
             "fr": "Versions publiées uniquement, testées. Vous êtes averti quand une nouvelle version paraît.",
+            "es": "Solo versiones publicadas y probadas. Se te avisa cuando sale una nueva versión.",
+            "de": "Nur getestete, versionierte Releases. Du wirst benachrichtigt, wenn eine neue Version erscheint.",
         ],
         "about.stableVersion": [
             "en": "Stable version",
             "fr": "Version Stable",
+            "es": "Versión estable",
+            "de": "Stable-Version",
         ],
         "about.devVersion": [
             "en": "Dev version",
             "fr": "Version Dev",
+            "es": "Versión Dev",
+            "de": "Dev-Version",
         ],
         "about.notPublished": [
             "en": "Not published",
             "fr": "Non publiée",
+            "es": "No publicada",
+            "de": "Nicht veröffentlicht",
         ],
         "about.installedVersion": [
             "en": "Installed version",
             "fr": "Version installée",
+            "es": "Versión instalada",
+            "de": "Installierte Version",
         ],
         "about.checkForUpdates": [
             "en": "Check for Updates…",
-            "fr": "Rechercher des mises à jour…",
+            "fr": "Rechercher les mises à jour…",
+            "es": "Buscar actualizaciones…",
+            "de": "Nach Updates suchen…",
         ],
+        // MARK: Support
         "support.title": [
             "en": "Support PKMonitor",
             "fr": "Soutenir PKMonitor",
+            "es": "Apoyar PKMonitor",
+            "de": "PKMonitor unterstützen",
         ],
         "support.subtitle": [
             "en": "If you enjoy using this app, consider supporting its development.",
             "fr": "Si vous appréciez cette app, pensez à soutenir son développement.",
+            "es": "Si te gusta esta app, considera apoyar su desarrollo.",
+            "de": "Wenn dir diese App gefällt, unterstütze gerne ihre Entwicklung.",
         ],
         "support.kofi.subtitle": [
             "en": "Support the developer with a coffee",
             "fr": "Offrir un café au développeur",
+            "es": "Invita un café al desarrollador",
+            "de": "Unterstütze den Entwickler mit einem Kaffee",
         ],
         "support.donate": [
-            "en": "Donate",
-            "fr": "Faire un don",
+            "en": "Support on Ko-fi",
+            "fr": "Soutenir sur Ko-fi",
+            "es": "Apoyar en Ko-fi",
+            "de": "Auf Ko-fi unterstützen",
         ],
         "support.github.subtitle": [
             "en": "Source code and releases",
             "fr": "Code source et versions",
+            "es": "Código fuente y versiones",
+            "de": "Quellcode und Releases",
         ],
         "support.issues.title": [
             "en": "Report an Issue",
             "fr": "Signaler un problème",
+            "es": "Informar de un problema",
+            "de": "Problem melden",
         ],
         "support.issues.subtitle": [
             "en": "Bugs, feature requests, feedback",
             "fr": "Bugs, demandes de fonctionnalités, retours",
+            "es": "Errores, peticiones de funciones, opiniones",
+            "de": "Fehler, Feature-Wünsche, Feedback",
         ],
         "support.profile.title": [
             "en": "PK on GitHub",
             "fr": "PK sur GitHub",
+            "es": "PK en GitHub",
+            "de": "PK auf GitHub",
         ],
         "support.profile.subtitle": [
             "en": "The rest of the project collection",
             "fr": "Le reste de la collection de projets",
+            "es": "El resto de la colección de proyectos",
+            "de": "Der Rest der Projektsammlung",
+        ],
+        // MARK: Project Library
+        "library.title": [
+            "en": "Project Library",
+            "fr": "Project Library",
+            "es": "Biblioteca de proyectos",
+            "de": "Projekt-Bibliothek",
+        ],
+        "library.subtitle": [
+            "en": "Discover the other tools and projects I build.",
+            "fr": "Découvrez les autres outils et projets que je construis.",
+            "es": "Descubre las demás herramientas y proyectos que creo.",
+            "de": "Entdecke die anderen Tools und Projekte, die ich baue.",
+        ],
+        "library.more": [
+            "en": "More projects",
+            "fr": "Plus de projets",
+            "es": "Más proyectos",
+            "de": "Weitere Projekte",
+        ],
+        "library.star": [
+            "en": "Star on GitHub",
+            "fr": "Étoiler sur GitHub",
+            "es": "Estrella en GitHub",
+            "de": "Star auf GitHub",
+        ],
+        "library.viewAll": [
+            "en": "View all repositories on GitHub",
+            "fr": "Voir tous les dépôts sur GitHub",
+            "es": "Ver todos los repositorios en GitHub",
+            "de": "Alle Repositories auf GitHub ansehen",
+        ],
+        "kind.macos": [
+            "en": "macOS app",
+            "fr": "app macOS",
+            "es": "app macOS",
+            "de": "macOS-App",
+        ],
+        "kind.chrome": [
+            "en": "Chrome extension",
+            "fr": "extension Chrome",
+            "es": "extensión de Chrome",
+            "de": "Chrome-Erweiterung",
+        ],
+        "kind.cross": [
+            "en": "Chrome / macOS / Windows / Linux",
+            "fr": "Chrome / macOS / Windows / Linux",
+            "es": "Chrome / macOS / Windows / Linux",
+            "de": "Chrome / macOS / Windows / Linux",
+        ],
+        "desc.PKwindowsManagement": [
+            "en": "Manage windows by keyboard, organize sessions in Rooms and launch installed applications quickly from the menu bar.",
+            "fr": "Gérez vos fenêtres au clavier, organisez vos sessions en Rooms et lancez vite vos applications depuis la barre de menus.",
+            "es": "Gestiona ventanas con el teclado, organiza sesiones en Rooms y lanza apps rápidamente desde la barra de menús.",
+            "de": "Fenster per Tastatur verwalten, Sitzungen in Rooms organisieren und Apps schnell über die Menüleiste starten.",
+        ],
+        "desc.PKbrain": [
+            "en": "Notes app with inline calculation, command palette, and keyboard-first shortcuts.",
+            "fr": "App de notes avec calcul intégré, palette de commandes et raccourcis clavier en priorité.",
+            "es": "App de notas con cálculo integrado, paleta de comandos y atajos de teclado primero.",
+            "de": "Notizen-App mit integrierter Berechnung, Befehlspalette und Tastatur-first-Kürzeln.",
+        ],
+        "desc.PKMediaDownloader": [
+            "en": "Video downloader powered by yt-dlp — YouTube, Instagram, X, TikTok and thousands more.",
+            "fr": "Téléchargeur de vidéos propulsé par yt-dlp — YouTube, Instagram, X, TikTok et des milliers d'autres.",
+            "es": "Descargador de vídeos con yt-dlp — YouTube, Instagram, X, TikTok y miles más.",
+            "de": "Video-Downloader mit yt-dlp — YouTube, Instagram, X, TikTok und Tausende mehr.",
+        ],
+        "desc.PKarchives": [
+            "en": "Archive your Desktop to Google Drive with rclone, using a native macOS interface or CLI/TUI.",
+            "fr": "Archivez votre Bureau vers Google Drive avec rclone, via une interface macOS native ou en CLI/TUI.",
+            "es": "Archiva tu Escritorio en Google Drive con rclone, con interfaz nativa de macOS o CLI/TUI.",
+            "de": "Desktop per rclone nach Google Drive archivieren — mit nativer macOS-Oberfläche oder CLI/TUI.",
+        ],
+        "desc.PKmonitor": [
+            "en": "CPU, GPU, RAM, network and disk metrics in the menu bar.",
+            "fr": "CPU, GPU, RAM, réseau et disque dans la barre de menus.",
+            "es": "CPU, GPU, RAM, red y disco en la barra de menús.",
+            "de": "CPU, GPU, RAM, Netzwerk und Festplatte in der Menüleiste.",
+        ],
+        "desc.PKpowerlines": [
+            "en": "A native multi-display powerline showing RAM, CPU, network or battery in real time.",
+            "fr": "Une powerline native multi-écrans affichant RAM, CPU, réseau ou batterie en temps réel.",
+            "es": "Una powerline nativa multidisplay con RAM, CPU, red o batería en tiempo real.",
+            "de": "Eine native Multi-Display-Powerline mit RAM, CPU, Netzwerk oder Akku in Echtzeit.",
+        ],
+        "desc.LaunchPad": [
+            "en": "Scan and audit user agents and system daemons with local security analysis.",
+            "fr": "Analysez et auditez les agents utilisateur et démons système avec une analyse de sécurité locale.",
+            "es": "Escanea y audita agentes de usuario y demonios del sistema con análisis local.",
+            "de": "Benutzer-Agenten und System-Daemons prüfen und auditiieren mit lokaler Sicherheitsanalyse.",
+        ],
+        "desc.PKChromeShortcuts": [
+            "en": "Control tabs, navigation and split view with keyboard shortcuts.",
+            "fr": "Contrôlez onglets, navigation et split view au clavier.",
+            "es": "Controla pestañas, navegación y split view con atajos de teclado.",
+            "de": "Tabs, Navigation und Split-View per Tastenkürzeln steuern.",
+        ],
+        "desc.PKMail": [
+            "en": "An immersive IMAP mail client with a vanilla HTML interface and Gmail-style workflows.",
+            "fr": "Client mail IMAP immersif avec interface HTML vanilla et workflows façon Gmail.",
+            "es": "Cliente de correo IMAP inmersivo con HTML puro y flujos estilo Gmail.",
+            "de": "Immersiver IMAP-Mailclient mit schlichter HTML-Oberfläche und Gmail-Workflows.",
         ],
     ]
 
@@ -1866,14 +2269,29 @@ struct SettingsView: View {
                 .opacity(isActive ? 1 : 0.65)
         }
         .buttonStyle(.plain)
-        .help(language == .french ? "Français" : "English")
-        .accessibilityLabel(language == .french ? "Français" : "English")
+        .help(language.displayName)
+        .accessibilityLabel(language.displayName)
+    }
+
+    /// Recherche intelligente : les entrées de l'index profonde (réglages
+    /// individuels, mots-clés bilingues) priment ; la liste de sections
+    /// filtrée reste le comportement de repli.
+    private var searchQuery: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private var searchEntries: [SettingsSearchEntry] {
+        guard !searchQuery.isEmpty else { return [] }
+        return SettingsSearch.match(searchQuery)
     }
 
     private var filteredSections: [SettingsSection] {
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard !query.isEmpty else { return SettingsSection.allCases }
-        return SettingsSection.allCases.filter { $0.keywords.contains(query) }
+        guard !searchQuery.isEmpty else { return SettingsSection.allCases }
+        var sections = SettingsSection.allCases.filter { $0.keywords.contains(searchQuery) }
+        for entry in searchEntries where !sections.contains(entry.section) {
+            sections.append(entry.section)
+        }
+        return SettingsSection.allCases.filter { sections.contains($0) }
     }
     private var groupedSections: [(String, [SettingsSection])] {
         let grouped = Dictionary(grouping: filteredSections, by: \.category)
@@ -1881,6 +2299,19 @@ struct SettingsView: View {
             guard let values = grouped[key], !values.isEmpty else { return nil }
             return (key, values)
         }
+    }
+
+    private static func groupKey(for category: String) -> String {
+        switch category {
+        case "APP": "group.app"
+        case "MONITORING": "group.monitoring"
+        default: "group.projects"
+        }
+    }
+
+    private func selectEntry(_ entry: SettingsSearchEntry) {
+        selection = entry.section
+        NotificationCenter.default.post(name: .pkHighlightSetting, object: entry.settingTitle)
     }
 
     var body: some View {
@@ -1900,7 +2331,7 @@ struct SettingsView: View {
                 .padding(.top, 22)
                 .padding(.bottom, 18)
 
-                Text("SETTINGS")
+                Text(L10n.string("sidebar.settings").uppercased())
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(.tertiary)
                     .padding(.horizontal, 20)
@@ -1908,21 +2339,65 @@ struct SettingsView: View {
 
                 HStack(spacing: 7) {
                     Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                    TextField("Search settings", text: $searchText)
+                    TextField(L10n.string("sidebar.searchPlaceholder"), text: $searchText)
                         .textFieldStyle(.plain)
                         .onSubmit {
-                            if let first = filteredSections.first { selection = first }
+                            if let first = searchEntries.first {
+                                selectEntry(first)
+                            } else if let first = filteredSections.first {
+                                selection = first
+                            }
                         }
                 }
                 .padding(.horizontal, 10)
                 .frame(height: 30)
                 .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 7))
                 .padding(.horizontal, 12)
-                .padding(.bottom, 12)
+
+                if !searchEntries.isEmpty {
+                    VStack(alignment: .leading, spacing: 2) {
+                        ForEach(searchEntries.prefix(7)) { entry in
+                            Button {
+                                selectEntry(entry)
+                            } label: {
+                                HStack(spacing: 7) {
+                                    Image(systemName: entry.section.icon)
+                                        .font(.system(size: 10, weight: .medium))
+                                        .foregroundStyle(.secondary)
+                                        .frame(width: 14)
+                                    Text(entry.settingTitle)
+                                        .font(.system(size: 12))
+                                        .lineLimit(1)
+                                    Spacer(minLength: 4)
+                                    Text(entry.section.title)
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(.tertiary)
+                                        .lineLimit(1)
+                                }
+                                .foregroundStyle(.primary)
+                                .padding(.horizontal, 8)
+                                .frame(height: 24)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.vertical, 5)
+                    .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 0.5))
+                    .padding(.horizontal, 12)
+                } else if !searchText.isEmpty && searchQuery.count >= 2 && filteredSections.isEmpty {
+                    Text(L10n.string("search.noResults"))
+                        .font(.system(size: 11))
+                        .foregroundStyle(.tertiary)
+                        .padding(.horizontal, 20)
+                }
 
                 VStack(spacing: 3) {
                     ForEach(groupedSections, id: \.0) { group, sections in
-                        Text(group).font(.system(size: 9, weight: .bold)).foregroundStyle(.tertiary)
+                        Text(L10n.string(Self.groupKey(for: group)))
+                            .font(.system(size: 9, weight: .bold)).foregroundStyle(.tertiary)
                             .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 20).padding(.top, 8)
                         ForEach(sections) { section in
                         Button {
@@ -1933,7 +2408,7 @@ struct SettingsView: View {
                                     .font(.system(size: 14, weight: .medium))
                                     .frame(width: 20)
                                     .foregroundStyle(section.iconTint ?? (selection == section ? Color.primary : Color.secondary))
-                                Text(section.rawValue)
+                                Text(section.title)
                                     .font(.system(size: 13, weight: selection == section ? .semibold : .regular))
                                 Spacer()
                             }
@@ -1948,9 +2423,10 @@ struct SettingsView: View {
                         }
                     }
                 }
+                .padding(.top, 12)
                 Spacer()
                 HStack(spacing: 6) {
-                    ForEach([AppLanguage.french, .english]) { language in
+                    ForEach([AppLanguage.french, .english, .spanish, .german]) { language in
                         languageFlag(language)
                     }
                     Spacer(minLength: 0)
@@ -2070,6 +2546,7 @@ struct SettingsCard<Content: View>: View {
         .padding(18)
         .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 0.5))
+        .modifier(SettingHighlight(title: title))
     }
 }
 
@@ -2093,6 +2570,7 @@ struct SettingLine<Content: View>: View {
             Spacer(minLength: 20)
             content()
         }
+        .modifier(SettingHighlight(title: title))
     }
 }
 
@@ -2797,7 +3275,7 @@ struct AboutSettingsView: View {
                             .resizable()
                             .frame(width: 12, height: 12)
                     }
-                    Text("Ko-fi")
+                    Text(L10n.string("footer.supportOnKofi"))
                 }
                 .font(.caption)
                 .foregroundStyle(Color(red: 1.0, green: 0.37, blue: 0.36))
@@ -2942,25 +3420,34 @@ struct SupportSettingsView: View {
 }
 
 struct ProjectLibraryView: View {
+    @State private var language = AppLanguage.current
+
+    /// Project Library partagée entre apps PK (même liste que
+    /// PKwindowsManagement) : descriptions et types localisés par clé L10n,
+    /// liens GitHub vérifiés.
     private struct Project: Identifiable {
         let id: String
         let title: String
-        let kind: String
-        let description: String
+        let kindKey: String
+        let descKey: String
         let iconAsset: String
         let screenshot: String?
         let tint: NSColor
+        var kind: String { L10n.string(kindKey) }
+        var description: String { L10n.string(descKey) }
         var url: URL { URL(string: "https://github.com/mondary/\(id)")! }
     }
 
     private let projects = [
-        Project(id: "Macos_PKarchives", title: "PKarchives", kind: "macOS app", description: "Archive your Desktop to Google Drive with rclone, using a native macOS interface or CLI/TUI.", iconAsset: "PKarchives", screenshot: "PKarchives", tint: NSColor(hex: "#8B5CF6")!),
-        Project(id: "PKmonitor", title: "PKMonitor", kind: "macOS app", description: "CPU, GPU, RAM, network and disk metrics in the menu bar.", iconAsset: "icon", screenshot: "PKmonitor", tint: NSColor(hex: "#0EA5E9")!),
-        Project(id: "PKwindowsManagement", title: "PKwindowsManagement", kind: "macOS app", description: "Manage windows by keyboard and launch installed applications quickly from the menu bar.", iconAsset: "PKwindowsManagement", screenshot: nil, tint: NSColor(hex: "#F97316")!),
-        Project(id: "Macos_PKpowerlines", title: "PKpowerlines", kind: "macOS app", description: "A native multi-display powerline showing RAM, CPU, network or battery in real time.", iconAsset: "PKpowerlines", screenshot: "PKpowerlines", tint: NSColor(hex: "#10B981")!),
-        Project(id: "PKmac-cleanup", title: "LaunchPad", kind: "macOS app", description: "Scan and audit user agents and system daemons with local security analysis.", iconAsset: "PKmac-cleanup", screenshot: nil, tint: NSColor(hex: "#EC4899")!),
-        Project(id: "Chrome_SimpleGMAIL", title: "PKMail", kind: "Chrome / macOS / Windows / Linux", description: "An immersive IMAP mail client with a vanilla HTML interface and Gmail-style workflows.", iconAsset: "PKMail", screenshot: nil, tint: NSColor(hex: "#EA4335")!),
-        Project(id: "Chrome_PKshortcuts", title: "PK Chrome Shortcuts", kind: "Chrome extension", description: "Control tabs, navigation and split view with keyboard shortcuts.", iconAsset: "PKshortcuts", screenshot: nil, tint: NSColor(hex: "#F59E0B")!)
+        Project(id: "PKmonitor", title: "PKMonitor", kindKey: "kind.macos", descKey: "desc.PKmonitor", iconAsset: "PKmonitor", screenshot: "PKmonitor", tint: NSColor(hex: "#0EA5E9")!),
+        Project(id: "PKwindowsManagement", title: "PKwindowsManagement", kindKey: "kind.macos", descKey: "desc.PKwindowsManagement", iconAsset: "PKwindowsManagement", screenshot: nil, tint: NSColor(hex: "#F97316")!),
+        Project(id: "PKbrain", title: "PKbrain", kindKey: "kind.macos", descKey: "desc.PKbrain", iconAsset: "PKbrain", screenshot: nil, tint: NSColor(hex: "#6366F1")!),
+        Project(id: "media-downloader", title: "PKMediaDownloader", kindKey: "kind.macos", descKey: "desc.PKMediaDownloader", iconAsset: "PKMediaDownloader", screenshot: nil, tint: NSColor(hex: "#F43F5E")!),
+        Project(id: "Macos_PKarchives", title: "PKarchives", kindKey: "kind.macos", descKey: "desc.PKarchives", iconAsset: "PKarchives", screenshot: "PKarchives", tint: NSColor(hex: "#8B5CF6")!),
+        Project(id: "Macos_PKpowerlines", title: "PKpowerlines", kindKey: "kind.macos", descKey: "desc.PKpowerlines", iconAsset: "PKpowerlines", screenshot: "PKpowerlines", tint: NSColor(hex: "#10B981")!),
+        Project(id: "PKmac-cleanup", title: "LaunchPad", kindKey: "kind.macos", descKey: "desc.LaunchPad", iconAsset: "PKmac-cleanup", screenshot: nil, tint: NSColor(hex: "#EC4899")!),
+        Project(id: "Chrome_SimpleGMAIL", title: "PKMail", kindKey: "kind.cross", descKey: "desc.PKMail", iconAsset: "PKMail", screenshot: nil, tint: NSColor(hex: "#EA4335")!),
+        Project(id: "Chrome_PKshortcuts", title: "PK Chrome Shortcuts", kindKey: "kind.chrome", descKey: "desc.PKChromeShortcuts", iconAsset: "PKshortcuts", screenshot: nil, tint: NSColor(hex: "#F59E0B")!)
     ]
 
     private var featured: Project { projects.first { $0.id == "PKmonitor" }! }
@@ -2969,18 +3456,22 @@ struct ProjectLibraryView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                SettingsHeader(title: "Project Library", subtitle: "Discover the other tools and projects I build.", icon: "square.grid.2x2")
+                SettingsHeader(title: L10n.string("library.title"), subtitle: L10n.string("library.subtitle"), icon: "square.grid.2x2")
                 featuredCard(featured)
-                Text("More projects").font(.system(size: 18, weight: .bold, design: .rounded))
+                Text(L10n.string("library.more")).font(.system(size: 18, weight: .bold, design: .rounded))
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: 14) {
                     ForEach(gridProjects) { project in
                         projectCard(project)
                     }
                 }
-                Link(destination: ProjectLinks.githubProfile) { Label("View all repositories on GitHub", systemImage: "arrow.up.right.square") }
+                Link(destination: ProjectLinks.githubProfile) { Label(L10n.string("library.viewAll"), systemImage: "arrow.up.right.square") }
                     .buttonStyle(.borderedProminent)
                     .padding(.top, 6)
             }.padding(28)
+        }
+        .onAppear { language = AppLanguage.current }
+        .onReceive(NotificationCenter.default.publisher(for: .appLanguageDidChange)) { _ in
+            language = AppLanguage.current
         }
     }
 
@@ -3006,7 +3497,7 @@ struct ProjectLibraryView: View {
                         .font(.system(size: 13)).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                         .lineLimit(3)
-                    Label("Star on GitHub", systemImage: "star.fill")
+                    Label(L10n.string("library.star"), systemImage: "star.fill")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 12).padding(.vertical, 7)

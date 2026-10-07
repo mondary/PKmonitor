@@ -2,6 +2,15 @@
 
 Historique des évolutions de PKMonitor.
 
+## [2026.10.16] - 2026-10-07
+### Added
+- Quatre langues comme PKwindowsManagement : 🇫🇷 🇬🇧 🇪🇸 🇩🇪 en bas de la sidebar, avec fallback anglais et détection système.
+- Recherche intelligente des Réglages : index profond bilingue (ex. « api », « connexion », « historique ») — résultats en liste sous le champ, Entrée/clic navigue vers l'onglet concerné et surligne le réglage exact.
+### Changed
+- Libellés de la sidebar localisés (sections, groupes APP/SURVEILLANCE/PROJETS PK, en-tête, champ de recherche).
+- Footer de l'About : « Soutenir sur Ko-fi » localisé (fin du « Ko-fi » nu) ; section renommée Support/Soutenir comme PKwm.
+- Project Library synchronisée avec PKwindowsManagement (9 projets, dont PKbrain et PKMediaDownloader) : titre, sous-titre, descriptions et types traduits en 4 langues, icônes manquantes ajoutées.
+
 ## [2026.10.15] - 2026-10-07
 ### Changed
 - Drapeaux de langue FR/EN déplacés en bas de la barre latérale des Réglages (emplacement canonique PKwindowsManagement) : drapeau actif surligné en accent, inactifs à 65 % d'opacité.
